@@ -14,6 +14,7 @@ function isPlaceholder(content: string, hints: string[]): boolean {
     if (!needle) {
       return false;
     }
+
     return normalized === needle
       || normalized.startsWith(`${needle} `)
       || normalized.endsWith(` ${needle}`)
@@ -55,14 +56,16 @@ export function validateIssue(params: {
     };
   }
 
-  const missingSections = template.requiredSections.filter((rule) => {
-    const content = getSectionContent(parsed, rule);
-    const hints = [...DEFAULT_PLACEHOLDER_HINTS, ...(rule.placeholderHints ?? [])];
-    return isPlaceholder(content, hints);
-  }).map((rule) => ({
-    id: rule.id,
-    aliases: rule.aliases
-  }));
+  const missingSections = template.requiredSections
+    .filter((rule) => {
+      const content = getSectionContent(parsed, rule);
+      const hints = [...DEFAULT_PLACEHOLDER_HINTS, ...(rule.placeholderHints ?? [])];
+      return isPlaceholder(content, hints);
+    })
+    .map((rule) => ({
+      id: rule.id,
+      aliases: rule.aliases
+    }));
 
   const valid = missingSections.length === 0;
   return {
@@ -73,11 +76,13 @@ export function validateIssue(params: {
     missingSections,
     desiredLabels: valid ? template.labels.whenValid : [],
     invalidLabels: valid ? [] : template.labels.whenInvalid,
-    commentBody: renderValidationComment({
-      mode: params.commentMode,
-      valid,
-      templateKey: template.key,
-      missingSections: missingSections.map((item) => item.aliases[0] ?? item.id)
-    })
+    commentBody: valid
+      ? undefined
+      : renderValidationComment({
+        mode: params.commentMode,
+        valid: false,
+        templateKey: template.key,
+        missingSections: missingSections.map((item) => item.aliases[0] ?? item.id)
+      })
   };
 }

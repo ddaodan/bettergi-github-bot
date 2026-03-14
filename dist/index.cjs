@@ -41753,9 +41753,9 @@ function validateIssue(params) {
     missingSections,
     desiredLabels: valid ? template.labels.whenValid : [],
     invalidLabels: valid ? [] : template.labels.whenInvalid,
-    commentBody: renderValidationComment({
+    commentBody: valid ? void 0 : renderValidationComment({
       mode: params.commentMode,
-      valid,
+      valid: false,
       templateKey: template.key,
       missingSections: missingSections.map((item) => item.aliases[0] ?? item.id)
     })

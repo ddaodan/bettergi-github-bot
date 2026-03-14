@@ -25,7 +25,7 @@ describe("validateIssue", () => {
     expect(result.commentBody).toContain("模板检查结果");
   });
 
-  it("passes valid issue body", () => {
+  it("does not emit a validation comment for valid issues", () => {
     const config = createConfig();
     const result = validateIssue({
       body: [
@@ -46,6 +46,7 @@ describe("validateIssue", () => {
 
     expect(result.valid).toBe(true);
     expect(result.desiredLabels).toContain("type:bug");
+    expect(result.commentBody).toBeUndefined();
   });
 
   it("accepts English section headings", () => {
@@ -71,5 +72,6 @@ describe("validateIssue", () => {
     expect(Object.keys(result.parsed.sections)).toContain("steps to reproduce");
     expect(result.missingSections.map((item) => item.id)).toEqual([]);
     expect(result.valid).toBe(true);
+    expect(result.commentBody).toBeUndefined();
   });
 });
