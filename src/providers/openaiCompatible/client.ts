@@ -33,6 +33,19 @@ function createEndpoint(baseUrl: string, relativePath: string): URL {
   return new URL(relativePath, endpointBase);
 }
 
+function createEndpointCandidates(baseUrl: string, relativePath: string): URL[] {
+  const primary = createEndpoint(baseUrl, relativePath);
+  const base = new URL(baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
+  const normalizedPath = base.pathname.replace(/\/+$/, "");
+
+  if (normalizedPath.length > 0) {
+    return [primary];
+  }
+
+  const versioned = new URL(`v1/${relativePath}`, base);
+  return primary.href === versioned.href ? [primary] : [primary, versioned];
+}
+
 function withTimeout(timeoutMs: number): { signal: AbortSignal; clear: () => void } {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -84,15 +97,61 @@ async function parseErrorResponse(response: Response): Promise<never> {
   );
 }
 
+async function fetchWithBaseUrlFallback(
+  baseUrl: string,
+  relativePath: string,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  const timeout = withTimeout(timeoutMs);
+
+  try {
+    const endpoints = createEndpointCandidates(baseUrl, relativePath);
+
+    for (const [index, endpoint] of endpoints.entries()) {
+      const response = await fetch(endpoint, {
+        ...init,
+        signal: timeout.signal
+      });
+
+      if (response.ok) {
+        return response;
+      }
+
+      const responseText = await response.text();
+      const error = new ProviderRequestError(
+        `AI provider returned ${response.status}: ${responseText}`,
+        response.status,
+        responseText
+      );
+
+      const canRetryWithVersionedPath =
+        response.status === 404 &&
+        index === 0 &&
+        endpoints.length > 1;
+
+      if (!canRetryWithVersionedPath) {
+        throw error;
+      }
+
+      core.info(`AI provider returned 404 for ${endpoint.toString()}. Retrying with /v1-prefixed endpoint.`);
+    }
+
+    throw new Error(`Failed to reach AI provider endpoint for ${relativePath}.`);
+  } finally {
+    timeout.clear();
+  }
+}
+
 async function requestChatCompletion(
   config: ProviderConfig,
   apiKey: string,
   messages: ChatMessage[]
 ): Promise<string> {
-  const timeout = withTimeout(config.timeoutMs);
-
-  try {
-    const response = await fetch(createEndpoint(config.baseUrl, "chat/completions"), {
+  const response = await fetchWithBaseUrlFallback(
+    config.baseUrl,
+    "chat/completions",
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -102,31 +161,25 @@ async function requestChatCompletion(
         model: config.model,
         temperature: 0.2,
         messages
-      }),
-      signal: timeout.signal
-    });
+      })
+    },
+    config.timeoutMs
+  );
 
-    if (!response.ok) {
-      await parseErrorResponse(response);
-    }
+  const json = await response.json() as {
+    choices?: Array<{
+      message?: {
+        content?: string;
+      };
+    }>;
+  };
 
-    const json = await response.json() as {
-      choices?: Array<{
-        message?: {
-          content?: string;
-        };
-      }>;
-    };
-
-    const content = json.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error("AI provider returned an empty chat completion message.");
-    }
-
-    return content;
-  } finally {
-    timeout.clear();
+  const content = json.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("AI provider returned an empty chat completion message.");
   }
+
+  return content;
 }
 
 function extractResponsesOutputText(json: {
@@ -163,10 +216,10 @@ async function requestResponses(
   messages: ChatMessage[],
   structuredOutput: StructuredOutputSchema
 ): Promise<string> {
-  const timeout = withTimeout(config.timeoutMs);
-
-  try {
-    const response = await fetch(createEndpoint(config.baseUrl, "responses"), {
+  const response = await fetchWithBaseUrlFallback(
+    config.baseUrl,
+    "responses",
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -184,29 +237,23 @@ async function requestResponses(
             schema: structuredOutput.schema
           }
         }
-      }),
-      signal: timeout.signal
-    });
+      })
+    },
+    config.timeoutMs
+  );
 
-    if (!response.ok) {
-      await parseErrorResponse(response);
-    }
-
-    const json = await response.json() as {
-      output_text?: string;
-      output?: Array<{
+  const json = await response.json() as {
+    output_text?: string;
+    output?: Array<{
+      type?: string;
+      content?: Array<{
         type?: string;
-        content?: Array<{
-          type?: string;
-          text?: string;
-        }>;
+        text?: string;
       }>;
-    };
+    }>;
+  };
 
-    return extractResponsesOutputText(json);
-  } finally {
-    timeout.clear();
-  }
+  return extractResponsesOutputText(json);
 }
 
 async function requestStructuredJson(

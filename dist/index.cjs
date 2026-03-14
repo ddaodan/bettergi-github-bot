@@ -40786,6 +40786,16 @@ function createEndpoint(baseUrl, relativePath) {
   const endpointBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   return new URL(relativePath, endpointBase);
 }
+function createEndpointCandidates(baseUrl, relativePath) {
+  const primary = createEndpoint(baseUrl, relativePath);
+  const base = new URL(baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
+  const normalizedPath = base.pathname.replace(/\/+$/, "");
+  if (normalizedPath.length > 0) {
+    return [primary];
+  }
+  const versioned = new URL(`v1/${relativePath}`, base);
+  return primary.href === versioned.href ? [primary] : [primary, versioned];
+}
 function withTimeout(timeoutMs) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -40822,18 +40832,40 @@ function extractJsonBlock(text) {
   }
   return objectMatch[0];
 }
-async function parseErrorResponse(response) {
-  const responseText = await response.text();
-  throw new ProviderRequestError(
-    `AI provider returned ${response.status}: ${responseText}`,
-    response.status,
-    responseText
-  );
+async function fetchWithBaseUrlFallback(baseUrl, relativePath, init, timeoutMs) {
+  const timeout = withTimeout(timeoutMs);
+  try {
+    const endpoints = createEndpointCandidates(baseUrl, relativePath);
+    for (const [index, endpoint2] of endpoints.entries()) {
+      const response = await fetch(endpoint2, {
+        ...init,
+        signal: timeout.signal
+      });
+      if (response.ok) {
+        return response;
+      }
+      const responseText = await response.text();
+      const error48 = new ProviderRequestError(
+        `AI provider returned ${response.status}: ${responseText}`,
+        response.status,
+        responseText
+      );
+      const canRetryWithVersionedPath = response.status === 404 && index === 0 && endpoints.length > 1;
+      if (!canRetryWithVersionedPath) {
+        throw error48;
+      }
+      core3.info(`AI provider returned 404 for ${endpoint2.toString()}. Retrying with /v1-prefixed endpoint.`);
+    }
+    throw new Error(`Failed to reach AI provider endpoint for ${relativePath}.`);
+  } finally {
+    timeout.clear();
+  }
 }
 async function requestChatCompletion(config2, apiKey, messages) {
-  const timeout = withTimeout(config2.timeoutMs);
-  try {
-    const response = await fetch(createEndpoint(config2.baseUrl, "chat/completions"), {
+  const response = await fetchWithBaseUrlFallback(
+    config2.baseUrl,
+    "chat/completions",
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -40843,21 +40875,16 @@ async function requestChatCompletion(config2, apiKey, messages) {
         model: config2.model,
         temperature: 0.2,
         messages
-      }),
-      signal: timeout.signal
-    });
-    if (!response.ok) {
-      await parseErrorResponse(response);
-    }
-    const json3 = await response.json();
-    const content = json3.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error("AI provider returned an empty chat completion message.");
-    }
-    return content;
-  } finally {
-    timeout.clear();
+      })
+    },
+    config2.timeoutMs
+  );
+  const json3 = await response.json();
+  const content = json3.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("AI provider returned an empty chat completion message.");
   }
+  return content;
 }
 function extractResponsesOutputText(json3) {
   if (typeof json3.output_text === "string" && json3.output_text.trim()) {
@@ -40870,9 +40897,10 @@ function extractResponsesOutputText(json3) {
   throw new Error("AI provider returned an empty responses output.");
 }
 async function requestResponses(config2, apiKey, messages, structuredOutput) {
-  const timeout = withTimeout(config2.timeoutMs);
-  try {
-    const response = await fetch(createEndpoint(config2.baseUrl, "responses"), {
+  const response = await fetchWithBaseUrlFallback(
+    config2.baseUrl,
+    "responses",
+    {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -40890,17 +40918,12 @@ async function requestResponses(config2, apiKey, messages, structuredOutput) {
             schema: structuredOutput.schema
           }
         }
-      }),
-      signal: timeout.signal
-    });
-    if (!response.ok) {
-      await parseErrorResponse(response);
-    }
-    const json3 = await response.json();
-    return extractResponsesOutputText(json3);
-  } finally {
-    timeout.clear();
-  }
+      })
+    },
+    config2.timeoutMs
+  );
+  const json3 = await response.json();
+  return extractResponsesOutputText(json3);
 }
 async function requestStructuredJson(config2, apiKey, messages, structuredOutput) {
   if (config2.apiStyle === "responses") {

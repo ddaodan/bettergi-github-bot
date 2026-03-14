@@ -98,6 +98,41 @@ describe("OpenAiCompatibleProvider", () => {
     expect(String(fetchMock.mock.calls[1]?.[0])).toBe("https://api.openai.com/v1/chat/completions");
   });
 
+  it("retries with /v1-prefixed responses endpoint when baseUrl has no path", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        async text() {
+          return "404 page not found";
+        }
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        async json() {
+          return {
+            output_text: JSON.stringify({
+              summary: "versioned path",
+              possibleCauses: [],
+              troubleshootingSteps: [],
+              missingInformation: []
+            })
+          };
+        }
+      });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await createProvider({
+      baseUrl: "https://cliproxy.ddaodan.cc/",
+      apiStyle: "responses"
+    }).generateHelp(createIssue(), {});
+
+    expect(result.summary).toBe("versioned path");
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://cliproxy.ddaodan.cc/responses");
+    expect(String(fetchMock.mock.calls[1]?.[0])).toBe("https://cliproxy.ddaodan.cc/v1/responses");
+  });
+
   it("uses chat/completions only when apiStyle is chat_completions", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
