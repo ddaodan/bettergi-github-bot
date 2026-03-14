@@ -176,7 +176,7 @@ export async function detectDuplicate(params: {
         };
       }
     } catch (error) {
-      core.info(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error)}`);
+      core.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error)}`);
     }
   }
 

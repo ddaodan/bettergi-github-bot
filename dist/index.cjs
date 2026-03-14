@@ -17598,12 +17598,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info7 = this._prepareRequest(verb, parsedUrl, headers);
+          let info6 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info7, data);
+            response = yield this.requestRaw(info6, data);
             if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
               let authenticationHandler;
               for (const handler2 of this.handlers) {
@@ -17613,7 +17613,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info7, data);
+                return authenticationHandler.handleAuthentication(this, info6, data);
               } else {
                 return response;
               }
@@ -17636,8 +17636,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info7 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info7, data);
+              info6 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info6, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -17666,7 +17666,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info7, data) {
+      requestRaw(info6, data) {
         return __awaiter(this, void 0, void 0, function* () {
           return new Promise((resolve, reject) => {
             function callbackForResult(err, res) {
@@ -17678,7 +17678,7 @@ var require_lib = __commonJS({
                 resolve(res);
               }
             }
-            this.requestRawWithCallback(info7, data, callbackForResult);
+            this.requestRawWithCallback(info6, data, callbackForResult);
           });
         });
       }
@@ -17688,12 +17688,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info7, data, onResult) {
+      requestRawWithCallback(info6, data, onResult) {
         if (typeof data === "string") {
-          if (!info7.options.headers) {
-            info7.options.headers = {};
+          if (!info6.options.headers) {
+            info6.options.headers = {};
           }
-          info7.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info6.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult(err, res) {
@@ -17702,7 +17702,7 @@ var require_lib = __commonJS({
             onResult(err, res);
           }
         }
-        const req = info7.httpModule.request(info7.options, (msg) => {
+        const req = info6.httpModule.request(info6.options, (msg) => {
           const res = new HttpClientResponse(msg);
           handleResult(void 0, res);
         });
@@ -17714,7 +17714,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error(`Request timeout: ${info7.options.path}`));
+          handleResult(new Error(`Request timeout: ${info6.options.path}`));
         });
         req.on("error", function(err) {
           handleResult(err);
@@ -17750,27 +17750,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info7 = {};
-        info7.parsedUrl = requestUrl;
-        const usingSsl = info7.parsedUrl.protocol === "https:";
-        info7.httpModule = usingSsl ? https : http;
+        const info6 = {};
+        info6.parsedUrl = requestUrl;
+        const usingSsl = info6.parsedUrl.protocol === "https:";
+        info6.httpModule = usingSsl ? https : http;
         const defaultPort = usingSsl ? 443 : 80;
-        info7.options = {};
-        info7.options.host = info7.parsedUrl.hostname;
-        info7.options.port = info7.parsedUrl.port ? parseInt(info7.parsedUrl.port) : defaultPort;
-        info7.options.path = (info7.parsedUrl.pathname || "") + (info7.parsedUrl.search || "");
-        info7.options.method = method;
-        info7.options.headers = this._mergeHeaders(headers);
+        info6.options = {};
+        info6.options.host = info6.parsedUrl.hostname;
+        info6.options.port = info6.parsedUrl.port ? parseInt(info6.parsedUrl.port) : defaultPort;
+        info6.options.path = (info6.parsedUrl.pathname || "") + (info6.parsedUrl.search || "");
+        info6.options.method = method;
+        info6.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info7.options.headers["user-agent"] = this.userAgent;
+          info6.options.headers["user-agent"] = this.userAgent;
         }
-        info7.options.agent = this._getAgent(info7.parsedUrl);
+        info6.options.agent = this._getAgent(info6.parsedUrl);
         if (this.handlers) {
           for (const handler2 of this.handlers) {
-            handler2.prepareRequest(info7.options);
+            handler2.prepareRequest(info6.options);
           }
         }
-        return info7;
+        return info6;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -19752,18 +19752,18 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("error", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.error = error48;
-    function warning(message, properties = {}) {
+    function warning3(message, properties = {}) {
       (0, command_1.issueCommand)("warning", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
-    exports2.warning = warning;
+    exports2.warning = warning3;
     function notice(message, properties = {}) {
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.notice = notice;
-    function info7(message) {
+    function info6(message) {
       process.stdout.write(message + os.EOL);
     }
-    exports2.info = info7;
+    exports2.info = info6;
     function startGroup(name) {
       (0, command_1.issue)("group", name);
     }
@@ -41222,7 +41222,7 @@ async function generateIssueAiHelp(params) {
       help
     });
   } catch (error48) {
-    core4.info(`Skip AI help because provider request failed: ${String(error48)}`);
+    core4.warning(`Skip AI help because provider request failed: ${String(error48)}`);
     return void 0;
   }
 }
@@ -41419,7 +41419,7 @@ async function detectDuplicate(params) {
         };
       }
     } catch (error48) {
-      core5.info(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
+      core5.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
     }
   }
   if (!bestReview) {

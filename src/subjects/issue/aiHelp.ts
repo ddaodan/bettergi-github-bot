@@ -35,7 +35,7 @@ export async function generateIssueAiHelp(params: {
       help
     });
   } catch (error) {
-    core.info(`Skip AI help because provider request failed: ${String(error)}`);
+    core.warning(`Skip AI help because provider request failed: ${String(error)}`);
     return undefined;
   }
 }
