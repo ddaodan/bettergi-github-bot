@@ -64,10 +64,26 @@ export interface LabelingConfig {
   keywordRules: KeywordRule[];
 }
 
+export interface ProjectProfile {
+  name: string;
+  aliases: string[];
+  summary: string;
+  techStack: string[];
+}
+
+export interface ProjectContextConfig {
+  enabled: boolean;
+  includeRepositoryMetadata: boolean;
+  includeReadme: boolean;
+  readmeMaxChars: number;
+  profile: ProjectProfile;
+}
+
 export interface AiHelpConfig {
   enabled: boolean;
   triggerLabels: string[];
   commentAnchor: string;
+  projectContext: ProjectContextConfig;
 }
 
 export interface ProviderConfig {
@@ -127,6 +143,22 @@ export interface IssueContext extends RepositorySubjectContext {
 
 export interface PullRequestContext extends RepositorySubjectContext {
   kind: "pull_request";
+}
+
+export interface RepositoryMetadata {
+  owner: string;
+  repo: string;
+  fullName: string;
+  description: string;
+  topics: string[];
+  homepage: string;
+}
+
+export interface RepositoryAiContext extends RepositoryMetadata {
+  issueUrl: string;
+  templateKey: string;
+  readmeExcerpt: string;
+  projectProfile: ProjectProfile;
 }
 
 export interface ParsedIssue {

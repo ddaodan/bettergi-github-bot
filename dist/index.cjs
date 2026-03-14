@@ -17598,12 +17598,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info6 = this._prepareRequest(verb, parsedUrl, headers);
+          let info7 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info6, data);
+            response = yield this.requestRaw(info7, data);
             if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
               let authenticationHandler;
               for (const handler2 of this.handlers) {
@@ -17613,7 +17613,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info6, data);
+                return authenticationHandler.handleAuthentication(this, info7, data);
               } else {
                 return response;
               }
@@ -17636,8 +17636,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info6 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info6, data);
+              info7 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info7, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -17666,7 +17666,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info6, data) {
+      requestRaw(info7, data) {
         return __awaiter(this, void 0, void 0, function* () {
           return new Promise((resolve, reject) => {
             function callbackForResult(err, res) {
@@ -17678,7 +17678,7 @@ var require_lib = __commonJS({
                 resolve(res);
               }
             }
-            this.requestRawWithCallback(info6, data, callbackForResult);
+            this.requestRawWithCallback(info7, data, callbackForResult);
           });
         });
       }
@@ -17688,12 +17688,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info6, data, onResult) {
+      requestRawWithCallback(info7, data, onResult) {
         if (typeof data === "string") {
-          if (!info6.options.headers) {
-            info6.options.headers = {};
+          if (!info7.options.headers) {
+            info7.options.headers = {};
           }
-          info6.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info7.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult(err, res) {
@@ -17702,7 +17702,7 @@ var require_lib = __commonJS({
             onResult(err, res);
           }
         }
-        const req = info6.httpModule.request(info6.options, (msg) => {
+        const req = info7.httpModule.request(info7.options, (msg) => {
           const res = new HttpClientResponse(msg);
           handleResult(void 0, res);
         });
@@ -17714,7 +17714,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error(`Request timeout: ${info6.options.path}`));
+          handleResult(new Error(`Request timeout: ${info7.options.path}`));
         });
         req.on("error", function(err) {
           handleResult(err);
@@ -17750,27 +17750,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info6 = {};
-        info6.parsedUrl = requestUrl;
-        const usingSsl = info6.parsedUrl.protocol === "https:";
-        info6.httpModule = usingSsl ? https : http;
+        const info7 = {};
+        info7.parsedUrl = requestUrl;
+        const usingSsl = info7.parsedUrl.protocol === "https:";
+        info7.httpModule = usingSsl ? https : http;
         const defaultPort = usingSsl ? 443 : 80;
-        info6.options = {};
-        info6.options.host = info6.parsedUrl.hostname;
-        info6.options.port = info6.parsedUrl.port ? parseInt(info6.parsedUrl.port) : defaultPort;
-        info6.options.path = (info6.parsedUrl.pathname || "") + (info6.parsedUrl.search || "");
-        info6.options.method = method;
-        info6.options.headers = this._mergeHeaders(headers);
+        info7.options = {};
+        info7.options.host = info7.parsedUrl.hostname;
+        info7.options.port = info7.parsedUrl.port ? parseInt(info7.parsedUrl.port) : defaultPort;
+        info7.options.path = (info7.parsedUrl.pathname || "") + (info7.parsedUrl.search || "");
+        info7.options.method = method;
+        info7.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info6.options.headers["user-agent"] = this.userAgent;
+          info7.options.headers["user-agent"] = this.userAgent;
         }
-        info6.options.agent = this._getAgent(info6.parsedUrl);
+        info7.options.agent = this._getAgent(info7.parsedUrl);
         if (this.handlers) {
           for (const handler2 of this.handlers) {
-            handler2.prepareRequest(info6.options);
+            handler2.prepareRequest(info7.options);
           }
         }
-        return info6;
+        return info7;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -19760,10 +19760,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.notice = notice;
-    function info6(message) {
+    function info7(message) {
       process.stdout.write(message + os.EOL);
     }
-    exports2.info = info6;
+    exports2.info = info7;
     function startGroup(name) {
       (0, command_1.issue)("group", name);
     }
@@ -23936,7 +23936,7 @@ var require_github = __commonJS({
 });
 
 // src/index.ts
-var core7 = __toESM(require_core(), 1);
+var core8 = __toESM(require_core(), 1);
 
 // src/config/loadConfig.ts
 var import_promises = require("fs/promises");
@@ -40374,6 +40374,24 @@ var keywordRuleSchema = external_exports.object({
   fields: external_exports.array(external_exports.enum(["title", "body", "sections"])).default(["title", "body"]),
   caseSensitive: external_exports.boolean().default(false)
 });
+var projectProfileSchema = external_exports.object({
+  name: external_exports.string().default(""),
+  aliases: external_exports.array(external_exports.string().min(1)).default([]),
+  summary: external_exports.string().default(""),
+  techStack: external_exports.array(external_exports.string().min(1)).default([])
+});
+var projectContextSchema = external_exports.object({
+  enabled: external_exports.boolean().default(true),
+  includeRepositoryMetadata: external_exports.boolean().default(true),
+  includeReadme: external_exports.boolean().default(true),
+  readmeMaxChars: external_exports.number().int().positive().max(2e4).default(3e3),
+  profile: projectProfileSchema.default(() => ({
+    name: "",
+    aliases: [],
+    summary: "",
+    techStack: []
+  }))
+});
 var repoBotConfigSchema = external_exports.object({
   runtime: external_exports.object({
     languageMode: external_exports.enum(["auto", "zh", "zh-en"]).default("auto"),
@@ -40461,11 +40479,35 @@ var repoBotConfigSchema = external_exports.object({
     aiHelp: external_exports.object({
       enabled: external_exports.boolean().default(false),
       triggerLabels: external_exports.array(external_exports.string().min(1)).default([]),
-      commentAnchor: external_exports.string().min(1).default("issue-bot:ai")
+      commentAnchor: external_exports.string().min(1).default("issue-bot:ai"),
+      projectContext: projectContextSchema.default(() => ({
+        enabled: true,
+        includeRepositoryMetadata: true,
+        includeReadme: true,
+        readmeMaxChars: 3e3,
+        profile: {
+          name: "",
+          aliases: [],
+          summary: "",
+          techStack: []
+        }
+      }))
     }).default(() => ({
       enabled: false,
       triggerLabels: [],
-      commentAnchor: "issue-bot:ai"
+      commentAnchor: "issue-bot:ai",
+      projectContext: {
+        enabled: true,
+        includeRepositoryMetadata: true,
+        includeReadme: true,
+        readmeMaxChars: 3e3,
+        profile: {
+          name: "",
+          aliases: [],
+          summary: "",
+          techStack: []
+        }
+      }
     }))
   }).default(() => ({
     validation: {
@@ -40496,7 +40538,19 @@ var repoBotConfigSchema = external_exports.object({
     aiHelp: {
       enabled: false,
       triggerLabels: [],
-      commentAnchor: "issue-bot:ai"
+      commentAnchor: "issue-bot:ai",
+      projectContext: {
+        enabled: true,
+        includeRepositoryMetadata: true,
+        includeReadme: true,
+        readmeMaxChars: 3e3,
+        profile: {
+          name: "",
+          aliases: [],
+          summary: "",
+          techStack: []
+        }
+      }
     }
   })),
   pullRequests: external_exports.object({
@@ -40600,6 +40654,40 @@ var OctokitGitHubGateway = class {
   octokit;
   async getIssueContext() {
     return toIssueContext();
+  }
+  async getRepositoryMetadata() {
+    const response = await this.octokit.rest.repos.get({
+      owner: import_github.context.repo.owner,
+      repo: import_github.context.repo.repo
+    });
+    return {
+      owner: import_github.context.repo.owner,
+      repo: import_github.context.repo.repo,
+      fullName: response.data.full_name ?? `${import_github.context.repo.owner}/${import_github.context.repo.repo}`,
+      description: response.data.description ?? "",
+      topics: response.data.topics ?? [],
+      homepage: response.data.homepage ?? ""
+    };
+  }
+  async getRepositoryReadme() {
+    try {
+      const response = await this.octokit.rest.repos.getReadme({
+        owner: import_github.context.repo.owner,
+        repo: import_github.context.repo.repo
+      });
+      const encoded = "content" in response.data ? response.data.content ?? "" : "";
+      if (!encoded) {
+        return void 0;
+      }
+      return Buffer.from(encoded, "base64").toString("utf8");
+    } catch (error48) {
+      const status = typeof error48 === "object" && error48 !== null && "status" in error48 ? error48.status : void 0;
+      if (status === 404) {
+        return void 0;
+      }
+      core2.info(`Skip repository README context: ${String(error48)}`);
+      return void 0;
+    }
   }
   async listComments(issueNumber) {
     const response = await this.octokit.rest.issues.listComments({
@@ -41004,7 +41092,7 @@ var OpenAiCompatibleProvider = class {
     const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
-        content: "\u4F60\u662F GitHub \u4ED3\u5E93\u673A\u5668\u4EBA\u3002\u8BF7\u5224\u65AD\u4E24\u4E2A issue \u662F\u5426\u63CF\u8FF0\u540C\u4E00\u4E2A\u95EE\u9898\uFF0C\u53EA\u8FD4\u56DE JSON\u3002confidence \u53D6\u503C\u8303\u56F4\u4E3A 0 \u5230 1\u3002"
+        content: "You are a GitHub repository bot. Decide whether two issues describe the same problem. Return JSON only. `duplicate` must be boolean and `confidence` must be between 0 and 1."
       },
       {
         role: "user",
@@ -41025,25 +41113,35 @@ var OpenAiCompatibleProvider = class {
       reason: parsed.reason ?? ""
     };
   }
-  async generateHelp(issue2, sections) {
+  async generateHelp(issue2, sections, repositoryContext) {
     const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
-        content: "\u4F60\u662F GitHub Issue \u52A9\u624B\u673A\u5668\u4EBA\u3002\u8BF7\u6839\u636E issue \u5185\u5BB9\u7ED9\u51FA\u7B80\u6D01\u4E14\u53EF\u6267\u884C\u7684\u6392\u67E5\u5EFA\u8BAE\uFF0C\u53EA\u8FD4\u56DE JSON\u3002"
+        content: [
+          "You are a GitHub issue assistant for the current repository.",
+          "Treat the provided repository context as the ground truth for the current project.",
+          "Assume the issue is about this repository unless the issue clearly points to an external dependency or upstream project.",
+          "Do not ask the user to provide the current repository link, repository name, or project identity again.",
+          "If more information is needed, ask only for truly missing technical details such as module, version, logs, environment, or reproduction steps.",
+          "Return JSON only."
+        ].join(" ")
       },
       {
         role: "user",
         content: JSON.stringify({
-          title: issue2.title,
-          body: issue2.body,
-          labels: issue2.labels,
-          sections
+          repositoryContext,
+          issue: {
+            title: issue2.title,
+            body: issue2.body,
+            labels: issue2.labels,
+            sections
+          }
         })
       }
     ], issueHelpSchema);
     const parsed = JSON.parse(extractJsonBlock(content));
     return {
-      summary: parsed.summary ?? "\u672A\u80FD\u751F\u6210\u6458\u8981\u3002",
+      summary: parsed.summary ?? "Unable to generate a summary.",
       possibleCauses: Array.isArray(parsed.possibleCauses) ? parsed.possibleCauses : [],
       troubleshootingSteps: Array.isArray(parsed.troubleshootingSteps) ? parsed.troubleshootingSteps : [],
       missingInformation: Array.isArray(parsed.missingInformation) ? parsed.missingInformation : []
@@ -41061,7 +41159,7 @@ function tryCreateProvider(config2) {
 }
 
 // src/subjects/issue/run.ts
-var core6 = __toESM(require_core(), 1);
+var core7 = __toESM(require_core(), 1);
 
 // src/github/comments.ts
 function createAnchor(anchor) {
@@ -41100,6 +41198,8 @@ function detectCommentMode(text, runtime) {
 var core4 = __toESM(require_core(), 1);
 
 // src/i18n/comments.ts
+var zhAiDisclaimer = "\u514D\u8D23\u58F0\u660E\uFF1A\u4EE5\u4E0A\u56DE\u590D\u5185\u5BB9\u7531 AI \u751F\u6210\uFF0C\u4EC5\u4F9B\u53C2\u8003\uFF0C\u8BF7\u7ED3\u5408\u9879\u76EE\u6587\u6863\u3001\u4EE3\u7801\u548C\u7EF4\u62A4\u8005\u610F\u89C1\u8FDB\u4E00\u6B65\u786E\u8BA4\u3002";
+var enAiDisclaimer = "Disclaimer: This response was generated by AI for reference only. Please verify it against the project docs, code, and maintainer guidance.";
 function bilingual(mode, zh, en) {
   if (mode === "zh") {
     return zh;
@@ -41122,7 +41222,7 @@ function renderValidationComment(params) {
 The issue passed template validation. Detected template: \`${params.templateKey ?? "unknown"}\`.`
     );
   }
-  const zhMissing = params.missingSections.map((item) => `- ${item}`).join("\n") || "- \u65E0";
+  const zhMissing = params.missingSections.map((item) => `- ${item}`).join("\n") || "- \u6682\u65E0";
   const enMissing = params.missingSections.map((item) => `- ${item}`).join("\n") || "- None";
   return bilingual(
     params.mode,
@@ -41138,22 +41238,26 @@ ${enMissing}`
 }
 function renderDuplicateComment(params) {
   const duplicateLine = `Duplicate of #${params.duplicateOf.number}`;
-  const zh = `${duplicateLine}
-
-## \u91CD\u590D Issue \u5904\u7406
-
-\u68C0\u6D4B\u5230\u8BE5 Issue \u4E0E #${params.duplicateOf.number} \u9AD8\u5EA6\u76F8\u4F3C\uFF0C\u5DF2\u6309\u91CD\u590D\u95EE\u9898\u5173\u95ED\u3002
-
-- \u539F Issue\uFF1A${params.duplicateOf.htmlUrl}
-- \u7F6E\u4FE1\u5EA6\uFF1A${params.confidence.toFixed(2)}`;
-  const en = `${duplicateLine}
-
-## Duplicate Issue Handling
-
-This issue is highly similar to #${params.duplicateOf.number} and has been closed as a duplicate.
-
-- Canonical issue: ${params.duplicateOf.htmlUrl}
-- Confidence: ${params.confidence.toFixed(2)}`;
+  const zh = [
+    duplicateLine,
+    "",
+    "## \u91CD\u590D Issue \u5904\u7406",
+    "",
+    `\u68C0\u6D4B\u5230\u8BE5 Issue \u4E0E #${params.duplicateOf.number} \u9AD8\u5EA6\u76F8\u4F3C\uFF0C\u5DF2\u6309\u91CD\u590D\u95EE\u9898\u5173\u95ED\u3002`,
+    "",
+    `- \u539F Issue\uFF1A${params.duplicateOf.htmlUrl}`,
+    `- \u7F6E\u4FE1\u5EA6\uFF1A${params.confidence.toFixed(2)}`
+  ].join("\n");
+  const en = [
+    duplicateLine,
+    "",
+    "## Duplicate Issue Handling",
+    "",
+    `This issue is highly similar to #${params.duplicateOf.number} and has been closed as a duplicate.`,
+    "",
+    `- Canonical issue: ${params.duplicateOf.htmlUrl}`,
+    `- Confidence: ${params.confidence.toFixed(2)}`
+  ].join("\n");
   return params.mode === "zh" ? zh : `${zh}
 
 ---
@@ -41168,13 +41272,15 @@ function renderAiHelpComment(params) {
 ${params.help.summary}`,
     "",
     "### \u53EF\u80FD\u539F\u56E0",
-    ...params.help.possibleCauses.map((item) => `- ${item}`),
+    ...params.help.possibleCauses.length > 0 ? params.help.possibleCauses.map((item) => `- ${item}`) : ["- \u6682\u65E0"],
     "",
     "### \u5EFA\u8BAE\u6392\u67E5\u6B65\u9AA4",
-    ...params.help.troubleshootingSteps.map((item) => `- ${item}`),
+    ...params.help.troubleshootingSteps.length > 0 ? params.help.troubleshootingSteps.map((item) => `- ${item}`) : ["- \u6682\u65E0"],
     "",
     "### \u4ECD\u9700\u8865\u5145\u7684\u4FE1\u606F",
-    ...params.help.missingInformation.length > 0 ? params.help.missingInformation.map((item) => `- ${item}`) : ["- \u6682\u65E0"]
+    ...params.help.missingInformation.length > 0 ? params.help.missingInformation.map((item) => `- ${item}`) : ["- \u6682\u65E0"],
+    "",
+    zhAiDisclaimer
   ].join("\n");
   if (params.mode === "zh") {
     return zh;
@@ -41186,13 +41292,15 @@ ${params.help.summary}`,
 ${params.help.summary}`,
     "",
     "### Possible Causes",
-    ...params.help.possibleCauses.map((item) => `- ${item}`),
+    ...params.help.possibleCauses.length > 0 ? params.help.possibleCauses.map((item) => `- ${item}`) : ["- None"],
     "",
     "### Suggested Troubleshooting Steps",
-    ...params.help.troubleshootingSteps.map((item) => `- ${item}`),
+    ...params.help.troubleshootingSteps.length > 0 ? params.help.troubleshootingSteps.map((item) => `- ${item}`) : ["- None"],
     "",
     "### Additional Information Needed",
-    ...params.help.missingInformation.length > 0 ? params.help.missingInformation.map((item) => `- ${item}`) : ["- None"]
+    ...params.help.missingInformation.length > 0 ? params.help.missingInformation.map((item) => `- ${item}`) : ["- None"],
+    "",
+    enAiDisclaimer
   ].join("\n");
   return `${zh}
 
@@ -41216,7 +41324,11 @@ async function generateIssueAiHelp(params) {
     return void 0;
   }
   try {
-    const help = await params.provider.generateHelp(params.issue, params.parsed.sections);
+    const help = await params.provider.generateHelp(
+      params.issue,
+      params.parsed.sections,
+      params.repositoryContext
+    );
     return renderAiHelpComment({
       mode: params.commentMode,
       help
@@ -41486,6 +41598,89 @@ function computeManagedLabels(params) {
   };
 }
 
+// src/subjects/issue/projectContext.ts
+var core6 = __toESM(require_core(), 1);
+function normalizeWhitespace(value) {
+  return value.replace(/\s+/g, " ").trim();
+}
+function stripMarkdown(value) {
+  return value.replace(/<!--[\s\S]*?-->/g, " ").replace(/```[\s\S]*?```/g, " ").replace(/`([^`]+)`/g, "$1").replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/^#{1,6}\s+/gm, "").replace(/^\s{0,3}>\s?/gm, "").replace(/^\s*[-*+]\s+/gm, "").replace(/^\s*\d+\.\s+/gm, "").replace(/\|/g, " ").replace(/<[^>]+>/g, " ");
+}
+function truncateText(value, maxChars) {
+  if (value.length <= maxChars) {
+    return value;
+  }
+  return `${value.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`;
+}
+function uniqueValues(values) {
+  return [...new Set(values.map((item) => item.trim()).filter(Boolean))];
+}
+function buildProjectProfile(config2, metadata) {
+  return {
+    name: config2.profile.name.trim() || metadata.repo,
+    aliases: uniqueValues(config2.profile.aliases),
+    summary: config2.profile.summary.trim() || metadata.description.trim(),
+    techStack: uniqueValues(config2.profile.techStack)
+  };
+}
+function createReadmeExcerpt(markdown, maxChars) {
+  const normalized = normalizeWhitespace(stripMarkdown(markdown));
+  if (!normalized) {
+    return "";
+  }
+  return truncateText(normalized, maxChars);
+}
+async function resolveRepositoryAiContext(params) {
+  const fallbackMetadata = {
+    owner: params.issue.owner,
+    repo: params.issue.repo,
+    fullName: `${params.issue.owner}/${params.issue.repo}`,
+    description: "",
+    topics: [],
+    homepage: ""
+  };
+  if (!params.config.enabled) {
+    return {
+      ...fallbackMetadata,
+      issueUrl: params.issue.htmlUrl,
+      templateKey: params.templateKey ?? "unknown",
+      readmeExcerpt: "",
+      projectProfile: {
+        name: fallbackMetadata.repo,
+        aliases: [],
+        summary: "",
+        techStack: []
+      }
+    };
+  }
+  let metadata = fallbackMetadata;
+  if (params.config.includeRepositoryMetadata) {
+    try {
+      metadata = await params.gateway.getRepositoryMetadata();
+    } catch (error48) {
+      core6.info(`Skip repository metadata context: ${String(error48)}`);
+    }
+  }
+  let readmeExcerpt = "";
+  if (params.config.includeReadme) {
+    try {
+      const readme = await params.gateway.getRepositoryReadme();
+      if (readme) {
+        readmeExcerpt = createReadmeExcerpt(readme, params.config.readmeMaxChars);
+      }
+    } catch (error48) {
+      core6.info(`Skip repository README context: ${String(error48)}`);
+    }
+  }
+  return {
+    ...metadata,
+    issueUrl: params.issue.htmlUrl,
+    templateKey: params.templateKey ?? "unknown",
+    readmeExcerpt,
+    projectProfile: buildProjectProfile(params.config, metadata)
+  };
+}
+
 // src/core/constants.ts
 var DEFAULT_PLACEHOLDER_HINTS = [
   "\u8BF7\u586B\u5199",
@@ -41595,7 +41790,7 @@ ${params.issue.body}`, params.config.runtime);
     });
   }
   if (shouldRunValidation(params.issue.action) && validation.executed && !validation.valid) {
-    core6.info("Issue failed template validation. Skip duplicate detection and AI help.");
+    core7.info("Issue failed template validation. Skip duplicate detection and AI help.");
   }
   let duplicated = false;
   if (shouldRunValidation(params.issue.action) && validation.valid) {
@@ -41655,6 +41850,12 @@ ${params.issue.body}`, params.config.runtime);
   if (duplicated || !shouldRunAi(params.issue.action) || !validation.valid) {
     return;
   }
+  const repositoryContext = await resolveRepositoryAiContext({
+    issue: params.issue,
+    gateway: params.gateway,
+    config: params.config.issues.aiHelp.projectContext,
+    templateKey: validation.template?.key ?? validation.parsed.marker
+  });
   const aiBody = await generateIssueAiHelp({
     issue: {
       ...params.issue,
@@ -41663,6 +41864,7 @@ ${params.issue.body}`, params.config.runtime);
     parsed: validation.parsed,
     config: params.config.issues.aiHelp,
     commentMode,
+    repositoryContext,
     provider: params.provider
   });
   if (!aiBody) {
@@ -41680,9 +41882,9 @@ ${params.issue.body}`, params.config.runtime);
 async function run() {
   try {
     const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
-    const configPath = core7.getInput("config-path") || ".github/repo-bot.yml";
-    const overridesJson = core7.getInput("config-overrides-json");
-    const dryRun = core7.getBooleanInput("dry-run", { required: false });
+    const configPath = core8.getInput("config-path") || ".github/repo-bot.yml";
+    const overridesJson = core8.getInput("config-overrides-json");
+    const dryRun = core8.getBooleanInput("dry-run", { required: false });
     const config2 = await loadRepoBotConfig({
       workspace,
       configPath,
@@ -41697,7 +41899,7 @@ async function run() {
     const provider = tryCreateProvider(config2.providers.openAiCompatible);
     const issue2 = await gateway.getIssueContext();
     if (!issue2) {
-      core7.info("Current event is not a plain issue event. Nothing to do.");
+      core8.info("Current event is not a plain issue event. Nothing to do.");
       return;
     }
     await runIssueWorkflow({
@@ -41706,9 +41908,9 @@ async function run() {
       gateway,
       provider
     });
-    core7.info(`Repo Bot completed for issue #${issue2.number}.`);
+    core8.info(`Repo Bot completed for issue #${issue2.number}.`);
   } catch (error48) {
-    core7.setFailed(error48 instanceof Error ? error48.message : String(error48));
+    core8.setFailed(error48 instanceof Error ? error48.message : String(error48));
   }
 }
 void run();

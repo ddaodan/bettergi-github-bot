@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OpenAiCompatibleProvider } from "../../../src/providers/openaiCompatible/client.js";
+import type { RepositoryAiContext } from "../../../src/core/types.js";
 
 function createProvider(overrides: Partial<ConstructorParameters<typeof OpenAiCompatibleProvider>[0]> = {}): OpenAiCompatibleProvider {
   return new OpenAiCompatibleProvider({
@@ -30,6 +31,26 @@ function createIssue() {
   };
 }
 
+function createRepositoryContext(): RepositoryAiContext {
+  return {
+    owner: "octo",
+    repo: "repo",
+    fullName: "octo/repo",
+    description: "Example repository.",
+    topics: ["automation", "desktop"],
+    homepage: "https://example.test",
+    issueUrl: "https://example.test/issues/1",
+    templateKey: "question",
+    readmeExcerpt: "Example README excerpt.",
+    projectProfile: {
+      name: "Example Project",
+      aliases: ["EP"],
+      summary: "Repository summary.",
+      techStack: ["TypeScript"]
+    }
+  };
+}
+
 describe("OpenAiCompatibleProvider", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -52,12 +73,15 @@ describe("OpenAiCompatibleProvider", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await createProvider().generateHelp(createIssue(), {});
+    await createProvider().generateHelp(createIssue(), {}, createRepositoryContext());
 
     const firstCall = fetchMock.mock.calls[0]?.[0];
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const promptPayload = JSON.parse(String(body.input[1]?.content));
     expect(String(firstCall)).toBe("https://api.openai.com/v1/responses");
     expect(body.text.format.type).toBe("json_schema");
+    expect(promptPayload.repositoryContext.fullName).toBe("octo/repo");
+    expect(promptPayload.repositoryContext.projectProfile.aliases).toEqual(["EP"]);
   });
 
   it("falls back to chat/completions when responses API is unavailable", async () => {
@@ -91,7 +115,7 @@ describe("OpenAiCompatibleProvider", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await createProvider().generateHelp(createIssue(), {});
+    const result = await createProvider().generateHelp(createIssue(), {}, createRepositoryContext());
 
     expect(result.summary).toBe("fallback");
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.openai.com/v1/responses");
@@ -126,7 +150,7 @@ describe("OpenAiCompatibleProvider", () => {
     const result = await createProvider({
       baseUrl: "https://cliproxy.ddaodan.cc/",
       apiStyle: "responses"
-    }).generateHelp(createIssue(), {});
+    }).generateHelp(createIssue(), {}, createRepositoryContext());
 
     expect(result.summary).toBe("versioned path");
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://cliproxy.ddaodan.cc/responses");
@@ -158,7 +182,7 @@ describe("OpenAiCompatibleProvider", () => {
 
     const result = await createProvider({
       apiStyle: "chat_completions"
-    }).generateHelp(createIssue(), {});
+    }).generateHelp(createIssue(), {}, createRepositoryContext());
 
     expect(result.summary).toBe("chat only");
     expect(fetchMock).toHaveBeenCalledOnce();

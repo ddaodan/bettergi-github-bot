@@ -1,4 +1,10 @@
-import type { DuplicateCandidate, IssueContext, LabelDefinition, RepoBotConfig } from "../../src/core/types.js";
+import type {
+  DuplicateCandidate,
+  IssueContext,
+  LabelDefinition,
+  RepoBotConfig,
+  RepositoryMetadata
+} from "../../src/core/types.js";
 import type { CommentRecord, GitHubGateway, SearchIssueParams } from "../../src/github/gateway.js";
 
 export function createConfig(): RepoBotConfig {
@@ -6,7 +12,7 @@ export function createConfig(): RepoBotConfig {
     "type:bug": { color: "d73a4a", description: "Bug report." },
     "needs-template-fix": { color: "fbca04", description: "Template fix required." },
     "needs-ai-help": { color: "0e8a16", description: "Ready for AI." },
-    "duplicate": { color: "cfd3d7", description: "Duplicate issue." }
+    duplicate: { color: "cfd3d7", description: "Duplicate issue." }
   };
 
   return {
@@ -35,9 +41,9 @@ export function createConfig(): RepoBotConfig {
               markers: ["bug"]
             },
             requiredSections: [
-              { id: "environment", aliases: ["环境信息", "Environment"] },
-              { id: "steps", aliases: ["复现步骤", "Steps to Reproduce"] },
-              { id: "expected", aliases: ["预期行为", "Expected Behavior"] }
+              { id: "environment", aliases: ["Environment"] },
+              { id: "steps", aliases: ["Steps to Reproduce"] },
+              { id: "expected", aliases: ["Expected Behavior"] }
             ],
             labels: {
               whenValid: ["type:bug"],
@@ -66,7 +72,7 @@ export function createConfig(): RepoBotConfig {
         definitions,
         keywordRules: [
           {
-            keywords: ["crash", "崩溃"],
+            keywords: ["crash"],
             labels: ["needs-ai-help"],
             fields: ["title", "body"],
             caseSensitive: false
@@ -76,7 +82,19 @@ export function createConfig(): RepoBotConfig {
       aiHelp: {
         enabled: false,
         triggerLabels: ["needs-ai-help"],
-        commentAnchor: "issue-bot:ai"
+        commentAnchor: "issue-bot:ai",
+        projectContext: {
+          enabled: true,
+          includeRepositoryMetadata: true,
+          includeReadme: true,
+          readmeMaxChars: 3000,
+          profile: {
+            name: "",
+            aliases: [],
+            summary: "",
+            techStack: []
+          }
+        }
       }
     },
     pullRequests: {
@@ -93,19 +111,19 @@ export function createIssue(overrides: Partial<IssueContext> = {}): IssueContext
     owner: "octo",
     repo: "repo",
     number: 1,
-    title: "插件启动后崩溃",
+    title: "Plugin crashes after startup",
     body: [
       "<!-- issue-template: bug -->",
       "",
-      "## 环境信息",
+      "## Environment",
       "Windows 11 / Java 21",
       "",
-      "## 复现步骤",
-      "1. 启动插件",
-      "2. 进入服务器",
+      "## Steps to Reproduce",
+      "1. Start the plugin",
+      "2. Wait for the crash",
       "",
-      "## 预期行为",
-      "插件正常运行"
+      "## Expected Behavior",
+      "The plugin should keep running"
     ].join("\n"),
     state: "open",
     labels: [],
@@ -132,11 +150,28 @@ export class FakeGateway implements GitHubGateway {
 
   public constructor(
     public issue: IssueContext,
-    private readonly searchResults: DuplicateCandidate[] = []
+    private readonly searchResults: DuplicateCandidate[] = [],
+    private readonly repositoryMetadata: RepositoryMetadata = {
+      owner: issue.owner,
+      repo: issue.repo,
+      fullName: `${issue.owner}/${issue.repo}`,
+      description: "Example repository description.",
+      topics: ["automation", "desktop"],
+      homepage: "https://example.test"
+    },
+    private readonly repositoryReadme = "# Example Repo\n\nThis repository automates desktop tasks."
   ) {}
 
   public async getIssueContext(): Promise<IssueContext | undefined> {
     return this.issue;
+  }
+
+  public async getRepositoryMetadata(): Promise<RepositoryMetadata> {
+    return this.repositoryMetadata;
+  }
+
+  public async getRepositoryReadme(): Promise<string | undefined> {
+    return this.repositoryReadme;
   }
 
   public async listComments(issueNumber: number): Promise<CommentRecord[]> {

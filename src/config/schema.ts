@@ -43,6 +43,26 @@ const keywordRuleSchema = z.object({
   caseSensitive: z.boolean().default(false)
 });
 
+const projectProfileSchema = z.object({
+  name: z.string().default(""),
+  aliases: z.array(z.string().min(1)).default([]),
+  summary: z.string().default(""),
+  techStack: z.array(z.string().min(1)).default([])
+});
+
+const projectContextSchema = z.object({
+  enabled: z.boolean().default(true),
+  includeRepositoryMetadata: z.boolean().default(true),
+  includeReadme: z.boolean().default(true),
+  readmeMaxChars: z.number().int().positive().max(20000).default(3000),
+  profile: projectProfileSchema.default(() => ({
+    name: "",
+    aliases: [],
+    summary: "",
+    techStack: []
+  }))
+});
+
 export const repoBotConfigSchema = z.object({
   runtime: z.object({
     languageMode: z.enum(["auto", "zh", "zh-en"]).default("auto"),
@@ -130,11 +150,35 @@ export const repoBotConfigSchema = z.object({
     aiHelp: z.object({
       enabled: z.boolean().default(false),
       triggerLabels: z.array(z.string().min(1)).default([]),
-      commentAnchor: z.string().min(1).default("issue-bot:ai")
+      commentAnchor: z.string().min(1).default("issue-bot:ai"),
+      projectContext: projectContextSchema.default(() => ({
+        enabled: true,
+        includeRepositoryMetadata: true,
+        includeReadme: true,
+        readmeMaxChars: 3000,
+        profile: {
+          name: "",
+          aliases: [],
+          summary: "",
+          techStack: []
+        }
+      }))
     }).default(() => ({
       enabled: false,
       triggerLabels: [],
-      commentAnchor: "issue-bot:ai"
+      commentAnchor: "issue-bot:ai",
+      projectContext: {
+        enabled: true,
+        includeRepositoryMetadata: true,
+        includeReadme: true,
+        readmeMaxChars: 3000,
+        profile: {
+          name: "",
+          aliases: [],
+          summary: "",
+          techStack: []
+        }
+      }
     }))
   }).default(() => ({
     validation: {
@@ -165,7 +209,19 @@ export const repoBotConfigSchema = z.object({
     aiHelp: {
       enabled: false,
       triggerLabels: [],
-      commentAnchor: "issue-bot:ai"
+      commentAnchor: "issue-bot:ai",
+      projectContext: {
+        enabled: true,
+        includeRepositoryMetadata: true,
+        includeReadme: true,
+        readmeMaxChars: 3000,
+        profile: {
+          name: "",
+          aliases: [],
+          summary: "",
+          techStack: []
+        }
+      }
     }
   })),
   pullRequests: z.object({

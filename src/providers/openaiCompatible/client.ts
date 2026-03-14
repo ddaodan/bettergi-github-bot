@@ -5,7 +5,8 @@ import type {
   DuplicateCandidate,
   DuplicateReviewResult,
   IssueContext,
-  ProviderConfig
+  ProviderConfig,
+  RepositoryAiContext
 } from "../../core/types.js";
 
 type ChatMessage = {
@@ -86,15 +87,6 @@ function extractJsonBlock(text: string): string {
   }
 
   return objectMatch[0];
-}
-
-async function parseErrorResponse(response: Response): Promise<never> {
-  const responseText = await response.text();
-  throw new ProviderRequestError(
-    `AI provider returned ${response.status}: ${responseText}`,
-    response.status,
-    responseText
-  );
 }
 
 async function fetchWithBaseUrlFallback(
@@ -347,7 +339,7 @@ export class OpenAiCompatibleProvider {
     const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
-        content: "你是 GitHub 仓库机器人。请判断两个 issue 是否描述同一个问题，只返回 JSON。confidence 取值范围为 0 到 1。"
+        content: "You are a GitHub repository bot. Decide whether two issues describe the same problem. Return JSON only. `duplicate` must be boolean and `confidence` must be between 0 and 1."
       },
       {
         role: "user",
@@ -370,26 +362,40 @@ export class OpenAiCompatibleProvider {
     };
   }
 
-  public async generateHelp(issue: IssueContext, sections: Record<string, string>): Promise<AiHelpResult> {
+  public async generateHelp(
+    issue: IssueContext,
+    sections: Record<string, string>,
+    repositoryContext: RepositoryAiContext
+  ): Promise<AiHelpResult> {
     const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
-        content: "你是 GitHub Issue 助手机器人。请根据 issue 内容给出简洁且可执行的排查建议，只返回 JSON。"
+        content: [
+          "You are a GitHub issue assistant for the current repository.",
+          "Treat the provided repository context as the ground truth for the current project.",
+          "Assume the issue is about this repository unless the issue clearly points to an external dependency or upstream project.",
+          "Do not ask the user to provide the current repository link, repository name, or project identity again.",
+          "If more information is needed, ask only for truly missing technical details such as module, version, logs, environment, or reproduction steps.",
+          "Return JSON only."
+        ].join(" ")
       },
       {
         role: "user",
         content: JSON.stringify({
-          title: issue.title,
-          body: issue.body,
-          labels: issue.labels,
-          sections
+          repositoryContext,
+          issue: {
+            title: issue.title,
+            body: issue.body,
+            labels: issue.labels,
+            sections
+          }
         })
       }
     ], issueHelpSchema);
 
     const parsed = JSON.parse(extractJsonBlock(content)) as AiHelpResult;
     return {
-      summary: parsed.summary ?? "未能生成摘要。",
+      summary: parsed.summary ?? "Unable to generate a summary.",
       possibleCauses: Array.isArray(parsed.possibleCauses) ? parsed.possibleCauses : [],
       troubleshootingSteps: Array.isArray(parsed.troubleshootingSteps) ? parsed.troubleshootingSteps : [],
       missingInformation: Array.isArray(parsed.missingInformation) ? parsed.missingInformation : []

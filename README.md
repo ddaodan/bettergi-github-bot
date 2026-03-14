@@ -1,48 +1,85 @@
 # Repo Bot
 
-一个可组织级复用的 GitHub Bot 中央仓库，用于处理 Issue 模板校验、重复 Issue 关闭、标签同步和 AI 帮助回复。
+可复用的 GitHub Repo Bot，集中处理 issue 模板校验、重复 issue 检测、标签同步和 AI 帮助回复。
 
 ## 功能
 
-- Issue 模板校验，支持多模板、多规则和中英别名段落标题。
-- 重复 Issue 检测，先做规则初筛，再按需走 AI 复判。
-- 托管标签同步，只增删配置中声明的标签。
-- AI 帮助回复，默认关闭，可按标签触发或直接全量开启。
-- PR 功能预留了配置和上下文接口，当前版本不启用。
+- Issue 模板校验：支持模板 marker、必填 section、占位文本检测
+- 重复 issue 检测：规则初筛 + 可选 AI 复判
+- 标签同步：只管理配置中声明的托管标签
+- AI 帮助回复：支持 OpenAI-compatible API、`responses`/`chat_completions`
+- 语言模式：默认中文；英文 issue 输出中英双语
+
+## AI 帮助上下文
+
+AI 帮助会按以下层级自动补上下文：
+
+1. 当前仓库身份：`owner/repo`、issue URL、模板类型
+2. 仓库元数据：description、topics、homepage
+3. README 摘要：本地规范化后截断
+4. 人工项目档案：项目名、别名、简介、技术栈
+
+推荐在业务仓库的 `.github/repo-bot.yml` 中填写 `issues.aiHelp.projectContext.profile`，尤其是项目存在缩写、品牌名或别名时。
+
+## AI 免责提示
+
+AI 帮助评论会固定追加免责提示：
+
+- 中文 issue：`免责声明：以上回复内容由 AI 生成，仅供参考，请结合项目文档、代码和维护者意见进一步确认。`
+- 英文 issue：中英双语评论中同时附带中文和英文免责声明
+
+## 配置示例
+
+示例配置见：
+
+- [`.github/repo-bot.example.yml`](.github/repo-bot.example.yml)
+- [`examples/consumer-workflow.yml`](examples/consumer-workflow.yml)
+
+`issues.aiHelp.projectContext` 关键字段：
+
+```yml
+issues:
+  aiHelp:
+    enabled: true
+    triggerLabels: []
+    commentAnchor: issue-bot:ai
+    projectContext:
+      enabled: true
+      includeRepositoryMetadata: true
+      includeReadme: true
+      readmeMaxChars: 3000
+      profile:
+        name: BetterGI
+        aliases:
+          - BGI
+          - Better Genshin Impact
+        summary: Desktop automation assistant for Genshin Impact.
+        techStack:
+          - C#
+          - WPF
+          - .NET
+```
 
 ## AI 接口
 
-- 默认 provider 是 OpenAI-compatible HTTP API。
-- `apiStyle: auto` 时，优先请求 `responses`，如果当前 provider 不支持再自动回退到 `chat/completions`。
-- `apiStyle: responses` 时，只使用 `responses`。
-- `apiStyle: chat_completions` 时，只使用 `chat/completions`。
-- `providers.openAiCompatible.baseUrl` 可以直接写在 `.github/repo-bot.yml` 中。
-- 如果运行环境提供了 `REPO_BOT_AI_BASE_URL`，它会覆盖配置文件中的 `providers.openAiCompatible.baseUrl`。
-
-## 语言规则
-
-- 默认输出中文。
-- 当 issue 标题和正文判定为英文主导时，所有用户可见评论统一输出中英双语，中文在前、英文在后。
-- 标签名、配置键、工作流名不自动翻译。
-
-## 仓库职责
-
-- 中央仓库：保存 Action、可复用 Workflow、配置 schema、示例模板和测试。
-- 业务仓库：保存 `.github/repo-bot.yml` 和一份最小接入 workflow。
+- `apiStyle: auto`：优先请求 `responses`，不支持时回退到 `chat/completions`
+- `apiStyle: responses`：只使用 `responses`
+- `apiStyle: chat_completions`：只使用 `chat/completions`
+- 配置文件中的 `providers.openAiCompatible.baseUrl` 可被环境变量 `REPO_BOT_AI_BASE_URL` 覆盖
 
 ## 接入方式
 
-1. 在业务仓库创建 `.github/repo-bot.yml`，可从 [`.github/repo-bot.example.yml`](.github/repo-bot.example.yml) 开始修改。
-2. 在业务仓库新增 workflow，参考 [`examples/consumer-workflow.yml`](examples/consumer-workflow.yml)。
-3. 若要启用 AI，在业务仓库配置 `REPO_BOT_AI_API_KEY` secret。
-4. 如果要通过环境变量覆盖 AI 网关地址，在业务仓库配置 `REPO_BOT_AI_BASE_URL` variable。
-5. 如需动态覆盖结构化配置，在业务仓库配置 `REPO_BOT_CONFIG_OVERRIDES_JSON` variable。
+1. 在业务仓库放置 `.github/repo-bot.yml`
+2. 在业务仓库放置接入 workflow，参考 [`examples/consumer-workflow.yml`](examples/consumer-workflow.yml)
+3. 配置 `REPO_BOT_AI_API_KEY` secret
+4. 如需覆盖网关地址，配置 `REPO_BOT_AI_BASE_URL` variable
+5. 如需深度覆盖 YAML，配置 `REPO_BOT_CONFIG_OVERRIDES_JSON` variable
 
 ## 运行说明
 
-- 入口 Action 使用 `node24` 运行时，主文件为 `dist/index.cjs`。
-- 可复用 Workflow 监听 `workflow_call`，由业务仓库的 issue 事件触发。
-- 中央 workflow 默认会从同一组织下拉取 `bettergi-github-bot` 仓库到 `.repo-bot` 目录。如果仓库名不同，需要同步修改 [`.github/workflows/repo-bot.yml`](.github/workflows/repo-bot.yml) 中的 `repository` 字段。
+- Action 入口运行时：`node24`
+- 主文件：`dist/index.cjs`
+- 可复用 workflow 入口：[`/.github/workflows/repo-bot.yml`](.github/workflows/repo-bot.yml)
 
 ## 开发
 

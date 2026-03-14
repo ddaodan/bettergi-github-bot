@@ -10,11 +10,11 @@ describe("validateIssue", () => {
       body: [
         "<!-- issue-template: bug -->",
         "",
-        "## 环境信息",
+        "## Environment",
         "Windows",
         "",
-        "## 复现步骤",
-        "请填写"
+        "## Steps to Reproduce",
+        "Please fill"
       ].join("\n"),
       config: config.issues.validation,
       commentMode: "zh"
@@ -31,14 +31,14 @@ describe("validateIssue", () => {
       body: [
         "<!-- issue-template: bug -->",
         "",
-        "## 环境信息",
+        "## Environment",
         "Windows",
         "",
-        "## 复现步骤",
-        "1. 打开插件",
+        "## Steps to Reproduce",
+        "1. Open the plugin",
         "",
-        "## 预期行为",
-        "正常工作"
+        "## Expected Behavior",
+        "Should work normally"
       ].join("\n"),
       config: config.issues.validation,
       commentMode: "zh"

@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 
-import type { DuplicateCandidate, IssueContext, LabelDefinition } from "../core/types.js";
+import type { DuplicateCandidate, IssueContext, LabelDefinition, RepositoryMetadata } from "../core/types.js";
 
 type IssueLabelValue = {
   name?: string | null;
@@ -23,6 +23,8 @@ export interface SearchIssueParams {
 
 export interface GitHubGateway {
   getIssueContext(): Promise<IssueContext | undefined>;
+  getRepositoryMetadata(): Promise<RepositoryMetadata>;
+  getRepositoryReadme(): Promise<string | undefined>;
   listComments(issueNumber: number): Promise<CommentRecord[]>;
   createComment(issueNumber: number, body: string): Promise<void>;
   updateComment(commentId: number, body: string): Promise<void>;
@@ -67,6 +69,47 @@ export class OctokitGitHubGateway implements GitHubGateway {
 
   public async getIssueContext(): Promise<IssueContext | undefined> {
     return toIssueContext();
+  }
+
+  public async getRepositoryMetadata(): Promise<RepositoryMetadata> {
+    const response = await this.octokit.rest.repos.get({
+      owner: context.repo.owner,
+      repo: context.repo.repo
+    });
+
+    return {
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      fullName: response.data.full_name ?? `${context.repo.owner}/${context.repo.repo}`,
+      description: response.data.description ?? "",
+      topics: response.data.topics ?? [],
+      homepage: response.data.homepage ?? ""
+    };
+  }
+
+  public async getRepositoryReadme(): Promise<string | undefined> {
+    try {
+      const response = await this.octokit.rest.repos.getReadme({
+        owner: context.repo.owner,
+        repo: context.repo.repo
+      });
+
+      const encoded = "content" in response.data ? response.data.content ?? "" : "";
+      if (!encoded) {
+        return undefined;
+      }
+
+      return Buffer.from(encoded, "base64").toString("utf8");
+    } catch (error) {
+      const status = typeof error === "object" && error !== null && "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
+      if (status === 404) {
+        return undefined;
+      }
+      core.info(`Skip repository README context: ${String(error)}`);
+      return undefined;
+    }
   }
 
   public async listComments(issueNumber: number): Promise<CommentRecord[]> {

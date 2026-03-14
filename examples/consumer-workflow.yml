@@ -14,7 +14,9 @@ jobs:
     permissions:
       issues: write
       contents: read
-    secrets: inherit
+    secrets:
+      REPO_BOT_AI_API_KEY: ${{ secrets.REPO_BOT_AI_API_KEY }}
     with:
       config-path: .github/repo-bot.yml
+      config-overrides-json: ${{ vars.REPO_BOT_CONFIG_OVERRIDES_JSON }}
       ai-base-url: ${{ vars.REPO_BOT_AI_BASE_URL }}

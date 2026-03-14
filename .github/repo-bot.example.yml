@@ -6,7 +6,7 @@ providers:
   openAiCompatible:
     enabled: false
     baseUrl: https://api.openai.com/v1
-    model: gpt-5-mini
+    model: gpt-5.4
     apiStyle: auto
     timeoutMs: 30000
 
@@ -23,15 +23,12 @@ issues:
         requiredSections:
           - id: environment
             aliases:
-              - 环境信息
               - Environment
           - id: steps
             aliases:
-              - 复现步骤
               - Steps to Reproduce
           - id: expected
             aliases:
-              - 预期行为
               - Expected Behavior
         labels:
           whenValid:
@@ -45,11 +42,9 @@ issues:
         requiredSections:
           - id: summary
             aliases:
-              - 需求概述
               - Summary
           - id: motivation
             aliases:
-              - 使用场景
               - Motivation
         labels:
           whenValid:
@@ -63,7 +58,6 @@ issues:
         requiredSections:
           - id: summary
             aliases:
-              - 问题描述
               - Question
         labels:
           whenValid:
@@ -114,7 +108,6 @@ issues:
     keywordRules:
       - keywords:
           - crash
-          - 崩溃
         labels:
           - needs-ai-help
         fields:
@@ -126,6 +119,21 @@ issues:
     triggerLabels:
       - needs-ai-help
     commentAnchor: issue-bot:ai
+    projectContext:
+      enabled: true
+      includeRepositoryMetadata: true
+      includeReadme: true
+      readmeMaxChars: 3000
+      profile:
+        name: BetterGI
+        aliases:
+          - BGI
+          - Better Genshin Impact
+        summary: Desktop automation assistant for Genshin Impact.
+        techStack:
+          - C#
+          - WPF
+          - .NET
 
 pullRequests:
   review:

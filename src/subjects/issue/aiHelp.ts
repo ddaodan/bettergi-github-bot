@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 
-import type { CommentMode, IssueContext, ParsedIssue, RepoBotConfig } from "../../core/types.js";
+import type { CommentMode, IssueContext, ParsedIssue, RepoBotConfig, RepositoryAiContext } from "../../core/types.js";
 import { renderAiHelpComment } from "../../i18n/comments.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
 
@@ -9,6 +9,7 @@ export async function generateIssueAiHelp(params: {
   parsed: ParsedIssue;
   config: RepoBotConfig["issues"]["aiHelp"];
   commentMode: CommentMode;
+  repositoryContext: RepositoryAiContext;
   provider?: OpenAiCompatibleProvider;
 }): Promise<string | undefined> {
   if (!params.config.enabled) {
@@ -29,7 +30,11 @@ export async function generateIssueAiHelp(params: {
   }
 
   try {
-    const help = await params.provider.generateHelp(params.issue, params.parsed.sections);
+    const help = await params.provider.generateHelp(
+      params.issue,
+      params.parsed.sections,
+      params.repositoryContext
+    );
     return renderAiHelpComment({
       mode: params.commentMode,
       help

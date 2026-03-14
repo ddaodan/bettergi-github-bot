@@ -8,6 +8,7 @@ import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/
 import { generateIssueAiHelp } from "./aiHelp.js";
 import { detectDuplicate } from "./duplicateDetection.js";
 import { computeManagedLabels } from "./labeling.js";
+import { resolveRepositoryAiContext } from "./projectContext.js";
 import { validateIssue } from "./validation.js";
 
 function shouldRunValidation(action: string): boolean {
@@ -113,6 +114,13 @@ export async function runIssueWorkflow(params: {
     return;
   }
 
+  const repositoryContext = await resolveRepositoryAiContext({
+    issue: params.issue,
+    gateway: params.gateway,
+    config: params.config.issues.aiHelp.projectContext,
+    templateKey: validation.template?.key ?? validation.parsed.marker
+  });
+
   const aiBody = await generateIssueAiHelp({
     issue: {
       ...params.issue,
@@ -121,6 +129,7 @@ export async function runIssueWorkflow(params: {
     parsed: validation.parsed,
     config: params.config.issues.aiHelp,
     commentMode,
+    repositoryContext,
     provider: params.provider
   });
 
