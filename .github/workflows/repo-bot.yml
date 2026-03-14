@@ -21,6 +21,8 @@ on:
     secrets:
       REPO_BOT_AI_API_KEY:
         required: false
+      REPO_BOT_AI_BASE_URL:
+        required: false
 
 jobs:
   run:
@@ -41,6 +43,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           REPO_BOT_AI_API_KEY: ${{ secrets.REPO_BOT_AI_API_KEY }}
+          REPO_BOT_AI_BASE_URL: ${{ secrets.REPO_BOT_AI_BASE_URL }}
         with:
           config-path: ${{ inputs.config-path }}
           config-overrides-json: ${{ inputs.config-overrides-json }}

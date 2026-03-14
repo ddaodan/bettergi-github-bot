@@ -50,5 +50,10 @@ export async function loadRepoBotConfig(params: {
   const parsed = repoBotConfigSchema.parse(merged);
   parsed.runtime.dryRun = parsed.runtime.dryRun || params.dryRunInput;
 
+  const secretBaseUrl = process.env.REPO_BOT_AI_BASE_URL?.trim();
+  if (secretBaseUrl) {
+    parsed.providers.openAiCompatible.baseUrl = secretBaseUrl;
+  }
+
   return parsed;
 }

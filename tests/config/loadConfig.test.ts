@@ -40,4 +40,38 @@ describe("loadRepoBotConfig", () => {
     expect(config.issues.aiHelp.enabled).toBe(true);
     expect(config.runtime.languageMode).toBe("auto");
   });
+
+  it("prefers secret baseUrl over YAML config", async () => {
+    const workspace = path.join(os.tmpdir(), `repo-bot-${Date.now()}-secret`);
+    await mkdir(workspace, { recursive: true });
+    const configDir = path.join(workspace, ".github");
+    await mkdir(configDir, { recursive: true });
+    await writeFile(path.join(configDir, "repo-bot.yml"), [
+      "providers:",
+      "  openAiCompatible:",
+      "    enabled: true",
+      "    baseUrl: https://public.example/v1",
+      "    model: gpt-5-mini"
+    ].join("\n"));
+
+    const previous = process.env.REPO_BOT_AI_BASE_URL;
+    process.env.REPO_BOT_AI_BASE_URL = "https://secret.example/v1";
+
+    try {
+      const config = await loadRepoBotConfig({
+        workspace,
+        configPath: ".github/repo-bot.yml",
+        overridesJson: "",
+        dryRunInput: false
+      });
+
+      expect(config.providers.openAiCompatible.baseUrl).toBe("https://secret.example/v1");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.REPO_BOT_AI_BASE_URL;
+      } else {
+        process.env.REPO_BOT_AI_BASE_URL = previous;
+      }
+    }
+  });
 });

@@ -16,6 +16,7 @@
 - `apiStyle: auto` 时，优先请求 `responses`，如果当前 provider 不支持再自动回退到 `chat/completions`。
 - `apiStyle: responses` 时，只使用 `responses`。
 - `apiStyle: chat_completions` 时，只使用 `chat/completions`。
+- `REPO_BOT_AI_BASE_URL` secret 存在时，会覆盖 `.github/repo-bot.yml` 中的 `providers.openAiCompatible.baseUrl`。
 
 ## 语言规则
 
@@ -33,7 +34,8 @@
 1. 在业务仓库创建 `.github/repo-bot.yml`，可从 [`.github/repo-bot.example.yml`](.github/repo-bot.example.yml) 开始修改。
 2. 在业务仓库新增 workflow，参考 [`examples/consumer-workflow.yml`](examples/consumer-workflow.yml)。
 3. 若要启用 AI，在业务仓库配置 `REPO_BOT_AI_API_KEY` secret。
-4. 如需动态覆盖配置，在业务仓库配置 `REPO_BOT_CONFIG_OVERRIDES_JSON` variable。
+4. 如果 AI 网关地址也需要保密，在业务仓库配置 `REPO_BOT_AI_BASE_URL` secret。
+5. 如需动态覆盖配置，在业务仓库配置 `REPO_BOT_CONFIG_OVERRIDES_JSON` variable。
 
 ## 运行说明
 
