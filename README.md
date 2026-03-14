@@ -40,7 +40,7 @@
 
 ## 运行说明
 
-- 入口 Action 使用 `node24` 运行时，主文件为 `dist/index.js`。
+- 入口 Action 使用 `node24` 运行时，主文件为 `dist/index.cjs`。
 - 可复用 Workflow 监听 `workflow_call`，由业务仓库的 issue 事件触发。
 - 中央 workflow 默认会从同一组织下拉取 `bettergi-github-bot` 仓库到 `.repo-bot` 目录。如果仓库名不同，需要同步修改 [`.github/workflows/repo-bot.yml`](.github/workflows/repo-bot.yml) 中的 `repository` 字段。
 
