@@ -41215,11 +41215,16 @@ async function generateIssueAiHelp(params) {
     core4.info("Skip AI help because trigger labels do not match.");
     return void 0;
   }
-  const help = await params.provider.generateHelp(params.issue, params.parsed.sections);
-  return renderAiHelpComment({
-    mode: params.commentMode,
-    help
-  });
+  try {
+    const help = await params.provider.generateHelp(params.issue, params.parsed.sections);
+    return renderAiHelpComment({
+      mode: params.commentMode,
+      help
+    });
+  } catch (error48) {
+    core4.info(`Skip AI help because provider request failed: ${String(error48)}`);
+    return void 0;
+  }
 }
 
 // src/subjects/issue/duplicateDetection.ts

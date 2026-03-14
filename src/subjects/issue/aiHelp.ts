@@ -28,9 +28,14 @@ export async function generateIssueAiHelp(params: {
     return undefined;
   }
 
-  const help = await params.provider.generateHelp(params.issue, params.parsed.sections);
-  return renderAiHelpComment({
-    mode: params.commentMode,
-    help
-  });
+  try {
+    const help = await params.provider.generateHelp(params.issue, params.parsed.sections);
+    return renderAiHelpComment({
+      mode: params.commentMode,
+      help
+    });
+  } catch (error) {
+    core.info(`Skip AI help because provider request failed: ${String(error)}`);
+    return undefined;
+  }
 }

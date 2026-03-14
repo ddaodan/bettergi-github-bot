@@ -11,11 +11,14 @@ describe("runIssueWorkflow", () => {
       body: [
         "<!-- issue-template: bug -->",
         "",
-        "## 环境信息",
+        "## Environment",
         "Windows 11",
         "",
-        "## 复现步骤",
-        "请填写"
+        "## Steps to Reproduce",
+        "Please fill",
+        "",
+        "## Expected Behavior",
+        "The plugin should start successfully"
       ].join("\n")
     });
     const gateway = new FakeGateway(issue);
@@ -78,8 +81,8 @@ describe("runIssueWorkflow", () => {
 
     expect(issue.labels).toContain("needs-ai-help");
     expect(gateway.comments).toHaveLength(2);
-    expect(gateway.comments[1]?.body).toContain("AI 分析建议");
     expect(gateway.comments[1]?.body).toContain("AI Guidance");
+    expect(gateway.comments[1]?.body).toContain("Configuration loading fails during startup.");
   });
 
   it("closes duplicate issue and skips AI help", async () => {
@@ -124,6 +127,49 @@ describe("runIssueWorkflow", () => {
     });
 
     expect(gateway.closedIssues).toEqual([1]);
-    expect(gateway.comments.some((comment) => comment.body.includes("AI 分析建议"))).toBe(false);
+    expect(gateway.comments.some((comment) => comment.body.includes("AI Guidance"))).toBe(false);
+  });
+
+  it("skips AI help when provider request fails", async () => {
+    const config = createConfig();
+    config.issues.aiHelp.enabled = true;
+    const issue = createIssue({
+      title: "Plugin crash after startup",
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Paper 1.21 / Java 21",
+        "",
+        "## Steps to Reproduce",
+        "Start the server and wait for the crash",
+        "",
+        "## Expected Behavior",
+        "The plugin should keep running"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+    const provider = {
+      async generateHelp() {
+        throw new Error("Invalid API key");
+      },
+      async reviewDuplicate() {
+        return {
+          duplicate: false,
+          confidence: 0.2,
+          reason: ""
+        };
+      }
+    } as unknown as OpenAiCompatibleProvider;
+
+    await expect(runIssueWorkflow({
+      issue,
+      config,
+      gateway,
+      provider
+    })).resolves.toBeUndefined();
+
+    expect(issue.labels).toContain("needs-ai-help");
+    expect(gateway.comments.some((comment) => comment.body.includes("AI Guidance"))).toBe(false);
   });
 });
