@@ -5,7 +5,7 @@ runtime:
 providers:
   openAiCompatible:
     enabled: false
-    baseUrl: ""
+    baseUrl: https://api.openai.com/v1
     model: gpt-5-mini
     apiStyle: auto
     timeoutMs: 30000

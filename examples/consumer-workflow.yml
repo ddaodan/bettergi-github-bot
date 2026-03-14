@@ -17,3 +17,4 @@ jobs:
     secrets: inherit
     with:
       config-path: .github/repo-bot.yml
+      ai-base-url: ${{ vars.REPO_BOT_AI_BASE_URL }}
