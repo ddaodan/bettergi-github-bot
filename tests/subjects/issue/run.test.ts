@@ -49,6 +49,31 @@ describe("runIssueWorkflow", () => {
     expect(gateway.comments).toHaveLength(0);
   });
 
+  it("removes the old validation comment after the issue is fixed", async () => {
+    const config = createConfig();
+    const issue = createIssue({
+      action: "edited"
+    });
+    const gateway = new FakeGateway(issue);
+
+    await gateway.createComment(issue.number, [
+      "<!-- issue-bot:validation -->",
+      "## 模板检查结果",
+      "",
+      "Issue 未通过模板检查，请补充以下必填内容：",
+      "- Steps to Reproduce"
+    ].join("\n"));
+
+    await runIssueWorkflow({
+      issue,
+      config,
+      gateway
+    });
+
+    expect(gateway.comments).toHaveLength(0);
+    expect(gateway.deletedCommentIds).toHaveLength(1);
+  });
+
   it("runs bilingual AI reply after labeling adds trigger label in the same run", async () => {
     const config = createConfig();
     config.issues.aiHelp.enabled = true;

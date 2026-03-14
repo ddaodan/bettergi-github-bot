@@ -140,6 +140,8 @@ export class FakeGateway implements GitHubGateway {
 
   public readonly createdLabels = new Set<string>();
 
+  public readonly deletedCommentIds: number[] = [];
+
   public readonly removedLabels: string[] = [];
 
   public readonly closedIssues: number[] = [];
@@ -190,6 +192,14 @@ export class FakeGateway implements GitHubGateway {
     const existing = this.comments.find((comment) => comment.id === commentId);
     if (existing) {
       existing.body = body;
+    }
+  }
+
+  public async deleteComment(commentId: number): Promise<void> {
+    const index = this.comments.findIndex((comment) => comment.id === commentId);
+    if (index >= 0) {
+      this.comments.splice(index, 1);
+      this.deletedCommentIds.push(commentId);
     }
   }
 

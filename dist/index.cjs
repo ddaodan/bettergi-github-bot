@@ -40726,6 +40726,17 @@ var OctokitGitHubGateway = class {
       body
     });
   }
+  async deleteComment(commentId) {
+    if (this.dryRun) {
+      core2.info(`[dry-run] delete comment #${commentId}`);
+      return;
+    }
+    await this.octokit.rest.issues.deleteComment({
+      owner: import_github.context.repo.owner,
+      repo: import_github.context.repo.repo,
+      comment_id: commentId
+    });
+  }
   async addLabels(issueNumber, labels) {
     if (labels.length === 0) {
       return;
@@ -41171,6 +41182,24 @@ async function upsertAnchoredComment(params) {
 ${params.body}`;
   const comments = await params.gateway.listComments(params.issueNumber);
   const existing = comments.find((comment) => comment.body.includes(anchor));
+  if (existing) {
+    await params.gateway.updateComment(existing.id, fullBody);
+    return;
+  }
+  await params.gateway.createComment(params.issueNumber, fullBody);
+}
+async function syncAnchoredComment(params) {
+  const anchor = createAnchor(params.anchor);
+  const comments = await params.gateway.listComments(params.issueNumber);
+  const existing = comments.find((comment) => comment.body.includes(anchor));
+  if (!params.body) {
+    if (existing) {
+      await params.gateway.deleteComment(existing.id);
+    }
+    return;
+  }
+  const fullBody = `${anchor}
+${params.body}`;
   if (existing) {
     await params.gateway.updateComment(existing.id, fullBody);
     return;
@@ -41781,8 +41810,8 @@ ${params.issue.body}`, params.config.runtime);
     config: params.config.issues.validation,
     commentMode
   });
-  if (shouldRunValidation(params.issue.action) && validation.commentBody) {
-    await upsertAnchoredComment({
+  if (shouldRunValidation(params.issue.action)) {
+    await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
       anchor: params.config.issues.validation.commentAnchor,

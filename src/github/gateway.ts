@@ -28,6 +28,7 @@ export interface GitHubGateway {
   listComments(issueNumber: number): Promise<CommentRecord[]>;
   createComment(issueNumber: number, body: string): Promise<void>;
   updateComment(commentId: number, body: string): Promise<void>;
+  deleteComment(commentId: number): Promise<void>;
   addLabels(issueNumber: number, labels: string[]): Promise<void>;
   removeLabel(issueNumber: number, label: string): Promise<void>;
   ensureLabels(definitions: Record<string, LabelDefinition>, labels: string[]): Promise<void>;
@@ -152,6 +153,19 @@ export class OctokitGitHubGateway implements GitHubGateway {
       repo: context.repo.repo,
       comment_id: commentId,
       body
+    });
+  }
+
+  public async deleteComment(commentId: number): Promise<void> {
+    if (this.dryRun) {
+      core.info(`[dry-run] delete comment #${commentId}`);
+      return;
+    }
+
+    await this.octokit.rest.issues.deleteComment({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      comment_id: commentId
     });
   }
 

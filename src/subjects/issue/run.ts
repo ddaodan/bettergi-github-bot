@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 
 import type { CommentMode, IssueContext, RepoBotConfig } from "../../core/types.js";
-import { upsertAnchoredComment } from "../../github/comments.js";
+import { syncAnchoredComment, upsertAnchoredComment } from "../../github/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
 import { detectCommentMode } from "../../i18n/language.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
@@ -37,8 +37,8 @@ export async function runIssueWorkflow(params: {
     commentMode
   });
 
-  if (shouldRunValidation(params.issue.action) && validation.commentBody) {
-    await upsertAnchoredComment({
+  if (shouldRunValidation(params.issue.action)) {
+    await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
       anchor: params.config.issues.validation.commentAnchor,
