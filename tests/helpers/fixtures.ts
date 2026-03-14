@@ -1,0 +1,196 @@
+import type { DuplicateCandidate, IssueContext, LabelDefinition, RepoBotConfig } from "../../src/core/types.js";
+import type { CommentRecord, GitHubGateway, SearchIssueParams } from "../../src/github/gateway.js";
+
+export function createConfig(): RepoBotConfig {
+  const definitions: Record<string, LabelDefinition> = {
+    "type:bug": { color: "d73a4a", description: "Bug report." },
+    "needs-template-fix": { color: "fbca04", description: "Template fix required." },
+    "needs-ai-help": { color: "0e8a16", description: "Ready for AI." },
+    "duplicate": { color: "cfd3d7", description: "Duplicate issue." }
+  };
+
+  return {
+    runtime: {
+      languageMode: "auto",
+      dryRun: false
+    },
+    providers: {
+      openAiCompatible: {
+        enabled: false,
+        baseUrl: "",
+        model: "",
+        timeoutMs: 30000
+      }
+    },
+    issues: {
+      validation: {
+        enabled: true,
+        fallbackTemplateKey: "bug",
+        commentAnchor: "issue-bot:validation",
+        templates: [
+          {
+            key: "bug",
+            detect: {
+              markers: ["bug"]
+            },
+            requiredSections: [
+              { id: "environment", aliases: ["环境信息", "Environment"] },
+              { id: "steps", aliases: ["复现步骤", "Steps to Reproduce"] },
+              { id: "expected", aliases: ["预期行为", "Expected Behavior"] }
+            ],
+            labels: {
+              whenValid: ["type:bug"],
+              whenInvalid: ["needs-template-fix"]
+            }
+          }
+        ],
+        duplicateDetection: {
+          enabled: true,
+          bypassLabels: ["no-auto-duplicate"],
+          duplicateLabel: "duplicate",
+          searchResultLimit: 50,
+          candidateLimit: 20,
+          aiReviewMaxCandidates: 3,
+          thresholds: {
+            exact: 0.995,
+            highConfidence: 0.93,
+            reviewMin: 0.82
+          }
+        }
+      },
+      labeling: {
+        enabled: true,
+        autoCreateMissing: true,
+        managed: ["type:bug", "needs-template-fix", "needs-ai-help", "duplicate"],
+        definitions,
+        keywordRules: [
+          {
+            keywords: ["crash", "崩溃"],
+            labels: ["needs-ai-help"],
+            fields: ["title", "body"],
+            caseSensitive: false
+          }
+        ]
+      },
+      aiHelp: {
+        enabled: false,
+        triggerLabels: ["needs-ai-help"],
+        commentAnchor: "issue-bot:ai"
+      }
+    },
+    pullRequests: {
+      review: { enabled: false },
+      labeling: { enabled: false },
+      summary: { enabled: false }
+    }
+  };
+}
+
+export function createIssue(overrides: Partial<IssueContext> = {}): IssueContext {
+  return {
+    kind: "issue",
+    owner: "octo",
+    repo: "repo",
+    number: 1,
+    title: "插件启动后崩溃",
+    body: [
+      "<!-- issue-template: bug -->",
+      "",
+      "## 环境信息",
+      "Windows 11 / Java 21",
+      "",
+      "## 复现步骤",
+      "1. 启动插件",
+      "2. 进入服务器",
+      "",
+      "## 预期行为",
+      "插件正常运行"
+    ].join("\n"),
+    state: "open",
+    labels: [],
+    htmlUrl: "https://example.test/issues/1",
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+    action: "opened",
+    ...overrides
+  };
+}
+
+export class FakeGateway implements GitHubGateway {
+  public readonly comments: Array<{ issueNumber: number; body: string; id: number }> = [];
+
+  public readonly createdLabels = new Set<string>();
+
+  public readonly removedLabels: string[] = [];
+
+  public readonly closedIssues: number[] = [];
+
+  public readonly searchRequests: SearchIssueParams[] = [];
+
+  private commentId = 1;
+
+  public constructor(
+    public issue: IssueContext,
+    private readonly searchResults: DuplicateCandidate[] = []
+  ) {}
+
+  public async getIssueContext(): Promise<IssueContext | undefined> {
+    return this.issue;
+  }
+
+  public async listComments(issueNumber: number): Promise<CommentRecord[]> {
+    return this.comments.filter((comment) => comment.issueNumber === issueNumber);
+  }
+
+  public async createComment(issueNumber: number, body: string): Promise<void> {
+    this.comments.push({
+      issueNumber,
+      body,
+      id: this.commentId++
+    });
+  }
+
+  public async updateComment(commentId: number, body: string): Promise<void> {
+    const existing = this.comments.find((comment) => comment.id === commentId);
+    if (existing) {
+      existing.body = body;
+    }
+  }
+
+  public async addLabels(issueNumber: number, labels: string[]): Promise<void> {
+    if (issueNumber !== this.issue.number) {
+      return;
+    }
+    for (const label of labels) {
+      if (!this.issue.labels.includes(label)) {
+        this.issue.labels.push(label);
+      }
+    }
+  }
+
+  public async removeLabel(issueNumber: number, label: string): Promise<void> {
+    if (issueNumber !== this.issue.number) {
+      return;
+    }
+    this.issue.labels = this.issue.labels.filter((item) => item !== label);
+    this.removedLabels.push(label);
+  }
+
+  public async ensureLabels(definitions: Record<string, LabelDefinition>, labels: string[]): Promise<void> {
+    for (const label of labels) {
+      if (definitions[label]) {
+        this.createdLabels.add(label);
+      }
+    }
+  }
+
+  public async closeIssue(issueNumber: number): Promise<void> {
+    this.closedIssues.push(issueNumber);
+    this.issue.state = "closed";
+  }
+
+  public async searchIssues(params: SearchIssueParams): Promise<DuplicateCandidate[]> {
+    this.searchRequests.push(params);
+    return this.searchResults;
+  }
+}

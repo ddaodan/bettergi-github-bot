@@ -1,0 +1,19 @@
+name: Repo Bot Consumer
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+      - reopened
+      - labeled
+
+jobs:
+  repo-bot:
+    uses: your-org/bettergi-github-bot/.github/workflows/repo-bot.yml@v1
+    permissions:
+      issues: write
+      contents: read
+    secrets: inherit
+    with:
+      config-path: .github/repo-bot.yml

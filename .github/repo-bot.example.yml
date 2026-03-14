@@ -1,0 +1,135 @@
+runtime:
+  languageMode: auto
+  dryRun: false
+
+providers:
+  openAiCompatible:
+    enabled: false
+    baseUrl: https://api.openai.com/v1
+    model: gpt-5-mini
+    timeoutMs: 30000
+
+issues:
+  validation:
+    enabled: true
+    fallbackTemplateKey: bug
+    commentAnchor: issue-bot:validation
+    templates:
+      - key: bug
+        detect:
+          markers:
+            - bug
+        requiredSections:
+          - id: environment
+            aliases:
+              - 环境信息
+              - Environment
+          - id: steps
+            aliases:
+              - 复现步骤
+              - Steps to Reproduce
+          - id: expected
+            aliases:
+              - 预期行为
+              - Expected Behavior
+        labels:
+          whenValid:
+            - type:bug
+          whenInvalid:
+            - needs-template-fix
+      - key: feature
+        detect:
+          markers:
+            - feature
+        requiredSections:
+          - id: summary
+            aliases:
+              - 需求概述
+              - Summary
+          - id: motivation
+            aliases:
+              - 使用场景
+              - Motivation
+        labels:
+          whenValid:
+            - type:feature
+          whenInvalid:
+            - needs-template-fix
+      - key: question
+        detect:
+          markers:
+            - question
+        requiredSections:
+          - id: summary
+            aliases:
+              - 问题描述
+              - Question
+        labels:
+          whenValid:
+            - type:question
+          whenInvalid:
+            - needs-template-fix
+    duplicateDetection:
+      enabled: true
+      bypassLabels:
+        - no-auto-duplicate
+      duplicateLabel: duplicate
+      searchResultLimit: 50
+      candidateLimit: 20
+      aiReviewMaxCandidates: 3
+      thresholds:
+        exact: 0.995
+        highConfidence: 0.93
+        reviewMin: 0.82
+  labeling:
+    enabled: true
+    autoCreateMissing: true
+    managed:
+      - type:bug
+      - type:feature
+      - type:question
+      - needs-template-fix
+      - duplicate
+      - needs-ai-help
+    definitions:
+      type:bug:
+        color: d73a4a
+        description: Issue classified as a bug report.
+      type:feature:
+        color: a2eeef
+        description: Issue classified as a feature request.
+      type:question:
+        color: 7057ff
+        description: Issue classified as a question.
+      needs-template-fix:
+        color: fbca04
+        description: Issue body is missing required template sections.
+      duplicate:
+        color: cfd3d7
+        description: Issue closed as a duplicate.
+      needs-ai-help:
+        color: 0e8a16
+        description: Issue is ready for AI assistance.
+    keywordRules:
+      - keywords:
+          - crash
+          - 崩溃
+        labels:
+          - needs-ai-help
+        fields:
+          - title
+          - body
+        caseSensitive: false
+  aiHelp:
+    enabled: false
+    triggerLabels:
+      - needs-ai-help
+    commentAnchor: issue-bot:ai
+
+pullRequests:
+  review:
+    enabled: false
+  labeling:
+    enabled: false
+  summary:
+    enabled: false

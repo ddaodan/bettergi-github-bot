@@ -1,0 +1,47 @@
+name: Repo Bot
+
+on:
+  workflow_call:
+    inputs:
+      config-path:
+        description: Path to the repo bot configuration file.
+        required: false
+        type: string
+        default: .github/repo-bot.yml
+      config-overrides-json:
+        description: JSON string used to override the YAML configuration.
+        required: false
+        type: string
+        default: ""
+      dry-run:
+        description: When true, the bot will not mutate GitHub state.
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      REPO_BOT_AI_API_KEY:
+        required: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@v4
+      - name: Checkout repo bot repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/bettergi-github-bot
+          path: .repo-bot
+      - name: Run Repo Bot
+        uses: ./.repo-bot
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO_BOT_AI_API_KEY: ${{ secrets.REPO_BOT_AI_API_KEY }}
+        with:
+          config-path: ${{ inputs.config-path }}
+          config-overrides-json: ${{ inputs.config-overrides-json }}
+          dry-run: ${{ inputs.dry-run }}

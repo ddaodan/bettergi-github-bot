@@ -1,0 +1,18 @@
+name: Repo Bot
+description: Reusable repository bot for issue validation, duplicate detection, labeling, and AI assistance.
+inputs:
+  config-path:
+    description: Path to the repo bot YAML configuration in the caller repository.
+    required: false
+    default: .github/repo-bot.yml
+  config-overrides-json:
+    description: JSON string used to override the YAML configuration.
+    required: false
+    default: ""
+  dry-run:
+    description: When true, log planned changes without mutating GitHub state.
+    required: false
+    default: "false"
+runs:
+  using: node24
+  main: dist/index.js

@@ -1,0 +1,31 @@
+{
+  "name": "repo-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reusable GitHub repository bot for issue validation, duplicate detection, labeling, and AI assistance.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --platform node --target node24 --out-dir dist --clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "release:prepare": "npm run lint && npm test && npm run build",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "js-yaml": "^4.1.0",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.6.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
