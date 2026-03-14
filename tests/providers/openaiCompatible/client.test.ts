@@ -77,10 +77,14 @@ describe("OpenAiCompatibleProvider", () => {
 
     const firstCall = fetchMock.mock.calls[0]?.[0];
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const systemPrompt = String(body.input[0]?.content ?? "");
     const promptPayload = JSON.parse(String(body.input[1]?.content));
     expect(String(firstCall)).toBe("https://api.openai.com/v1/responses");
     expect(body.text.format.type).toBe("json_schema");
+    expect(systemPrompt).toContain("The issue type is question.");
+    expect(systemPrompt).toContain("Answer the user's question directly first.");
     expect(promptPayload.repositoryContext.fullName).toBe("octo/repo");
+    expect(promptPayload.issueType).toBe("question");
     expect(promptPayload.repositoryContext.projectProfile.aliases).toEqual(["EP"]);
   });
 

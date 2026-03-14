@@ -325,6 +325,20 @@ const issueHelpSchema: StructuredOutputSchema = {
   }
 };
 
+function createIssueHelpInstruction(templateKey: string): string {
+  switch (templateKey) {
+    case "bug":
+      return "The issue type is bug. Focus on likely root causes, concrete troubleshooting steps, and the truly missing debugging details.";
+    case "question":
+      return "The issue type is question. Answer the user's question directly first. Use possibleCauses as key points or supporting evidence, troubleshootingSteps as suggested next steps or references, and keep missingInformation empty unless more technical context is genuinely required.";
+    case "feature":
+    case "suggestion":
+      return "The issue type is feature or suggestion. Treat it as a proposal rather than a fault report. Focus on feasibility, implementation directions, tradeoffs, and recommended next steps. Use possibleCauses as feasible approaches or considerations.";
+    default:
+      return "The issue type is general feedback. Avoid pretending that every issue is a defect. Adapt the response to the issue intent while still filling the required JSON fields.";
+  }
+}
+
 export class OpenAiCompatibleProvider {
   public constructor(
     private readonly config: ProviderConfig,
@@ -367,6 +381,7 @@ export class OpenAiCompatibleProvider {
     sections: Record<string, string>,
     repositoryContext: RepositoryAiContext
   ): Promise<AiHelpResult> {
+    const templateKey = repositoryContext.templateKey ?? "unknown";
     const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
@@ -376,6 +391,7 @@ export class OpenAiCompatibleProvider {
           "Assume the issue is about this repository unless the issue clearly points to an external dependency or upstream project.",
           "Do not ask the user to provide the current repository link, repository name, or project identity again.",
           "If more information is needed, ask only for truly missing technical details such as module, version, logs, environment, or reproduction steps.",
+          createIssueHelpInstruction(templateKey),
           "Return JSON only."
         ].join(" ")
       },
@@ -383,6 +399,7 @@ export class OpenAiCompatibleProvider {
         role: "user",
         content: JSON.stringify({
           repositoryContext,
+          issueType: templateKey,
           issue: {
             title: issue.title,
             body: issue.body,

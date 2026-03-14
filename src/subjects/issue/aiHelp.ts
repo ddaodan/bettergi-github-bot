@@ -37,6 +37,7 @@ export async function generateIssueAiHelp(params: {
     );
     return renderAiHelpComment({
       mode: params.commentMode,
+      templateKey: params.repositoryContext.templateKey,
       help
     });
   } catch (error) {
