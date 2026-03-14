@@ -19,6 +19,7 @@ export function createConfig(): RepoBotConfig {
         enabled: false,
         baseUrl: "",
         model: "",
+        apiStyle: "auto",
         timeoutMs: 30000
       }
     },

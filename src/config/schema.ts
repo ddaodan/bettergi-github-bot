@@ -56,11 +56,13 @@ export const repoBotConfigSchema = z.object({
       enabled: z.boolean().default(false),
       baseUrl: z.string().default(""),
       model: z.string().default(""),
+      apiStyle: z.enum(["auto", "responses", "chat_completions"]).default("auto"),
       timeoutMs: z.number().int().positive().default(30000)
     }).default(() => ({
       enabled: false,
       baseUrl: "",
       model: "",
+      apiStyle: "auto" as const,
       timeoutMs: 30000
     }))
   }).default(() => ({
@@ -68,6 +70,7 @@ export const repoBotConfigSchema = z.object({
       enabled: false,
       baseUrl: "",
       model: "",
+      apiStyle: "auto" as const,
       timeoutMs: 30000
     }
   })),

@@ -7,6 +7,7 @@ providers:
     enabled: false
     baseUrl: https://api.openai.com/v1
     model: gpt-5-mini
+    apiStyle: auto
     timeoutMs: 30000
 
 issues:

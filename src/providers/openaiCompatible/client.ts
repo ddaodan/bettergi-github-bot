@@ -1,6 +1,65 @@
 import * as core from "@actions/core";
 
-import type { AiHelpResult, DuplicateCandidate, DuplicateReviewResult, IssueContext, ProviderConfig } from "../../core/types.js";
+import type {
+  AiHelpResult,
+  DuplicateCandidate,
+  DuplicateReviewResult,
+  IssueContext,
+  ProviderConfig
+} from "../../core/types.js";
+
+type ChatMessage = {
+  role: "system" | "user";
+  content: string;
+};
+
+type StructuredOutputSchema = {
+  name: string;
+  schema: Record<string, unknown>;
+};
+
+class ProviderRequestError extends Error {
+  public constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly responseText?: string
+  ) {
+    super(message);
+  }
+}
+
+function createEndpoint(baseUrl: string, relativePath: string): URL {
+  const endpointBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  return new URL(relativePath, endpointBase);
+}
+
+function withTimeout(timeoutMs: number): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    clear: () => clearTimeout(timeout)
+  };
+}
+
+function shouldFallbackToChat(error: unknown): boolean {
+  if (!(error instanceof ProviderRequestError)) {
+    return false;
+  }
+
+  if (error.status === 404 || error.status === 405 || error.status === 501) {
+    return true;
+  }
+
+  const haystack = `${error.message}\n${error.responseText ?? ""}`.toLowerCase();
+  return [
+    "responses",
+    "unsupported",
+    "not found",
+    "unknown parameter",
+    "does not support"
+  ].some((needle) => haystack.includes(needle));
+}
 
 function extractJsonBlock(text: string): string {
   const fenced = text.match(/```json\s*([\s\S]*?)```/i);
@@ -16,17 +75,24 @@ function extractJsonBlock(text: string): string {
   return objectMatch[0];
 }
 
+async function parseErrorResponse(response: Response): Promise<never> {
+  const responseText = await response.text();
+  throw new ProviderRequestError(
+    `AI provider returned ${response.status}: ${responseText}`,
+    response.status,
+    responseText
+  );
+}
+
 async function requestChatCompletion(
   config: ProviderConfig,
   apiKey: string,
-  messages: Array<{ role: "system" | "user"; content: string }>
+  messages: ChatMessage[]
 ): Promise<string> {
-  const endpointBase = config.baseUrl.endsWith("/") ? config.baseUrl : `${config.baseUrl}/`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+  const timeout = withTimeout(config.timeoutMs);
 
   try {
-    const response = await fetch(new URL("chat/completions", endpointBase), {
+    const response = await fetch(createEndpoint(config.baseUrl, "chat/completions"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -37,11 +103,11 @@ async function requestChatCompletion(
         temperature: 0.2,
         messages
       }),
-      signal: controller.signal
+      signal: timeout.signal
     });
 
     if (!response.ok) {
-      throw new Error(`AI provider returned ${response.status}: ${await response.text()}`);
+      await parseErrorResponse(response);
     }
 
     const json = await response.json() as {
@@ -54,14 +120,171 @@ async function requestChatCompletion(
 
     const content = json.choices?.[0]?.message?.content;
     if (!content) {
-      throw new Error("AI provider returned an empty message.");
+      throw new Error("AI provider returned an empty chat completion message.");
     }
 
     return content;
   } finally {
-    clearTimeout(timeout);
+    timeout.clear();
   }
 }
+
+function extractResponsesOutputText(json: {
+  output_text?: string;
+  output?: Array<{
+    type?: string;
+    content?: Array<{
+      type?: string;
+      text?: string;
+    }>;
+  }>;
+}): string {
+  if (typeof json.output_text === "string" && json.output_text.trim()) {
+    return json.output_text;
+  }
+
+  const contentText = json.output
+    ?.flatMap((item) => item.content ?? [])
+    .filter((item) => item.type === "output_text" && typeof item.text === "string")
+    .map((item) => item.text?.trim() ?? "")
+    .filter(Boolean)
+    .join("\n");
+
+  if (contentText) {
+    return contentText;
+  }
+
+  throw new Error("AI provider returned an empty responses output.");
+}
+
+async function requestResponses(
+  config: ProviderConfig,
+  apiKey: string,
+  messages: ChatMessage[],
+  structuredOutput: StructuredOutputSchema
+): Promise<string> {
+  const timeout = withTimeout(config.timeoutMs);
+
+  try {
+    const response = await fetch(createEndpoint(config.baseUrl, "responses"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: config.model,
+        input: messages,
+        temperature: 0.2,
+        text: {
+          format: {
+            type: "json_schema",
+            name: structuredOutput.name,
+            strict: true,
+            schema: structuredOutput.schema
+          }
+        }
+      }),
+      signal: timeout.signal
+    });
+
+    if (!response.ok) {
+      await parseErrorResponse(response);
+    }
+
+    const json = await response.json() as {
+      output_text?: string;
+      output?: Array<{
+        type?: string;
+        content?: Array<{
+          type?: string;
+          text?: string;
+        }>;
+      }>;
+    };
+
+    return extractResponsesOutputText(json);
+  } finally {
+    timeout.clear();
+  }
+}
+
+async function requestStructuredJson(
+  config: ProviderConfig,
+  apiKey: string,
+  messages: ChatMessage[],
+  structuredOutput: StructuredOutputSchema
+): Promise<string> {
+  if (config.apiStyle === "responses") {
+    return requestResponses(config, apiKey, messages, structuredOutput);
+  }
+
+  if (config.apiStyle === "chat_completions") {
+    return requestChatCompletion(config, apiKey, messages);
+  }
+
+  try {
+    return await requestResponses(config, apiKey, messages, structuredOutput);
+  } catch (error) {
+    if (!shouldFallbackToChat(error)) {
+      throw error;
+    }
+    core.info("Responses API is unavailable for the current provider. Falling back to chat/completions.");
+    return requestChatCompletion(config, apiKey, messages);
+  }
+}
+
+const duplicateReviewSchema: StructuredOutputSchema = {
+  name: "duplicate_review",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      duplicate: {
+        type: "boolean"
+      },
+      confidence: {
+        type: "number"
+      },
+      reason: {
+        type: "string"
+      }
+    },
+    required: ["duplicate", "confidence", "reason"]
+  }
+};
+
+const issueHelpSchema: StructuredOutputSchema = {
+  name: "issue_help",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      summary: {
+        type: "string"
+      },
+      possibleCauses: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      },
+      troubleshootingSteps: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      },
+      missingInformation: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      }
+    },
+    required: ["summary", "possibleCauses", "troubleshootingSteps", "missingInformation"]
+  }
+};
 
 export class OpenAiCompatibleProvider {
   public constructor(
@@ -74,10 +297,10 @@ export class OpenAiCompatibleProvider {
   }
 
   public async reviewDuplicate(issue: IssueContext, candidate: DuplicateCandidate): Promise<DuplicateReviewResult> {
-    const content = await requestChatCompletion(this.config, this.apiKey, [
+    const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
-        content: "你是一个 GitHub 仓库机器人。请判断两个 issue 是否描述同一个问题，只返回 JSON：{\"duplicate\": boolean, \"confidence\": number, \"reason\": string}。confidence 取 0 到 1。"
+        content: "你是 GitHub 仓库机器人。请判断两个 issue 是否描述同一个问题，只返回 JSON。confidence 取值范围为 0 到 1。"
       },
       {
         role: "user",
@@ -90,7 +313,7 @@ export class OpenAiCompatibleProvider {
           candidateIssue: candidate
         })
       }
-    ]);
+    ], duplicateReviewSchema);
 
     const parsed = JSON.parse(extractJsonBlock(content)) as DuplicateReviewResult;
     return {
@@ -101,10 +324,10 @@ export class OpenAiCompatibleProvider {
   }
 
   public async generateHelp(issue: IssueContext, sections: Record<string, string>): Promise<AiHelpResult> {
-    const content = await requestChatCompletion(this.config, this.apiKey, [
+    const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
-        content: "你是一个 GitHub Issue 助手机器人。请根据 issue 内容给出简洁、可执行的排查建议，只返回 JSON：{\"summary\": string, \"possibleCauses\": string[], \"troubleshootingSteps\": string[], \"missingInformation\": string[]}。"
+        content: "你是 GitHub Issue 助手机器人。请根据 issue 内容给出简洁且可执行的排查建议，只返回 JSON。"
       },
       {
         role: "user",
@@ -115,7 +338,7 @@ export class OpenAiCompatibleProvider {
           sections
         })
       }
-    ]);
+    ], issueHelpSchema);
 
     const parsed = JSON.parse(extractJsonBlock(content)) as AiHelpResult;
     return {

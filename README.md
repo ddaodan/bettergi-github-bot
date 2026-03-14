@@ -5,10 +5,17 @@
 ## 功能
 
 - Issue 模板校验，支持多模板、多规则和中英别名段落标题。
-- 重复 Issue 检测，先做规则初筛，再按需走 OpenAI-compatible 复判。
+- 重复 Issue 检测，先做规则初筛，再按需走 AI 复判。
 - 托管标签同步，只增删配置中声明的标签。
-- AI 帮助回复，默认关闭，使用触发标签控制。
+- AI 帮助回复，默认关闭，可按标签触发或直接全量开启。
 - PR 功能预留了配置和上下文接口，当前版本不启用。
+
+## AI 接口
+
+- 默认 provider 是 OpenAI-compatible HTTP API。
+- `apiStyle: auto` 时，优先请求 `responses`，如果当前 provider 不支持再自动回退到 `chat/completions`。
+- `apiStyle: responses` 时，只使用 `responses`。
+- `apiStyle: chat_completions` 时，只使用 `chat/completions`。
 
 ## 语言规则
 

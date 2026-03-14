@@ -74,6 +74,7 @@ export interface ProviderConfig {
   enabled: boolean;
   baseUrl: string;
   model: string;
+  apiStyle: "auto" | "responses" | "chat_completions";
   timeoutMs: number;
 }
 
