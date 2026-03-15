@@ -19,9 +19,13 @@ async function run(): Promise<void> {
       dryRunInput: dryRun
     });
 
-    const token = process.env.GITHUB_TOKEN;
+    const token = process.env.REPO_BOT_GITHUB_TOKEN?.trim() || process.env.GITHUB_TOKEN?.trim();
     if (!token) {
-      throw new Error("Missing GITHUB_TOKEN.");
+      throw new Error("Missing REPO_BOT_GITHUB_TOKEN or GITHUB_TOKEN.");
+    }
+
+    if (process.env.REPO_BOT_GITHUB_TOKEN?.trim()) {
+      core.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
     }
 
     const gateway = new OctokitGitHubGateway(token, config.runtime.dryRun);

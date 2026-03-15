@@ -16,7 +16,9 @@ jobs:
       contents: read
     secrets:
       REPO_BOT_AI_API_KEY: ${{ secrets.REPO_BOT_AI_API_KEY }}
+      REPO_BOT_GITHUB_APP_PRIVATE_KEY: ${{ secrets.REPO_BOT_GITHUB_APP_PRIVATE_KEY }}
     with:
       config-path: .github/repo-bot.yml
       config-overrides-json: ${{ vars.REPO_BOT_CONFIG_OVERRIDES_JSON }}
       ai-base-url: ${{ vars.REPO_BOT_AI_BASE_URL }}
+      github-app-id: ${{ vars.REPO_BOT_GITHUB_APP_ID }}

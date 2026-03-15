@@ -18,12 +18,19 @@ on:
         required: false
         type: string
         default: ""
+      github-app-id:
+        description: GitHub App ID used to mint an installation token for bot operations.
+        required: false
+        type: string
+        default: ""
       dry-run:
         description: When true, the bot will not mutate GitHub state.
         required: false
         type: boolean
         default: false
     secrets:
+      REPO_BOT_GITHUB_APP_PRIVATE_KEY:
+        required: false
       REPO_BOT_AI_API_KEY:
         required: false
 
@@ -34,6 +41,18 @@ jobs:
       issues: write
       contents: read
     steps:
+      - name: Detect GitHub App configuration
+        id: auth-mode
+        shell: bash
+        env:
+          REPO_BOT_GITHUB_APP_ID: ${{ inputs.github-app-id }}
+          REPO_BOT_GITHUB_APP_PRIVATE_KEY: ${{ secrets.REPO_BOT_GITHUB_APP_PRIVATE_KEY }}
+        run: |
+          if [ -n "$REPO_BOT_GITHUB_APP_ID" ] && [ -n "$REPO_BOT_GITHUB_APP_PRIVATE_KEY" ]; then
+            echo "use_app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "use_app=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Checkout caller repository
         uses: actions/checkout@v4
       - name: Checkout repo bot repository
@@ -41,10 +60,18 @@ jobs:
         with:
           repository: ${{ github.repository_owner }}/bettergi-github-bot
           path: .repo-bot
+      - name: Create GitHub App token
+        if: ${{ steps.auth-mode.outputs.use_app == 'true' }}
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ inputs.github-app-id }}
+          private-key: ${{ secrets.REPO_BOT_GITHUB_APP_PRIVATE_KEY }}
       - name: Run Repo Bot
         uses: ./.repo-bot
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          REPO_BOT_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO_BOT_AI_API_KEY: ${{ secrets.REPO_BOT_AI_API_KEY }}
           REPO_BOT_AI_BASE_URL: ${{ inputs.ai-base-url }}
         with:
