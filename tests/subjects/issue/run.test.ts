@@ -49,7 +49,7 @@ describe("runIssueWorkflow", () => {
     expect(gateway.comments).toHaveLength(0);
   });
 
-  it("adds a collapsible similar-issues comment when candidates are close but not duplicates", async () => {
+  it("adds a collapsible similar-issues comment when candidates are close but AI help is unavailable", async () => {
     const config = createConfig();
     const issue = createIssue({
       title: "[bug] 一条龙设置无法保存",
@@ -106,8 +106,92 @@ describe("runIssueWorkflow", () => {
 
     expect(gateway.comments).toHaveLength(1);
     expect(gateway.comments[0]?.body).toContain("issue-bot:similar-issues");
-    expect(gateway.comments[0]?.body).toContain("#17");
+    expect(gateway.comments[0]?.body).toContain("#17 | 相似度：");
     expect(gateway.comments[0]?.body).toContain("<details>");
+  });
+
+  it("merges related issues into the AI comment when AI help is generated", async () => {
+    const config = createConfig();
+    config.issues.aiHelp.enabled = true;
+    config.issues.aiHelp.triggerLabels = ["needs-ai-help"];
+    config.issues.labeling.keywordRules = [
+      {
+        keywords: ["一条龙"],
+        labels: ["needs-ai-help"],
+        fields: ["title", "body"],
+        caseSensitive: false
+      }
+    ];
+    const issue = createIssue({
+      title: "[bug] 一条龙设置无法保存",
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "打开一条龙界面后保存失败",
+        "",
+        "## Expected Behavior",
+        "应该能够正常保存一条龙配置"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue, [
+      {
+        number: 17,
+        title: "[bug] 一条龙设置保存失败，读取配置组失败，脚本读取失败",
+        body: [
+          "## Environment",
+          "win11",
+          "",
+          "## Steps to Reproduce",
+          "打开对应界面，更改配置时会出现",
+          "",
+          "## Expected Behavior",
+          "应该能够正常保存配置"
+        ].join("\n"),
+        labels: ["bug"],
+        state: "open",
+        htmlUrl: "https://example.test/issues/17",
+        createdAt: "2025-01-01T00:00:00Z",
+        updatedAt: "2025-01-01T00:00:00Z"
+      }
+    ]);
+    const provider = {
+      async generateHelp() {
+        return {
+          summary: "一条龙配置保存失败。",
+          possibleCauses: ["配置文件结构异常"],
+          troubleshootingSteps: ["检查配置文件"],
+          missingInformation: []
+        };
+      },
+      async reviewDuplicate() {
+        return {
+          duplicate: false,
+          confidence: 0.2,
+          reason: ""
+        };
+      }
+    } as unknown as OpenAiCompatibleProvider;
+
+    await runIssueWorkflow({
+      issue,
+      config,
+      gateway,
+      provider
+    });
+
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("issue-bot:ai");
+    expect(gateway.comments[0]?.body).toContain("## 可能相关的历史 Issue");
+    expect(gateway.comments[0]?.body).toContain("#17 | 相似度：");
+    expect(gateway.comments[0]?.body.indexOf("## 可能相关的历史 Issue")).toBeLessThan(
+      gateway.comments[0]?.body.indexOf("## AI 分析建议") ?? Number.MAX_SAFE_INTEGER
+    );
+    expect(gateway.comments[0]?.body).toContain("## AI 分析建议");
+    expect(gateway.comments.some((comment) => comment.body.includes("issue-bot:similar-issues"))).toBe(false);
   });
 
   it("removes the old validation comment after the issue is fixed", async () => {

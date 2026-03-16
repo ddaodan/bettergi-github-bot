@@ -1,6 +1,13 @@
 import * as core from "@actions/core";
 
-import type { CommentMode, IssueContext, ParsedIssue, RepoBotConfig, RepositoryAiContext } from "../../core/types.js";
+import type {
+  CommentMode,
+  IssueContext,
+  ParsedIssue,
+  RepoBotConfig,
+  RepositoryAiContext,
+  SimilarIssueCandidate
+} from "../../core/types.js";
 import { renderAiHelpComment } from "../../i18n/comments.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
 
@@ -10,6 +17,7 @@ export async function generateIssueAiHelp(params: {
   config: RepoBotConfig["issues"]["aiHelp"];
   commentMode: CommentMode;
   repositoryContext: RepositoryAiContext;
+  relatedIssues?: SimilarIssueCandidate[];
   provider?: OpenAiCompatibleProvider;
 }): Promise<string | undefined> {
   if (!params.config.enabled) {
@@ -38,7 +46,8 @@ export async function generateIssueAiHelp(params: {
     return renderAiHelpComment({
       mode: params.commentMode,
       templateKey: params.repositoryContext.templateKey,
-      help
+      help,
+      relatedIssues: params.relatedIssues
     });
   } catch (error) {
     core.warning(`Skip AI help because provider request failed: ${String(error)}`);

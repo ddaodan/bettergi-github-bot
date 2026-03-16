@@ -40,6 +40,34 @@ describe("comment renderers", () => {
     expect(comment).not.toContain("### 建议排查步骤");
   });
 
+  it("renders related issues at the top of the AI comment", () => {
+    const comment = renderAiHelpComment({
+      mode: "zh",
+      templateKey: "bug",
+      help,
+      relatedIssues: [
+        {
+          candidate: {
+            number: 16,
+            title: "[bug] 一条龙设置无法保存",
+            body: "",
+            labels: ["bug"],
+            state: "open",
+            htmlUrl: "https://example.test/issues/16",
+            createdAt: "2026-01-01T00:00:00Z",
+            updatedAt: "2026-01-01T00:00:00Z"
+          },
+          score: 0.33
+        }
+      ]
+    });
+
+    expect(comment.startsWith("## 可能相关的历史 Issue")).toBe(true);
+    expect(comment).toContain("<details>");
+    expect(comment).toContain("#16 | 相似度：0.33");
+    expect(comment).toContain("## AI 分析建议");
+  });
+
   it("renders similar issues inside a collapsible block", () => {
     const comment = renderSimilarIssuesComment({
       mode: "zh-en",
@@ -61,10 +89,11 @@ describe("comment renderers", () => {
     });
 
     expect(comment).toContain("## 可能相关的历史 Issue");
-    expect(comment).toContain("#16");
+    expect(comment).toContain("#16 | 相似度：0.33");
     expect(comment).toContain("<details>");
     expect(comment).toContain("展开查看 1 个相关 Issue");
     expect(comment).toContain("## Possibly Related Issues");
+    expect(comment).toContain("#16 | Score：0.33");
     expect(comment).toContain("Expand to view 1 related issues");
   });
 });

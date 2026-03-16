@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 
-import type { CommentMode, IssueContext, RepoBotConfig } from "../../core/types.js";
+import type { CommentMode, IssueContext, RepoBotConfig, SimilarIssueCandidate } from "../../core/types.js";
 import { syncAnchoredComment, upsertAnchoredComment } from "../../github/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
 import { renderDuplicateComment, renderSimilarIssuesComment } from "../../i18n/comments.js";
@@ -55,10 +55,16 @@ export async function runIssueWorkflow(params: {
       issueNumber: params.issue.number,
       anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor
     });
+    await syncAnchoredComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      anchor: params.config.issues.aiHelp.commentAnchor
+    });
   }
 
   let duplicated = false;
-  let similarIssuesBody: string | undefined;
+  let duplicateCommentBody: string | undefined;
+  let similarIssues: SimilarIssueCandidate[] = [];
   if (shouldRunValidation(params.issue.action) && validation.valid) {
     const duplicateDecision = await detectDuplicate({
       issue: params.issue,
@@ -88,25 +94,27 @@ export async function runIssueWorkflow(params: {
 
     duplicated = Boolean(duplicateDecision.duplicateOf);
     if (duplicated && duplicateDecision.duplicateOf) {
-      similarIssuesBody = renderDuplicateComment({
+      duplicateCommentBody = renderDuplicateComment({
         mode: commentMode,
         duplicateOf: duplicateDecision.duplicateOf,
         confidence: duplicateDecision.confidence ?? 0
       });
-    } else if ((duplicateDecision.similarIssues?.length ?? 0) > 0) {
-      similarIssuesBody = renderSimilarIssuesComment({
-        mode: commentMode,
-        issues: duplicateDecision.similarIssues ?? []
-      });
+    } else {
+      similarIssues = duplicateDecision.similarIssues ?? [];
     }
   }
 
-  if (shouldRunValidation(params.issue.action)) {
+  if (shouldRunValidation(params.issue.action) && duplicated) {
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
       anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor,
-      body: similarIssuesBody
+      body: duplicateCommentBody
+    });
+    await syncAnchoredComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      anchor: params.config.issues.aiHelp.commentAnchor
     });
   }
 
@@ -136,6 +144,21 @@ export async function runIssueWorkflow(params: {
   }
 
   if (duplicated || !shouldRunAi(params.issue.action) || !validation.valid) {
+    if (!duplicated && shouldRunValidation(params.issue.action)) {
+      const similarIssuesBody = similarIssues.length > 0
+        ? renderSimilarIssuesComment({
+          mode: commentMode,
+          issues: similarIssues
+        })
+        : undefined;
+
+      await syncAnchoredComment({
+        gateway: params.gateway,
+        issueNumber: params.issue.number,
+        anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor,
+        body: similarIssuesBody
+      });
+    }
     return;
   }
 
@@ -155,10 +178,26 @@ export async function runIssueWorkflow(params: {
     config: params.config.issues.aiHelp,
     commentMode,
     repositoryContext,
+    relatedIssues: similarIssues,
     provider: params.provider
   });
 
   if (!aiBody) {
+    if (shouldRunValidation(params.issue.action)) {
+      const similarIssuesBody = similarIssues.length > 0
+        ? renderSimilarIssuesComment({
+          mode: commentMode,
+          issues: similarIssues
+        })
+        : undefined;
+
+      await syncAnchoredComment({
+        gateway: params.gateway,
+        issueNumber: params.issue.number,
+        anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor,
+        body: similarIssuesBody
+      });
+    }
     return;
   }
 
@@ -168,4 +207,12 @@ export async function runIssueWorkflow(params: {
     anchor: params.config.issues.aiHelp.commentAnchor,
     body: aiBody
   });
+
+  if (shouldRunValidation(params.issue.action)) {
+    await syncAnchoredComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor
+    });
+  }
 }

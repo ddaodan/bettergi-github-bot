@@ -16,6 +16,44 @@ type AiCommentLayout = {
   missingEn: string;
 };
 
+function renderSimilarIssueEntries(mode: "zh" | "en", issues: SimilarIssueCandidate[]): string[] {
+  return issues.map((entry) => {
+    const label = mode === "zh" ? "相似度" : "Score";
+    return `#${entry.candidate.number} | ${label}：${entry.score.toFixed(2)}`;
+  });
+}
+
+function renderSimilarIssuesSection(params: {
+  mode: "zh" | "en";
+  issues: SimilarIssueCandidate[];
+}): string {
+  const lines = renderSimilarIssueEntries(params.mode, params.issues);
+
+  if (params.mode === "zh") {
+    return [
+      "## 可能相关的历史 Issue",
+      "",
+      "<details>",
+      `<summary>展开查看 ${params.issues.length} 个相关 Issue</summary>`,
+      "",
+      ...lines,
+      "",
+      "</details>"
+    ].join("\n");
+  }
+
+  return [
+    "## Possibly Related Issues",
+    "",
+    "<details>",
+    `<summary>Expand to view ${params.issues.length} related issues</summary>`,
+    "",
+    ...lines,
+    "",
+    "</details>"
+  ].join("\n");
+}
+
 function bilingual(mode: CommentMode, zh: string, en: string): string {
   if (mode === "zh") {
     return zh;
@@ -154,47 +192,19 @@ export function renderSimilarIssuesComment(params: {
   mode: CommentMode;
   issues: SimilarIssueCandidate[];
 }): string {
-  const issueRefs = params.issues.map((entry) => `#${entry.candidate.number}`).join(" ");
-  const zhLines = params.issues.map((entry, index) =>
-    `${index + 1}. #${entry.candidate.number} ${entry.candidate.title} | 状态：${renderIssueState("zh", entry.candidate.state)} | 相似度：${entry.score.toFixed(2)}`
-  );
-  const enLines = params.issues.map((entry, index) =>
-    `${index + 1}. #${entry.candidate.number} ${entry.candidate.title} | State: ${renderIssueState("en", entry.candidate.state)} | Score: ${entry.score.toFixed(2)}`
-  );
-
-  const zh = [
-    issueRefs,
-    "",
-    "## 可能相关的历史 Issue",
-    "",
-    "当前 Issue 未被自动判定为重复，但检测到以下相似 Issue。提交前或继续排查前，建议先确认是否已经有人反馈过同类问题。",
-    "",
-    "<details>",
-    `<summary>展开查看 ${params.issues.length} 个相关 Issue</summary>`,
-    "",
-    ...zhLines,
-    "",
-    "</details>"
-  ].join("\n");
+  const zh = renderSimilarIssuesSection({
+    mode: "zh",
+    issues: params.issues
+  });
 
   if (params.mode === "zh") {
     return zh;
   }
 
-  const en = [
-    issueRefs,
-    "",
-    "## Possibly Related Issues",
-    "",
-    "This issue was not auto-closed as a duplicate, but the following similar issues were detected. Check them first before continuing triage.",
-    "",
-    "<details>",
-    `<summary>Expand to view ${params.issues.length} related issues</summary>`,
-    "",
-    ...enLines,
-    "",
-    "</details>"
-  ].join("\n");
+  const en = renderSimilarIssuesSection({
+    mode: "en",
+    issues: params.issues
+  });
 
   return `${zh}\n\n---\n\n${en}`;
 }
@@ -203,9 +213,16 @@ export function renderAiHelpComment(params: {
   mode: CommentMode;
   templateKey?: string;
   help: AiHelpResult;
+  relatedIssues?: SimilarIssueCandidate[];
 }): string {
   const layout = getAiCommentLayout(params.templateKey);
-  const zh = [
+  const zhSections = [
+    params.relatedIssues && params.relatedIssues.length > 0
+      ? renderSimilarIssuesSection({
+        mode: "zh",
+        issues: params.relatedIssues
+      })
+      : undefined,
     `## ${layout.titleZh}`,
     "",
     `### ${layout.summaryZh}\n${params.help.summary}`,
@@ -220,13 +237,20 @@ export function renderAiHelpComment(params: {
     ...renderList(params.help.missingInformation, "暂无"),
     "",
     zhAiNote
-  ].join("\n");
+  ].filter((section) => section !== undefined);
+  const zh = zhSections.join("\n");
 
   if (params.mode === "zh") {
     return zh;
   }
 
-  const en = [
+  const enSections = [
+    params.relatedIssues && params.relatedIssues.length > 0
+      ? renderSimilarIssuesSection({
+        mode: "en",
+        issues: params.relatedIssues
+      })
+      : undefined,
     `## ${layout.titleEn}`,
     "",
     `### ${layout.summaryEn}\n${params.help.summary}`,
@@ -241,7 +265,8 @@ export function renderAiHelpComment(params: {
     ...renderList(params.help.missingInformation, "None"),
     "",
     enAiNote
-  ].join("\n");
+  ].filter((section) => section !== undefined);
+  const en = enSections.join("\n");
 
   return `${zh}\n\n---\n\n${en}`;
 }
