@@ -3,7 +3,7 @@ import * as core from "@actions/core";
 import type { CommentMode, IssueContext, RepoBotConfig } from "../../core/types.js";
 import { syncAnchoredComment, upsertAnchoredComment } from "../../github/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
-import { renderSimilarIssuesComment } from "../../i18n/comments.js";
+import { renderDuplicateComment, renderSimilarIssuesComment } from "../../i18n/comments.js";
 import { detectCommentMode } from "../../i18n/language.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
 import { generateIssueAiHelp } from "./aiHelp.js";
@@ -64,7 +64,6 @@ export async function runIssueWorkflow(params: {
       issue: params.issue,
       parsed: validation.parsed,
       config: params.config.issues.validation.duplicateDetection,
-      commentMode,
       provider: params.provider,
       searchIssues: async (terms, limit) => params.gateway.searchIssues({
         owner: params.issue.owner,
@@ -73,9 +72,6 @@ export async function runIssueWorkflow(params: {
         terms,
         limit
       }),
-      addDuplicateComment: async (body) => {
-        await params.gateway.createComment(params.issue.number, body);
-      },
       addDuplicateLabel: async (labels) => {
         if (params.config.issues.labeling.autoCreateMissing) {
           await params.gateway.ensureLabels(params.config.issues.labeling.definitions, labels);
@@ -91,7 +87,13 @@ export async function runIssueWorkflow(params: {
     });
 
     duplicated = Boolean(duplicateDecision.duplicateOf);
-    if (!duplicated && (duplicateDecision.similarIssues?.length ?? 0) > 0) {
+    if (duplicated && duplicateDecision.duplicateOf) {
+      similarIssuesBody = renderDuplicateComment({
+        mode: commentMode,
+        duplicateOf: duplicateDecision.duplicateOf,
+        confidence: duplicateDecision.confidence ?? 0
+      });
+    } else if ((duplicateDecision.similarIssues?.length ?? 0) > 0) {
       similarIssuesBody = renderSimilarIssuesComment({
         mode: commentMode,
         issues: duplicateDecision.similarIssues ?? []
@@ -104,7 +106,7 @@ export async function runIssueWorkflow(params: {
       gateway: params.gateway,
       issueNumber: params.issue.number,
       anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor,
-      body: duplicated ? undefined : similarIssuesBody
+      body: similarIssuesBody
     });
   }
 

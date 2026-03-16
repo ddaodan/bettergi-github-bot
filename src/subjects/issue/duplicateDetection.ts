@@ -1,7 +1,6 @@
 import * as core from "@actions/core";
 
 import type {
-  CommentMode,
   DuplicateCandidate,
   DuplicateDecision,
   DuplicateDetectionConfig,
@@ -10,7 +9,6 @@ import type {
   ParsedIssue,
   SimilarIssueCandidate
 } from "../../core/types.js";
-import { renderDuplicateComment } from "../../i18n/comments.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
 import { normalizeText, parseIssueBody, tokenize } from "./parser.js";
 
@@ -104,10 +102,8 @@ export async function detectDuplicate(params: {
   issue: IssueContext;
   parsed: ParsedIssue;
   config: DuplicateDetectionConfig;
-  commentMode: CommentMode;
   provider?: OpenAiCompatibleProvider;
   searchIssues: (terms: string[], limit: number) => Promise<DuplicateCandidate[]>;
-  addDuplicateComment: (body: string) => Promise<void>;
   addDuplicateLabel: (labels: string[]) => Promise<void>;
   closeIssue: () => Promise<void>;
 }): Promise<DuplicateDecision> {
@@ -139,11 +135,6 @@ export async function detectDuplicate(params: {
       return { executed: true, skippedReason: "exact match missing canonical candidate" };
     }
     await params.addDuplicateLabel([params.config.duplicateLabel]);
-    await params.addDuplicateComment(renderDuplicateComment({
-      mode: params.commentMode,
-      duplicateOf: canonical,
-      confidence: exactMatch.score
-    }));
     await params.closeIssue();
     return {
       executed: true,
@@ -161,11 +152,6 @@ export async function detectDuplicate(params: {
     }
     const score = highConfidence.find((entry) => entry.candidate.number === canonical.number)?.score ?? highConfidence[0]!.score;
     await params.addDuplicateLabel([params.config.duplicateLabel]);
-    await params.addDuplicateComment(renderDuplicateComment({
-      mode: params.commentMode,
-      duplicateOf: canonical,
-      confidence: score
-    }));
     await params.closeIssue();
     return {
       executed: true,
@@ -211,11 +197,6 @@ export async function detectDuplicate(params: {
   }
 
   await params.addDuplicateLabel([params.config.duplicateLabel]);
-  await params.addDuplicateComment(renderDuplicateComment({
-    mode: params.commentMode,
-    duplicateOf: bestReview.candidate,
-    confidence: bestReview.review.confidence
-  }));
   await params.closeIssue();
 
   return {

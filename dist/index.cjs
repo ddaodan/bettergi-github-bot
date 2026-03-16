@@ -41455,25 +41455,23 @@ ${enMissing}`
   );
 }
 function renderDuplicateComment(params) {
-  const duplicateLine = `Duplicate of #${params.duplicateOf.number}`;
+  const issueRef = `#${params.duplicateOf.number}`;
   const zh = [
-    duplicateLine,
+    issueRef,
     "",
     "## \u91CD\u590D Issue \u5904\u7406",
     "",
-    `\u68C0\u6D4B\u5230\u5F53\u524D Issue \u4E0E #${params.duplicateOf.number} \u9AD8\u5EA6\u76F8\u4F3C\uFF0C\u5DF2\u6309\u91CD\u590D\u95EE\u9898\u5173\u95ED\u3002`,
+    `\u5F53\u524D Issue \u5DF2\u88AB\u5224\u5B9A\u4E3A\u4E0E #${params.duplicateOf.number} \u91CD\u590D\uFF0C\u5DF2\u81EA\u52A8\u5173\u95ED\u3002`,
     "",
-    `- \u539F Issue\uFF1A${params.duplicateOf.htmlUrl}`,
     `- \u7F6E\u4FE1\u5EA6\uFF1A${params.confidence.toFixed(2)}`
   ].join("\n");
   const en = [
-    duplicateLine,
+    issueRef,
     "",
     "## Duplicate Issue Handling",
     "",
-    `This issue is highly similar to #${params.duplicateOf.number} and has been closed as a duplicate.`,
+    `This issue was identified as a duplicate of #${params.duplicateOf.number} and has been closed automatically.`,
     "",
-    `- Canonical issue: ${params.duplicateOf.htmlUrl}`,
     `- Confidence: ${params.confidence.toFixed(2)}`
   ].join("\n");
   return params.mode === "zh" ? zh : `${zh}
@@ -41483,19 +41481,22 @@ function renderDuplicateComment(params) {
 ${en}`;
 }
 function renderSimilarIssuesComment(params) {
+  const issueRefs = params.issues.map((entry) => `#${entry.candidate.number}`).join(" ");
   const zhLines = params.issues.map(
-    (entry, index) => `${index + 1}. [#${entry.candidate.number} ${entry.candidate.title}](${entry.candidate.htmlUrl}) | \u72B6\u6001\uFF1A${renderIssueState("zh", entry.candidate.state)} | \u76F8\u4F3C\u5EA6\uFF1A${entry.score.toFixed(2)}`
+    (entry, index) => `${index + 1}. #${entry.candidate.number} ${entry.candidate.title} | \u72B6\u6001\uFF1A${renderIssueState("zh", entry.candidate.state)} | \u76F8\u4F3C\u5EA6\uFF1A${entry.score.toFixed(2)}`
   );
   const enLines = params.issues.map(
-    (entry, index) => `${index + 1}. [#${entry.candidate.number} ${entry.candidate.title}](${entry.candidate.htmlUrl}) | State: ${renderIssueState("en", entry.candidate.state)} | Score: ${entry.score.toFixed(2)}`
+    (entry, index) => `${index + 1}. #${entry.candidate.number} ${entry.candidate.title} | State: ${renderIssueState("en", entry.candidate.state)} | Score: ${entry.score.toFixed(2)}`
   );
   const zh = [
+    issueRefs,
+    "",
     "## \u53EF\u80FD\u76F8\u5173\u7684\u5386\u53F2 Issue",
     "",
     "\u5F53\u524D Issue \u672A\u88AB\u81EA\u52A8\u5224\u5B9A\u4E3A\u91CD\u590D\uFF0C\u4F46\u68C0\u6D4B\u5230\u4EE5\u4E0B\u76F8\u4F3C Issue\u3002\u63D0\u4EA4\u524D\u6216\u7EE7\u7EED\u6392\u67E5\u524D\uFF0C\u5EFA\u8BAE\u5148\u786E\u8BA4\u662F\u5426\u5DF2\u7ECF\u6709\u4EBA\u53CD\u9988\u8FC7\u540C\u7C7B\u95EE\u9898\u3002",
     "",
     "<details>",
-    `<summary>\u5C55\u5F00\u67E5\u770B ${params.issues.length} \u4E2A\u76F8\u4F3C Issue</summary>`,
+    `<summary>\u5C55\u5F00\u67E5\u770B ${params.issues.length} \u4E2A\u76F8\u5173 Issue</summary>`,
     "",
     ...zhLines,
     "",
@@ -41505,12 +41506,14 @@ function renderSimilarIssuesComment(params) {
     return zh;
   }
   const en = [
+    issueRefs,
+    "",
     "## Possibly Related Issues",
     "",
     "This issue was not auto-closed as a duplicate, but the following similar issues were detected. Check them first before continuing triage.",
     "",
     "<details>",
-    `<summary>Expand to view ${params.issues.length} similar issues</summary>`,
+    `<summary>Expand to view ${params.issues.length} related issues</summary>`,
     "",
     ...enLines,
     "",
@@ -41854,11 +41857,6 @@ async function detectDuplicate(params) {
       return { executed: true, skippedReason: "exact match missing canonical candidate" };
     }
     await params.addDuplicateLabel([params.config.duplicateLabel]);
-    await params.addDuplicateComment(renderDuplicateComment({
-      mode: params.commentMode,
-      duplicateOf: canonical,
-      confidence: exactMatch.score
-    }));
     await params.closeIssue();
     return {
       executed: true,
@@ -41875,11 +41873,6 @@ async function detectDuplicate(params) {
     }
     const score = highConfidence.find((entry) => entry.candidate.number === canonical.number)?.score ?? highConfidence[0].score;
     await params.addDuplicateLabel([params.config.duplicateLabel]);
-    await params.addDuplicateComment(renderDuplicateComment({
-      mode: params.commentMode,
-      duplicateOf: canonical,
-      confidence: score
-    }));
     await params.closeIssue();
     return {
       executed: true,
@@ -41918,11 +41911,6 @@ async function detectDuplicate(params) {
     };
   }
   await params.addDuplicateLabel([params.config.duplicateLabel]);
-  await params.addDuplicateComment(renderDuplicateComment({
-    mode: params.commentMode,
-    duplicateOf: bestReview.candidate,
-    confidence: bestReview.review.confidence
-  }));
   await params.closeIssue();
   return {
     executed: true,
@@ -42186,7 +42174,6 @@ ${params.issue.body}`, params.config.runtime);
       issue: params.issue,
       parsed: validation.parsed,
       config: params.config.issues.validation.duplicateDetection,
-      commentMode,
       provider: params.provider,
       searchIssues: async (terms, limit) => params.gateway.searchIssues({
         owner: params.issue.owner,
@@ -42195,9 +42182,6 @@ ${params.issue.body}`, params.config.runtime);
         terms,
         limit
       }),
-      addDuplicateComment: async (body) => {
-        await params.gateway.createComment(params.issue.number, body);
-      },
       addDuplicateLabel: async (labels) => {
         if (params.config.issues.labeling.autoCreateMissing) {
           await params.gateway.ensureLabels(params.config.issues.labeling.definitions, labels);
@@ -42212,7 +42196,13 @@ ${params.issue.body}`, params.config.runtime);
       }
     });
     duplicated = Boolean(duplicateDecision.duplicateOf);
-    if (!duplicated && (duplicateDecision.similarIssues?.length ?? 0) > 0) {
+    if (duplicated && duplicateDecision.duplicateOf) {
+      similarIssuesBody = renderDuplicateComment({
+        mode: commentMode,
+        duplicateOf: duplicateDecision.duplicateOf,
+        confidence: duplicateDecision.confidence ?? 0
+      });
+    } else if ((duplicateDecision.similarIssues?.length ?? 0) > 0) {
       similarIssuesBody = renderSimilarIssuesComment({
         mode: commentMode,
         issues: duplicateDecision.similarIssues ?? []
@@ -42224,7 +42214,7 @@ ${params.issue.body}`, params.config.runtime);
       gateway: params.gateway,
       issueNumber: params.issue.number,
       anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor,
-      body: duplicated ? void 0 : similarIssuesBody
+      body: similarIssuesBody
     });
   }
   if (shouldRunLabeling(params.issue.action) && params.config.issues.labeling.enabled && !duplicated) {

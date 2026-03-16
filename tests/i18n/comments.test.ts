@@ -61,10 +61,10 @@ describe("comment renderers", () => {
     });
 
     expect(comment).toContain("## 可能相关的历史 Issue");
+    expect(comment).toContain("#16");
     expect(comment).toContain("<details>");
-    expect(comment).toContain("展开查看 1 个相似 Issue");
-    expect(comment).toContain("https://example.test/issues/16");
+    expect(comment).toContain("展开查看 1 个相关 Issue");
     expect(comment).toContain("## Possibly Related Issues");
-    expect(comment).toContain("Expand to view 1 similar issues");
+    expect(comment).toContain("Expand to view 1 related issues");
   });
 });

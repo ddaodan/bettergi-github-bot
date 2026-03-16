@@ -127,25 +127,23 @@ export function renderDuplicateComment(params: {
   duplicateOf: DuplicateCandidate;
   confidence: number;
 }): string {
-  const duplicateLine = `Duplicate of #${params.duplicateOf.number}`;
+  const issueRef = `#${params.duplicateOf.number}`;
   const zh = [
-    duplicateLine,
+    issueRef,
     "",
     "## 重复 Issue 处理",
     "",
-    `检测到当前 Issue 与 #${params.duplicateOf.number} 高度相似，已按重复问题关闭。`,
+    `当前 Issue 已被判定为与 #${params.duplicateOf.number} 重复，已自动关闭。`,
     "",
-    `- 原 Issue：${params.duplicateOf.htmlUrl}`,
     `- 置信度：${params.confidence.toFixed(2)}`
   ].join("\n");
   const en = [
-    duplicateLine,
+    issueRef,
     "",
     "## Duplicate Issue Handling",
     "",
-    `This issue is highly similar to #${params.duplicateOf.number} and has been closed as a duplicate.`,
+    `This issue was identified as a duplicate of #${params.duplicateOf.number} and has been closed automatically.`,
     "",
-    `- Canonical issue: ${params.duplicateOf.htmlUrl}`,
     `- Confidence: ${params.confidence.toFixed(2)}`
   ].join("\n");
 
@@ -156,20 +154,23 @@ export function renderSimilarIssuesComment(params: {
   mode: CommentMode;
   issues: SimilarIssueCandidate[];
 }): string {
+  const issueRefs = params.issues.map((entry) => `#${entry.candidate.number}`).join(" ");
   const zhLines = params.issues.map((entry, index) =>
-    `${index + 1}. [#${entry.candidate.number} ${entry.candidate.title}](${entry.candidate.htmlUrl}) | 状态：${renderIssueState("zh", entry.candidate.state)} | 相似度：${entry.score.toFixed(2)}`
+    `${index + 1}. #${entry.candidate.number} ${entry.candidate.title} | 状态：${renderIssueState("zh", entry.candidate.state)} | 相似度：${entry.score.toFixed(2)}`
   );
   const enLines = params.issues.map((entry, index) =>
-    `${index + 1}. [#${entry.candidate.number} ${entry.candidate.title}](${entry.candidate.htmlUrl}) | State: ${renderIssueState("en", entry.candidate.state)} | Score: ${entry.score.toFixed(2)}`
+    `${index + 1}. #${entry.candidate.number} ${entry.candidate.title} | State: ${renderIssueState("en", entry.candidate.state)} | Score: ${entry.score.toFixed(2)}`
   );
 
   const zh = [
+    issueRefs,
+    "",
     "## 可能相关的历史 Issue",
     "",
     "当前 Issue 未被自动判定为重复，但检测到以下相似 Issue。提交前或继续排查前，建议先确认是否已经有人反馈过同类问题。",
     "",
     "<details>",
-    `<summary>展开查看 ${params.issues.length} 个相似 Issue</summary>`,
+    `<summary>展开查看 ${params.issues.length} 个相关 Issue</summary>`,
     "",
     ...zhLines,
     "",
@@ -181,12 +182,14 @@ export function renderSimilarIssuesComment(params: {
   }
 
   const en = [
+    issueRefs,
+    "",
     "## Possibly Related Issues",
     "",
     "This issue was not auto-closed as a duplicate, but the following similar issues were detected. Check them first before continuing triage.",
     "",
     "<details>",
-    `<summary>Expand to view ${params.issues.length} similar issues</summary>`,
+    `<summary>Expand to view ${params.issues.length} related issues</summary>`,
     "",
     ...enLines,
     "",

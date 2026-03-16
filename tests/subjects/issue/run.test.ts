@@ -106,8 +106,8 @@ describe("runIssueWorkflow", () => {
 
     expect(gateway.comments).toHaveLength(1);
     expect(gateway.comments[0]?.body).toContain("issue-bot:similar-issues");
+    expect(gateway.comments[0]?.body).toContain("#17");
     expect(gateway.comments[0]?.body).toContain("<details>");
-    expect(gateway.comments[0]?.body).toContain("https://example.test/issues/17");
   });
 
   it("removes the old validation comment after the issue is fixed", async () => {
@@ -234,6 +234,9 @@ describe("runIssueWorkflow", () => {
     });
 
     expect(gateway.closedIssues).toEqual([1]);
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("issue-bot:similar-issues");
+    expect(gateway.comments[0]?.body).toContain("#9");
     expect(gateway.comments.some((comment) => comment.body.includes("AI Guidance"))).toBe(false);
   });
 

@@ -47,23 +47,19 @@ describe("duplicate detection", () => {
     };
 
     const addDuplicateLabel = vi.fn();
-    const addDuplicateComment = vi.fn();
     const closeIssue = vi.fn();
 
     const result = await detectDuplicate({
       issue,
       parsed: parseIssueBody(issue.body),
       config: config.issues.validation.duplicateDetection,
-      commentMode: "zh",
       searchIssues: async () => [candidate],
-      addDuplicateComment,
       addDuplicateLabel,
       closeIssue
     });
 
     expect(result.duplicateOf?.number).toBe(5);
     expect(addDuplicateLabel).toHaveBeenCalledWith(["duplicate"]);
-    expect(addDuplicateComment).toHaveBeenCalledOnce();
     expect(closeIssue).toHaveBeenCalledOnce();
   });
 
@@ -112,9 +108,7 @@ describe("duplicate detection", () => {
       issue,
       parsed: parseIssueBody(issue.body),
       config: config.issues.validation.duplicateDetection,
-      commentMode: "zh",
       searchIssues: async () => [candidate],
-      addDuplicateComment: async () => undefined,
       addDuplicateLabel: async () => undefined,
       closeIssue: async () => undefined
     });
