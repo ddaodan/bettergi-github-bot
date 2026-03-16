@@ -17,7 +17,7 @@ describe("renderAiHelpComment", () => {
       help
     });
 
-    expect(comment).toContain("> 注：以下内容由 AI 生成，仅供参考");
+    expect(comment).toContain("> 注：以上内容由 AI 生成，仅供参考");
     expect(comment).not.toContain("免责声明");
   });
 
