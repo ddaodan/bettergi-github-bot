@@ -49,6 +49,67 @@ describe("runIssueWorkflow", () => {
     expect(gateway.comments).toHaveLength(0);
   });
 
+  it("adds a collapsible similar-issues comment when candidates are close but not duplicates", async () => {
+    const config = createConfig();
+    const issue = createIssue({
+      title: "[bug] 一条龙设置无法保存",
+      body: [
+        "## Environment",
+        "Windows 11",
+        "",
+        "## BetterGI Version",
+        "0.58.0",
+        "",
+        "## Description of the issue",
+        "一条龙相关的任何配置都没法保存",
+        "",
+        "## Steps to Reproduce",
+        "打开一条龙界面后保存失败",
+        "",
+        "## Expected Behavior",
+        "应该能够正常保存一条龙配置"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue, [
+      {
+        number: 17,
+        title: "[bug] 一条龙设置保存失败，读取配置组失败，脚本读取失败",
+        body: [
+          "## Environment",
+          "win11",
+          "",
+          "## BetterGI Version",
+          "0.58.0",
+          "",
+          "## Description of the issue",
+          "一条龙设置保存失败，读取配置组失败，脚本读取失败",
+          "",
+          "## Steps to Reproduce",
+          "打开对应界面，更改配置时会出现",
+          "",
+          "## Expected Behavior",
+          "应该能够正常保存配置"
+        ].join("\n"),
+        labels: ["bug"],
+        state: "open",
+        htmlUrl: "https://example.test/issues/17",
+        createdAt: "2025-01-01T00:00:00Z",
+        updatedAt: "2025-01-01T00:00:00Z"
+      }
+    ]);
+
+    await runIssueWorkflow({
+      issue,
+      config,
+      gateway
+    });
+
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("issue-bot:similar-issues");
+    expect(gateway.comments[0]?.body).toContain("<details>");
+    expect(gateway.comments[0]?.body).toContain("https://example.test/issues/17");
+  });
+
   it("removes the old validation comment after the issue is fixed", async () => {
     const config = createConfig();
     const issue = createIssue({

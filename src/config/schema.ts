@@ -34,6 +34,17 @@ const duplicateDetectionSchema = z.object({
     exact: 0.995,
     highConfidence: 0.93,
     reviewMin: 0.82
+  })),
+  similarityComment: z.object({
+    enabled: z.boolean().default(true),
+    commentAnchor: z.string().min(1).default("issue-bot:similar-issues"),
+    minScore: z.number().min(0).max(1).default(0.3),
+    maxCandidates: z.number().int().positive().max(10).default(3)
+  }).default(() => ({
+    enabled: true,
+    commentAnchor: "issue-bot:similar-issues",
+    minScore: 0.3,
+    maxCandidates: 3
   }))
 });
 
@@ -112,6 +123,12 @@ export const repoBotConfigSchema = z.object({
           exact: 0.995,
           highConfidence: 0.93,
           reviewMin: 0.82
+        },
+        similarityComment: {
+          enabled: true,
+          commentAnchor: "issue-bot:similar-issues",
+          minScore: 0.3,
+          maxCandidates: 3
         }
       }))
     }).default(() => ({
@@ -129,6 +146,12 @@ export const repoBotConfigSchema = z.object({
           exact: 0.995,
           highConfidence: 0.93,
           reviewMin: 0.82
+        },
+        similarityComment: {
+          enabled: true,
+          commentAnchor: "issue-bot:similar-issues",
+          minScore: 0.3,
+          maxCandidates: 3
         }
       }
     })),
@@ -197,6 +220,12 @@ export const repoBotConfigSchema = z.object({
           exact: 0.995,
           highConfidence: 0.93,
           reviewMin: 0.82
+        },
+        similarityComment: {
+          enabled: true,
+          commentAnchor: "issue-bot:similar-issues",
+          minScore: 0.3,
+          maxCandidates: 3
         }
       }
     },

@@ -3,6 +3,7 @@ import * as core from "@actions/core";
 import type { CommentMode, IssueContext, RepoBotConfig } from "../../core/types.js";
 import { syncAnchoredComment, upsertAnchoredComment } from "../../github/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
+import { renderSimilarIssuesComment } from "../../i18n/comments.js";
 import { detectCommentMode } from "../../i18n/language.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
 import { generateIssueAiHelp } from "./aiHelp.js";
@@ -49,9 +50,15 @@ export async function runIssueWorkflow(params: {
 
   if (shouldRunValidation(params.issue.action) && validation.executed && !validation.valid) {
     core.info("Issue failed template validation. Skip duplicate detection and AI help.");
+    await syncAnchoredComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor
+    });
   }
 
   let duplicated = false;
+  let similarIssuesBody: string | undefined;
   if (shouldRunValidation(params.issue.action) && validation.valid) {
     const duplicateDecision = await detectDuplicate({
       issue: params.issue,
@@ -84,6 +91,21 @@ export async function runIssueWorkflow(params: {
     });
 
     duplicated = Boolean(duplicateDecision.duplicateOf);
+    if (!duplicated && (duplicateDecision.similarIssues?.length ?? 0) > 0) {
+      similarIssuesBody = renderSimilarIssuesComment({
+        mode: commentMode,
+        issues: duplicateDecision.similarIssues ?? []
+      });
+    }
+  }
+
+  if (shouldRunValidation(params.issue.action)) {
+    await syncAnchoredComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor,
+      body: duplicated ? undefined : similarIssuesBody
+    });
   }
 
   if (shouldRunLabeling(params.issue.action) && params.config.issues.labeling.enabled && !duplicated) {

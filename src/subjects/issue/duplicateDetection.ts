@@ -7,7 +7,8 @@ import type {
   DuplicateDetectionConfig,
   DuplicateReviewResult,
   IssueContext,
-  ParsedIssue
+  ParsedIssue,
+  SimilarIssueCandidate
 } from "../../core/types.js";
 import { renderDuplicateComment } from "../../i18n/comments.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
@@ -86,6 +87,19 @@ export function chooseCanonicalIssue(candidates: DuplicateCandidate[]): Duplicat
   })[0];
 }
 
+function buildSimilarIssueSuggestions(
+  ranked: SimilarIssueCandidate[],
+  config: DuplicateDetectionConfig
+): SimilarIssueCandidate[] {
+  if (!config.similarityComment.enabled) {
+    return [];
+  }
+
+  return ranked
+    .filter((entry) => entry.score >= config.similarityComment.minScore)
+    .slice(0, config.similarityComment.maxCandidates);
+}
+
 export async function detectDuplicate(params: {
   issue: IssueContext;
   parsed: ParsedIssue;
@@ -116,6 +130,8 @@ export async function detectDuplicate(params: {
     .sort((left, right) => right.score - left.score)
     .slice(0, params.config.candidateLimit);
 
+  const similarIssues = buildSimilarIssueSuggestions(ranked, params.config);
+
   const exactMatch = ranked.find((entry) => entry.score >= params.config.thresholds.exact);
   if (exactMatch) {
     const canonical = chooseCanonicalIssue([exactMatch.candidate]);
@@ -132,7 +148,8 @@ export async function detectDuplicate(params: {
     return {
       executed: true,
       duplicateOf: canonical,
-      confidence: exactMatch.score
+      confidence: exactMatch.score,
+      similarIssues: []
     };
   }
 
@@ -153,12 +170,17 @@ export async function detectDuplicate(params: {
     return {
       executed: true,
       duplicateOf: canonical,
-      confidence: score
+      confidence: score,
+      similarIssues: []
     };
   }
 
   if (!params.provider) {
-    return { executed: true, skippedReason: "provider unavailable for duplicate AI review" };
+    return {
+      executed: true,
+      skippedReason: "provider unavailable for duplicate AI review",
+      similarIssues
+    };
   }
 
   const reviewCandidates = ranked
@@ -181,7 +203,11 @@ export async function detectDuplicate(params: {
   }
 
   if (!bestReview) {
-    return { executed: true, skippedReason: "no duplicate candidate confirmed by AI" };
+    return {
+      executed: true,
+      skippedReason: "no duplicate candidate confirmed by AI",
+      similarIssues
+    };
   }
 
   await params.addDuplicateLabel([params.config.duplicateLabel]);
@@ -196,6 +222,7 @@ export async function detectDuplicate(params: {
     executed: true,
     duplicateOf: bestReview.candidate,
     confidence: bestReview.review.confidence,
-    aiReviewed: true
+    aiReviewed: true,
+    similarIssues: []
   };
 }

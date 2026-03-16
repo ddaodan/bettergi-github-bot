@@ -63,6 +63,12 @@ export function createConfig(): RepoBotConfig {
             exact: 0.995,
             highConfidence: 0.93,
             reviewMin: 0.82
+          },
+          similarityComment: {
+            enabled: true,
+            commentAnchor: "issue-bot:similar-issues",
+            minScore: 0.3,
+            maxCandidates: 3
           }
         }
       },

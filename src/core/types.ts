@@ -32,6 +32,13 @@ export interface DuplicateThresholds {
   reviewMin: number;
 }
 
+export interface SimilarIssueCommentConfig {
+  enabled: boolean;
+  commentAnchor: string;
+  minScore: number;
+  maxCandidates: number;
+}
+
 export interface DuplicateDetectionConfig {
   enabled: boolean;
   bypassLabels: string[];
@@ -40,6 +47,7 @@ export interface DuplicateDetectionConfig {
   candidateLimit: number;
   aiReviewMaxCandidates: number;
   thresholds: DuplicateThresholds;
+  similarityComment: SimilarIssueCommentConfig;
 }
 
 export interface ValidationConfig {
@@ -199,12 +207,18 @@ export interface DuplicateCandidate {
   updatedAt: string;
 }
 
+export interface SimilarIssueCandidate {
+  candidate: DuplicateCandidate;
+  score: number;
+}
+
 export interface DuplicateDecision {
   executed: boolean;
   skippedReason?: string;
   duplicateOf?: DuplicateCandidate;
   confidence?: number;
   aiReviewed?: boolean;
+  similarIssues?: SimilarIssueCandidate[];
 }
 
 export interface AiHelpResult {

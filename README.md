@@ -5,7 +5,7 @@
 ## 功能
 
 - Issue 模板校验：支持历史模板 marker、Issue Forms 标题前缀、段落标题匹配、必填 section、占位文本检测
-- 重复 issue 检测：规则初筛 + 可选 AI 复判
+- 重复 issue 检测：规则初筛 + 可选 AI 复判；未自动关单时可折叠展示相似 issue
 - 标签同步：只管理配置中声明的托管标签
 - AI 帮助回复：支持 OpenAI-compatible API、`responses`/`chat_completions`
 - 语言模式：默认中文；英文 issue 输出中英双语
