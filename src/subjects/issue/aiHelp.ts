@@ -32,7 +32,7 @@ export async function generateIssueAiHelp(params: {
   try {
     const help = await params.provider.generateHelp(
       params.issue,
-      params.parsed.sections,
+      params.parsed,
       params.repositoryContext
     );
     return renderAiHelpComment({

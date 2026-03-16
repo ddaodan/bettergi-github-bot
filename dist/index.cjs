@@ -19752,10 +19752,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("error", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.error = error48;
-    function warning3(message, properties = {}) {
+    function warning4(message, properties = {}) {
       (0, command_1.issueCommand)("warning", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
-    exports2.warning = warning3;
+    exports2.warning = warning4;
     function notice(message, properties = {}) {
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
@@ -40920,6 +40920,68 @@ ${error48.responseText ?? ""}`.toLowerCase();
     "does not support"
   ].some((needle) => haystack.includes(needle));
 }
+function shouldRetryWithoutImages(error48) {
+  if (!(error48 instanceof ProviderRequestError)) {
+    return false;
+  }
+  if (![400, 415, 422, 501].includes(error48.status ?? 0)) {
+    return false;
+  }
+  const haystack = `${error48.message}
+${error48.responseText ?? ""}`.toLowerCase();
+  return [
+    "image",
+    "vision",
+    "multimodal",
+    "input_image",
+    "image_url",
+    "unsupported content",
+    "unsupported input"
+  ].some((needle) => haystack.includes(needle));
+}
+function hasImages(messages) {
+  return messages.some((message) => (message.images?.length ?? 0) > 0);
+}
+function stripImages(messages) {
+  return messages.map((message) => ({
+    role: message.role,
+    text: message.text
+  }));
+}
+function toResponsesInputContent(message) {
+  const images = message.images ?? [];
+  if (images.length === 0) {
+    return message.text;
+  }
+  return [
+    {
+      type: "input_text",
+      text: message.text
+    },
+    ...images.map((image) => ({
+      type: "input_image",
+      image_url: image.url
+    }))
+  ];
+}
+function toChatCompletionContent(message) {
+  const images = message.images ?? [];
+  if (images.length === 0) {
+    return message.text;
+  }
+  return [
+    {
+      type: "text",
+      text: message.text
+    },
+    ...images.map((image) => ({
+      type: "image_url",
+      image_url: {
+        url: image.url
+      }
+    }))
+  ];
+}
 function extractJsonBlock(text) {
   const fenced = text.match(/```json\s*([\s\S]*?)```/i);
   if (fenced?.[1]) {
@@ -40973,7 +41035,10 @@ async function requestChatCompletion(config2, apiKey, messages) {
       body: JSON.stringify({
         model: config2.model,
         temperature: 0.2,
-        messages
+        messages: messages.map((message) => ({
+          role: message.role,
+          content: toChatCompletionContent(message)
+        }))
       })
     },
     config2.timeoutMs
@@ -41007,7 +41072,10 @@ async function requestResponses(config2, apiKey, messages, structuredOutput) {
       },
       body: JSON.stringify({
         model: config2.model,
-        input: messages,
+        input: messages.map((message) => ({
+          role: message.role,
+          content: toResponsesInputContent(message)
+        })),
         temperature: 0.2,
         text: {
           format: {
@@ -41104,6 +41172,13 @@ function createIssueHelpInstruction(templateKey) {
       return "The issue type is general feedback. Avoid pretending that every issue is a defect. Adapt the response to the issue intent while still filling the required JSON fields.";
   }
 }
+var MAX_ISSUE_IMAGES = 3;
+function summarizeIssueImages(images) {
+  return images.slice(0, MAX_ISSUE_IMAGES).map((image) => ({
+    url: image.url,
+    altText: image.altText
+  }));
+}
 var OpenAiCompatibleProvider = class {
   constructor(config2, apiKey) {
     this.config = config2;
@@ -41116,11 +41191,11 @@ var OpenAiCompatibleProvider = class {
     const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
-        content: "You are a GitHub repository bot. Decide whether two issues describe the same problem. Return JSON only. `duplicate` must be boolean and `confidence` must be between 0 and 1."
+        text: "You are a GitHub repository bot. Decide whether two issues describe the same problem. Return JSON only. `duplicate` must be boolean and `confidence` must be between 0 and 1."
       },
       {
         role: "user",
-        content: JSON.stringify({
+        text: JSON.stringify({
           currentIssue: {
             title: issue2.title,
             body: issue2.body,
@@ -41137,16 +41212,21 @@ var OpenAiCompatibleProvider = class {
       reason: parsed.reason ?? ""
     };
   }
-  async generateHelp(issue2, sections, repositoryContext) {
+  async generateHelp(issue2, parsed, repositoryContext) {
     const templateKey = repositoryContext.templateKey ?? "unknown";
-    const content = await requestStructuredJson(this.config, this.apiKey, [
+    const images = summarizeIssueImages(parsed.images);
+    if (images.length > 0) {
+      core3.info(`Including ${images.length} issue image(s) in AI help request.`);
+    }
+    const messages = [
       {
         role: "system",
-        content: [
+        text: [
           "You are a GitHub issue assistant for the current repository.",
           "Treat the provided repository context as the ground truth for the current project.",
           "Assume the issue is about this repository unless the issue clearly points to an external dependency or upstream project.",
           "Do not ask the user to provide the current repository link, repository name, or project identity again.",
+          "If issue images are attached, use them as supporting evidence for the current repository issue.",
           "If more information is needed, ask only for truly missing technical details such as module, version, logs, environment, or reproduction steps.",
           createIssueHelpInstruction(templateKey),
           "Return JSON only."
@@ -41154,24 +41234,37 @@ var OpenAiCompatibleProvider = class {
       },
       {
         role: "user",
-        content: JSON.stringify({
+        text: JSON.stringify({
           repositoryContext,
           issueType: templateKey,
           issue: {
             title: issue2.title,
             body: issue2.body,
             labels: issue2.labels,
-            sections
+            sections: parsed.sections,
+            images,
+            totalImageCount: parsed.images.length
           }
-        })
+        }),
+        images
       }
-    ], issueHelpSchema);
-    const parsed = JSON.parse(extractJsonBlock(content));
+    ];
+    let content;
+    try {
+      content = await requestStructuredJson(this.config, this.apiKey, messages, issueHelpSchema);
+    } catch (error48) {
+      if (!hasImages(messages) || !shouldRetryWithoutImages(error48)) {
+        throw error48;
+      }
+      core3.warning(`AI provider rejected image inputs. Retrying issue help without images: ${String(error48)}`);
+      content = await requestStructuredJson(this.config, this.apiKey, stripImages(messages), issueHelpSchema);
+    }
+    const parsedResult = JSON.parse(extractJsonBlock(content));
     return {
-      summary: parsed.summary ?? "Unable to generate a summary.",
-      possibleCauses: Array.isArray(parsed.possibleCauses) ? parsed.possibleCauses : [],
-      troubleshootingSteps: Array.isArray(parsed.troubleshootingSteps) ? parsed.troubleshootingSteps : [],
-      missingInformation: Array.isArray(parsed.missingInformation) ? parsed.missingInformation : []
+      summary: parsedResult.summary ?? "Unable to generate a summary.",
+      possibleCauses: Array.isArray(parsedResult.possibleCauses) ? parsedResult.possibleCauses : [],
+      troubleshootingSteps: Array.isArray(parsedResult.troubleshootingSteps) ? parsedResult.troubleshootingSteps : [],
+      missingInformation: Array.isArray(parsedResult.missingInformation) ? parsedResult.missingInformation : []
     };
   }
 };
@@ -41435,7 +41528,7 @@ async function generateIssueAiHelp(params) {
   try {
     const help = await params.provider.generateHelp(
       params.issue,
-      params.parsed.sections,
+      params.parsed,
       params.repositoryContext
     );
     return renderAiHelpComment({
@@ -41459,6 +41552,58 @@ function normalizeHeading(value) {
 function extractTemplateMarker(body) {
   const match = body.match(/<!--\s*issue-template:\s*([a-zA-Z0-9_-]+)\s*-->/i);
   return match?.[1];
+}
+function decodeHtmlEntity(value) {
+  return value.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+}
+function parseHtmlAttributes(tag) {
+  const attributes = {};
+  const pattern = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+  let match;
+  while ((match = pattern.exec(tag)) !== null) {
+    const name = match[1]?.toLowerCase();
+    const rawValue = match[2] ?? match[3] ?? match[4] ?? "";
+    if (!name) {
+      continue;
+    }
+    attributes[name] = decodeHtmlEntity(rawValue.trim());
+  }
+  return attributes;
+}
+function isHttpUrl(value) {
+  return /^https?:\/\//i.test(value);
+}
+function extractIssueImages(body) {
+  const images = [];
+  const seen = /* @__PURE__ */ new Set();
+  const addImage = (url2, altText = "") => {
+    const normalizedUrl = url2.trim();
+    if (!normalizedUrl || !isHttpUrl(normalizedUrl) || seen.has(normalizedUrl)) {
+      return;
+    }
+    seen.add(normalizedUrl);
+    images.push({
+      url: normalizedUrl,
+      altText: altText.trim()
+    });
+  };
+  const markdownImagePattern = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)(?:\s+"[^"]*")?\)/gi;
+  let markdownMatch;
+  while ((markdownMatch = markdownImagePattern.exec(body)) !== null) {
+    addImage(markdownMatch[2] ?? "", markdownMatch[1] ?? "");
+  }
+  const htmlImagePattern = /<img\b[^>]*>/gi;
+  let htmlMatch;
+  while ((htmlMatch = htmlImagePattern.exec(body)) !== null) {
+    const attributes = parseHtmlAttributes(htmlMatch[0]);
+    addImage(attributes.src ?? "", attributes.alt ?? "");
+  }
+  const githubAttachmentPattern = /https:\/\/github\.com\/user-attachments\/assets\/[A-Za-z0-9-]+/gi;
+  let attachmentMatch;
+  while ((attachmentMatch = githubAttachmentPattern.exec(body)) !== null) {
+    addImage(attachmentMatch[0] ?? "");
+  }
+  return images;
 }
 function parseIssueBody(body) {
   const sections = {};
@@ -41484,7 +41629,8 @@ function parseIssueBody(body) {
   return {
     marker: extractTemplateMarker(body),
     sections,
-    headings
+    headings,
+    images: extractIssueImages(body)
   };
 }
 function matchTemplate(parsed, templates, fallbackTemplateKey) {

@@ -1,4 +1,4 @@
-import type { IssueTemplateConfig, ParsedIssue, SectionRule } from "../../core/types.js";
+import type { IssueImageReference, IssueTemplateConfig, ParsedIssue, SectionRule } from "../../core/types.js";
 
 function normalizeHeading(value: string): string {
   return value.toLowerCase().replace(/[*_`:#]/g, "").trim();
@@ -7,6 +7,74 @@ function normalizeHeading(value: string): string {
 export function extractTemplateMarker(body: string): string | undefined {
   const match = body.match(/<!--\s*issue-template:\s*([a-zA-Z0-9_-]+)\s*-->/i);
   return match?.[1];
+}
+
+function decodeHtmlEntity(value: string): string {
+  return value
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function parseHtmlAttributes(tag: string): Record<string, string> {
+  const attributes: Record<string, string> = {};
+  const pattern = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(tag)) !== null) {
+    const name = match[1]?.toLowerCase();
+    const rawValue = match[2] ?? match[3] ?? match[4] ?? "";
+    if (!name) {
+      continue;
+    }
+    attributes[name] = decodeHtmlEntity(rawValue.trim());
+  }
+
+  return attributes;
+}
+
+function isHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
+export function extractIssueImages(body: string): IssueImageReference[] {
+  const images: IssueImageReference[] = [];
+  const seen = new Set<string>();
+  const addImage = (url: string, altText = ""): void => {
+    const normalizedUrl = url.trim();
+    if (!normalizedUrl || !isHttpUrl(normalizedUrl) || seen.has(normalizedUrl)) {
+      return;
+    }
+
+    seen.add(normalizedUrl);
+    images.push({
+      url: normalizedUrl,
+      altText: altText.trim()
+    });
+  };
+
+  const markdownImagePattern = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)(?:\s+"[^"]*")?\)/gi;
+  let markdownMatch: RegExpExecArray | null;
+  while ((markdownMatch = markdownImagePattern.exec(body)) !== null) {
+    addImage(markdownMatch[2] ?? "", markdownMatch[1] ?? "");
+  }
+
+  const htmlImagePattern = /<img\b[^>]*>/gi;
+  let htmlMatch: RegExpExecArray | null;
+  while ((htmlMatch = htmlImagePattern.exec(body)) !== null) {
+    const attributes = parseHtmlAttributes(htmlMatch[0]);
+    addImage(attributes.src ?? "", attributes.alt ?? "");
+  }
+
+  const githubAttachmentPattern = /https:\/\/github\.com\/user-attachments\/assets\/[A-Za-z0-9-]+/gi;
+  let attachmentMatch: RegExpExecArray | null;
+  while ((attachmentMatch = githubAttachmentPattern.exec(body)) !== null) {
+    addImage(attachmentMatch[0] ?? "");
+  }
+
+  return images;
 }
 
 export function parseIssueBody(body: string): ParsedIssue {
@@ -38,7 +106,8 @@ export function parseIssueBody(body: string): ParsedIssue {
   return {
     marker: extractTemplateMarker(body),
     sections,
-    headings
+    headings,
+    images: extractIssueImages(body)
   };
 }
 

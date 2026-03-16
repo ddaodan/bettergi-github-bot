@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OpenAiCompatibleProvider } from "../../../src/providers/openaiCompatible/client.js";
+import { parseIssueBody } from "../../../src/subjects/issue/parser.js";
 import type { RepositoryAiContext } from "../../../src/core/types.js";
 
 function createProvider(overrides: Partial<ConstructorParameters<typeof OpenAiCompatibleProvider>[0]> = {}): OpenAiCompatibleProvider {
@@ -14,7 +15,14 @@ function createProvider(overrides: Partial<ConstructorParameters<typeof OpenAiCo
   }, "test-key");
 }
 
-function createIssue() {
+function createIssue(overrides: Partial<ReturnType<typeof createIssueBase>> = {}) {
+  return {
+    ...createIssueBase(),
+    ...overrides
+  };
+}
+
+function createIssueBase() {
   return {
     kind: "issue" as const,
     owner: "octo",
@@ -73,7 +81,9 @@ describe("OpenAiCompatibleProvider", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    await createProvider().generateHelp(createIssue(), {}, createRepositoryContext());
+    const issue = createIssue();
+
+    await createProvider().generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
 
     const firstCall = fetchMock.mock.calls[0]?.[0];
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
@@ -119,7 +129,8 @@ describe("OpenAiCompatibleProvider", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await createProvider().generateHelp(createIssue(), {}, createRepositoryContext());
+    const issue = createIssue();
+    const result = await createProvider().generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
 
     expect(result.summary).toBe("fallback");
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.openai.com/v1/responses");
@@ -151,10 +162,11 @@ describe("OpenAiCompatibleProvider", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
+    const issue = createIssue();
     const result = await createProvider({
       baseUrl: "https://cliproxy.ddaodan.cc/",
       apiStyle: "responses"
-    }).generateHelp(createIssue(), {}, createRepositoryContext());
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
 
     expect(result.summary).toBe("versioned path");
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://cliproxy.ddaodan.cc/responses");
@@ -184,12 +196,108 @@ describe("OpenAiCompatibleProvider", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
+    const issue = createIssue();
     const result = await createProvider({
       apiStyle: "chat_completions"
-    }).generateHelp(createIssue(), {}, createRepositoryContext());
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
 
     expect(result.summary).toBe("chat only");
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.openai.com/v1/chat/completions");
+  });
+
+  it("includes extracted issue images in responses requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return {
+          output_text: JSON.stringify({
+            summary: "vision ok",
+            possibleCauses: [],
+            troubleshootingSteps: [],
+            missingInformation: []
+          })
+        };
+      }
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const issue = createIssue({
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Description",
+        "See screenshots below.",
+        "",
+        "<img alt=\"Error Dialog\" src=\"https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111\" />"
+      ].join("\n")
+    });
+
+    await createProvider({
+      apiStyle: "responses"
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const content = body.input[1]?.content;
+    expect(Array.isArray(content)).toBe(true);
+    expect(content).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "input_image",
+        image_url: "https://github.com/user-attachments/assets/11111111-1111-1111-1111-111111111111"
+      })
+    ]));
+  });
+
+  it("retries without images when the provider rejects vision input", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        async text() {
+          return "input_image is not supported by this model";
+        }
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        async json() {
+          return {
+            output_text: JSON.stringify({
+              summary: "text fallback",
+              possibleCauses: [],
+              troubleshootingSteps: [],
+              missingInformation: []
+            })
+          };
+        }
+      });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const issue = createIssue({
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Description",
+        "See screenshots below.",
+        "",
+        "![Error Dialog](https://github.com/user-attachments/assets/22222222-2222-2222-2222-222222222222)"
+      ].join("\n")
+    });
+
+    const result = await createProvider({
+      apiStyle: "responses"
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
+
+    expect(result.summary).toBe("text fallback");
+
+    const firstBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const secondBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    expect(firstBody.input[1]?.content).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "input_image" })
+    ]));
+    expect(secondBody.input[1]?.content).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "input_image" })
+    ]));
   });
 });

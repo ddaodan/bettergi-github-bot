@@ -4,20 +4,51 @@ import type {
   AiHelpResult,
   DuplicateCandidate,
   DuplicateReviewResult,
+  IssueImageReference,
   IssueContext,
+  ParsedIssue,
   ProviderConfig,
   RepositoryAiContext
 } from "../../core/types.js";
 
-type ChatMessage = {
+type ProviderMessage = {
   role: "system" | "user";
-  content: string;
+  text: string;
+  images?: IssueImageReference[];
 };
 
 type StructuredOutputSchema = {
   name: string;
   schema: Record<string, unknown>;
 };
+
+type ResponsesInputContent =
+  | string
+  | Array<
+    | {
+      type: "input_text";
+      text: string;
+    }
+    | {
+      type: "input_image";
+      image_url: string;
+    }
+  >;
+
+type ChatCompletionContent =
+  | string
+  | Array<
+    | {
+      type: "text";
+      text: string;
+    }
+    | {
+      type: "image_url";
+      image_url: {
+        url: string;
+      };
+    }
+  >;
 
 class ProviderRequestError extends Error {
   public constructor(
@@ -73,6 +104,76 @@ function shouldFallbackToChat(error: unknown): boolean {
     "unknown parameter",
     "does not support"
   ].some((needle) => haystack.includes(needle));
+}
+
+function shouldRetryWithoutImages(error: unknown): boolean {
+  if (!(error instanceof ProviderRequestError)) {
+    return false;
+  }
+
+  if (![400, 415, 422, 501].includes(error.status ?? 0)) {
+    return false;
+  }
+
+  const haystack = `${error.message}\n${error.responseText ?? ""}`.toLowerCase();
+  return [
+    "image",
+    "vision",
+    "multimodal",
+    "input_image",
+    "image_url",
+    "unsupported content",
+    "unsupported input"
+  ].some((needle) => haystack.includes(needle));
+}
+
+function hasImages(messages: ProviderMessage[]): boolean {
+  return messages.some((message) => (message.images?.length ?? 0) > 0);
+}
+
+function stripImages(messages: ProviderMessage[]): ProviderMessage[] {
+  return messages.map((message) => ({
+    role: message.role,
+    text: message.text
+  }));
+}
+
+function toResponsesInputContent(message: ProviderMessage): ResponsesInputContent {
+  const images = message.images ?? [];
+  if (images.length === 0) {
+    return message.text;
+  }
+
+  return [
+    {
+      type: "input_text",
+      text: message.text
+    },
+    ...images.map((image) => ({
+      type: "input_image" as const,
+      image_url: image.url
+    }))
+  ];
+}
+
+function toChatCompletionContent(message: ProviderMessage): ChatCompletionContent {
+  const images = message.images ?? [];
+  if (images.length === 0) {
+    return message.text;
+  }
+
+  return [
+    {
+      type: "text",
+      text: message.text
+    },
+    ...images.map((image) => ({
+      type: "image_url" as const,
+      image_url: {
+        url: image.url
+      }
+    }))
+  ];
 }
 
 function extractJsonBlock(text: string): string {
@@ -138,7 +239,7 @@ async function fetchWithBaseUrlFallback(
 async function requestChatCompletion(
   config: ProviderConfig,
   apiKey: string,
-  messages: ChatMessage[]
+  messages: ProviderMessage[]
 ): Promise<string> {
   const response = await fetchWithBaseUrlFallback(
     config.baseUrl,
@@ -152,7 +253,10 @@ async function requestChatCompletion(
       body: JSON.stringify({
         model: config.model,
         temperature: 0.2,
-        messages
+        messages: messages.map((message) => ({
+          role: message.role,
+          content: toChatCompletionContent(message)
+        }))
       })
     },
     config.timeoutMs
@@ -205,7 +309,7 @@ function extractResponsesOutputText(json: {
 async function requestResponses(
   config: ProviderConfig,
   apiKey: string,
-  messages: ChatMessage[],
+  messages: ProviderMessage[],
   structuredOutput: StructuredOutputSchema
 ): Promise<string> {
   const response = await fetchWithBaseUrlFallback(
@@ -219,7 +323,10 @@ async function requestResponses(
       },
       body: JSON.stringify({
         model: config.model,
-        input: messages,
+        input: messages.map((message) => ({
+          role: message.role,
+          content: toResponsesInputContent(message)
+        })),
         temperature: 0.2,
         text: {
           format: {
@@ -251,7 +358,7 @@ async function requestResponses(
 async function requestStructuredJson(
   config: ProviderConfig,
   apiKey: string,
-  messages: ChatMessage[],
+  messages: ProviderMessage[],
   structuredOutput: StructuredOutputSchema
 ): Promise<string> {
   if (config.apiStyle === "responses") {
@@ -339,6 +446,18 @@ function createIssueHelpInstruction(templateKey: string): string {
   }
 }
 
+const MAX_ISSUE_IMAGES = 3;
+
+function summarizeIssueImages(images: IssueImageReference[]): Array<{
+  url: string;
+  altText: string;
+}> {
+  return images.slice(0, MAX_ISSUE_IMAGES).map((image) => ({
+    url: image.url,
+    altText: image.altText
+  }));
+}
+
 export class OpenAiCompatibleProvider {
   public constructor(
     private readonly config: ProviderConfig,
@@ -353,11 +472,11 @@ export class OpenAiCompatibleProvider {
     const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
-        content: "You are a GitHub repository bot. Decide whether two issues describe the same problem. Return JSON only. `duplicate` must be boolean and `confidence` must be between 0 and 1."
+        text: "You are a GitHub repository bot. Decide whether two issues describe the same problem. Return JSON only. `duplicate` must be boolean and `confidence` must be between 0 and 1."
       },
       {
         role: "user",
-        content: JSON.stringify({
+        text: JSON.stringify({
           currentIssue: {
             title: issue.title,
             body: issue.body,
@@ -378,18 +497,24 @@ export class OpenAiCompatibleProvider {
 
   public async generateHelp(
     issue: IssueContext,
-    sections: Record<string, string>,
+    parsed: ParsedIssue,
     repositoryContext: RepositoryAiContext
   ): Promise<AiHelpResult> {
     const templateKey = repositoryContext.templateKey ?? "unknown";
-    const content = await requestStructuredJson(this.config, this.apiKey, [
+    const images = summarizeIssueImages(parsed.images);
+    if (images.length > 0) {
+      core.info(`Including ${images.length} issue image(s) in AI help request.`);
+    }
+
+    const messages: ProviderMessage[] = [
       {
         role: "system",
-        content: [
+        text: [
           "You are a GitHub issue assistant for the current repository.",
           "Treat the provided repository context as the ground truth for the current project.",
           "Assume the issue is about this repository unless the issue clearly points to an external dependency or upstream project.",
           "Do not ask the user to provide the current repository link, repository name, or project identity again.",
+          "If issue images are attached, use them as supporting evidence for the current repository issue.",
           "If more information is needed, ask only for truly missing technical details such as module, version, logs, environment, or reproduction steps.",
           createIssueHelpInstruction(templateKey),
           "Return JSON only."
@@ -397,25 +522,40 @@ export class OpenAiCompatibleProvider {
       },
       {
         role: "user",
-        content: JSON.stringify({
+        text: JSON.stringify({
           repositoryContext,
           issueType: templateKey,
           issue: {
             title: issue.title,
             body: issue.body,
             labels: issue.labels,
-            sections
+            sections: parsed.sections,
+            images,
+            totalImageCount: parsed.images.length
           }
-        })
+        }),
+        images
       }
-    ], issueHelpSchema);
+    ];
 
-    const parsed = JSON.parse(extractJsonBlock(content)) as AiHelpResult;
+    let content: string;
+    try {
+      content = await requestStructuredJson(this.config, this.apiKey, messages, issueHelpSchema);
+    } catch (error) {
+      if (!hasImages(messages) || !shouldRetryWithoutImages(error)) {
+        throw error;
+      }
+
+      core.warning(`AI provider rejected image inputs. Retrying issue help without images: ${String(error)}`);
+      content = await requestStructuredJson(this.config, this.apiKey, stripImages(messages), issueHelpSchema);
+    }
+
+    const parsedResult = JSON.parse(extractJsonBlock(content)) as AiHelpResult;
     return {
-      summary: parsed.summary ?? "Unable to generate a summary.",
-      possibleCauses: Array.isArray(parsed.possibleCauses) ? parsed.possibleCauses : [],
-      troubleshootingSteps: Array.isArray(parsed.troubleshootingSteps) ? parsed.troubleshootingSteps : [],
-      missingInformation: Array.isArray(parsed.missingInformation) ? parsed.missingInformation : []
+      summary: parsedResult.summary ?? "Unable to generate a summary.",
+      possibleCauses: Array.isArray(parsedResult.possibleCauses) ? parsedResult.possibleCauses : [],
+      troubleshootingSteps: Array.isArray(parsedResult.troubleshootingSteps) ? parsedResult.troubleshootingSteps : [],
+      missingInformation: Array.isArray(parsedResult.missingInformation) ? parsedResult.missingInformation : []
     };
   }
 }

@@ -161,10 +161,16 @@ export interface RepositoryAiContext extends RepositoryMetadata {
   projectProfile: ProjectProfile;
 }
 
+export interface IssueImageReference {
+  url: string;
+  altText: string;
+}
+
 export interface ParsedIssue {
   marker?: string;
   sections: Record<string, string>;
   headings: string[];
+  images: IssueImageReference[];
 }
 
 export interface ValidationOutcome {
