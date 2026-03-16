@@ -38,7 +38,8 @@ export function createConfig(): RepoBotConfig {
           {
             key: "bug",
             detect: {
-              markers: ["bug"]
+              markers: ["bug"],
+              titlePrefixes: ["[bug]"]
             },
             requiredSections: [
               { id: "environment", aliases: ["Environment"] },

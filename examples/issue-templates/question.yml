@@ -1,0 +1,20 @@
+name: Question
+description: Ask for help or clarification.
+title: "[question] "
+labels:
+  - question
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Describe the problem or question clearly.
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What I Tried
+      description: Include logs, screenshots, attempts, or anything already checked.
+    validations:
+      required: true

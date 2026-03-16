@@ -40343,7 +40343,8 @@ var sectionRuleSchema = external_exports.object({
 var templateSchema = external_exports.object({
   key: external_exports.string().min(1),
   detect: external_exports.object({
-    markers: external_exports.array(external_exports.string().min(1)).default([])
+    markers: external_exports.array(external_exports.string().min(1)).default([]),
+    titlePrefixes: external_exports.array(external_exports.string().min(1)).default([])
   }),
   requiredSections: external_exports.array(sectionRuleSchema).default([]),
   labels: external_exports.object({
@@ -41549,6 +41550,9 @@ var core5 = __toESM(require_core(), 1);
 function normalizeHeading(value) {
   return value.toLowerCase().replace(/[*_`:#]/g, "").trim();
 }
+function normalizeTitle(value) {
+  return value.toLowerCase().trim();
+}
 function extractTemplateMarker(body) {
   const match = body.match(/<!--\s*issue-template:\s*([a-zA-Z0-9_-]+)\s*-->/i);
   return match?.[1];
@@ -41633,12 +41637,42 @@ function parseIssueBody(body) {
     images: extractIssueImages(body)
   };
 }
-function matchTemplate(parsed, templates, fallbackTemplateKey) {
+function scoreTemplateBySections(parsed, template) {
+  if (template.requiredSections.length === 0) {
+    return 0;
+  }
+  let matched = 0;
+  for (const rule of template.requiredSections) {
+    const aliases = rule.aliases.map(normalizeHeading);
+    if (aliases.some((alias) => alias in parsed.sections)) {
+      matched += 1;
+    }
+  }
+  if (matched === 0) {
+    return 0;
+  }
+  return matched / template.requiredSections.length + matched / 1e3;
+}
+function matchTemplate(parsed, templates, fallbackTemplateKey, title) {
   if (parsed.marker) {
     const byMarker = templates.find((template) => template.detect.markers.includes(parsed.marker));
     if (byMarker) {
       return byMarker;
     }
+  }
+  const normalizedTitle = normalizeTitle(title ?? "");
+  if (normalizedTitle) {
+    const byTitlePrefix = templates.find((template) => template.detect.titlePrefixes.some((prefix) => normalizedTitle.startsWith(normalizeTitle(prefix))));
+    if (byTitlePrefix) {
+      return byTitlePrefix;
+    }
+  }
+  const rankedTemplates = templates.map((template) => ({
+    template,
+    score: scoreTemplateBySections(parsed, template)
+  })).filter((entry) => entry.score > 0).sort((left, right) => right.score - left.score);
+  if (rankedTemplates.length > 0) {
+    return rankedTemplates[0]?.template;
   }
   if (fallbackTemplateKey) {
     return templates.find((template) => template.key === fallbackTemplateKey);
@@ -41976,7 +42010,7 @@ function validateIssue(params) {
     };
   }
   const parsed = parseIssueBody(params.body);
-  const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey);
+  const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey, params.title);
   if (!template) {
     return {
       executed: true,
@@ -42033,6 +42067,7 @@ async function runIssueWorkflow(params) {
   const commentMode = detectCommentMode(`${params.issue.title}
 ${params.issue.body}`, params.config.runtime);
   const validation = validateIssue({
+    title: params.issue.title,
     body: params.issue.body,
     config: params.config.issues.validation,
     commentMode

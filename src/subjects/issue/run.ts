@@ -32,6 +32,7 @@ export async function runIssueWorkflow(params: {
   const effectiveLabels = new Set(params.issue.labels);
   const commentMode: CommentMode = detectCommentMode(`${params.issue.title}\n${params.issue.body}`, params.config.runtime);
   const validation = validateIssue({
+    title: params.issue.title,
     body: params.issue.body,
     config: params.config.issues.validation,
     commentMode

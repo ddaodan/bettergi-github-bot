@@ -23,6 +23,7 @@ function isPlaceholder(content: string, hints: string[]): boolean {
 }
 
 export function validateIssue(params: {
+  title?: string;
   body: string;
   config: ValidationConfig;
   commentMode: CommentMode;
@@ -39,7 +40,7 @@ export function validateIssue(params: {
   }
 
   const parsed = parseIssueBody(params.body);
-  const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey);
+  const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey, params.title);
   if (!template) {
     return {
       executed: true,

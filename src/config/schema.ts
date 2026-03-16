@@ -9,7 +9,8 @@ const sectionRuleSchema = z.object({
 const templateSchema = z.object({
   key: z.string().min(1),
   detect: z.object({
-    markers: z.array(z.string().min(1)).default([])
+    markers: z.array(z.string().min(1)).default([]),
+    titlePrefixes: z.array(z.string().min(1)).default([])
   }),
   requiredSections: z.array(sectionRuleSchema).default([]),
   labels: z.object({

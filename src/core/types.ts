@@ -17,6 +17,7 @@ export interface IssueTemplateConfig {
   key: string;
   detect: {
     markers: string[];
+    titlePrefixes: string[];
   };
   requiredSections: SectionRule[];
   labels: {

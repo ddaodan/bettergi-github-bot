@@ -4,6 +4,10 @@ function normalizeHeading(value: string): string {
   return value.toLowerCase().replace(/[*_`:#]/g, "").trim();
 }
 
+function normalizeTitle(value: string): string {
+  return value.toLowerCase().trim();
+}
+
 export function extractTemplateMarker(body: string): string | undefined {
   const match = body.match(/<!--\s*issue-template:\s*([a-zA-Z0-9_-]+)\s*-->/i);
   return match?.[1];
@@ -111,12 +115,58 @@ export function parseIssueBody(body: string): ParsedIssue {
   };
 }
 
-export function matchTemplate(parsed: ParsedIssue, templates: IssueTemplateConfig[], fallbackTemplateKey?: string): IssueTemplateConfig | undefined {
+function scoreTemplateBySections(parsed: ParsedIssue, template: IssueTemplateConfig): number {
+  if (template.requiredSections.length === 0) {
+    return 0;
+  }
+
+  let matched = 0;
+  for (const rule of template.requiredSections) {
+    const aliases = rule.aliases.map(normalizeHeading);
+    if (aliases.some((alias) => alias in parsed.sections)) {
+      matched += 1;
+    }
+  }
+
+  if (matched === 0) {
+    return 0;
+  }
+
+  return matched / template.requiredSections.length + matched / 1000;
+}
+
+export function matchTemplate(
+  parsed: ParsedIssue,
+  templates: IssueTemplateConfig[],
+  fallbackTemplateKey?: string,
+  title?: string
+): IssueTemplateConfig | undefined {
   if (parsed.marker) {
     const byMarker = templates.find((template) => template.detect.markers.includes(parsed.marker!));
     if (byMarker) {
       return byMarker;
     }
+  }
+
+  const normalizedTitle = normalizeTitle(title ?? "");
+  if (normalizedTitle) {
+    const byTitlePrefix = templates.find((template) => template.detect.titlePrefixes
+      .some((prefix) => normalizedTitle.startsWith(normalizeTitle(prefix))));
+    if (byTitlePrefix) {
+      return byTitlePrefix;
+    }
+  }
+
+  const rankedTemplates = templates
+    .map((template) => ({
+      template,
+      score: scoreTemplateBySections(parsed, template)
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score);
+
+  if (rankedTemplates.length > 0) {
+    return rankedTemplates[0]?.template;
   }
 
   if (fallbackTemplateKey) {

@@ -20,6 +20,8 @@ issues:
         detect:
           markers:
             - bug
+          titlePrefixes:
+            - "[bug]"
         requiredSections:
           - id: environment
             aliases:
@@ -39,6 +41,8 @@ issues:
         detect:
           markers:
             - feature
+          titlePrefixes:
+            - "[feature]"
         requiredSections:
           - id: summary
             aliases:
@@ -55,6 +59,8 @@ issues:
         detect:
           markers:
             - question
+          titlePrefixes:
+            - "[question]"
         requiredSections:
           - id: summary
             aliases:

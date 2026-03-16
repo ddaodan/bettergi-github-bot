@@ -52,6 +52,7 @@ describe("validateIssue", () => {
   it("accepts English section headings", () => {
     const config = createConfig();
     const result = validateIssue({
+      title: "[bug] Crash after startup",
       body: [
         "<!-- issue-template: bug -->",
         "",
@@ -71,6 +72,30 @@ describe("validateIssue", () => {
 
     expect(Object.keys(result.parsed.sections)).toContain("steps to reproduce");
     expect(result.missingSections.map((item) => item.id)).toEqual([]);
+    expect(result.valid).toBe(true);
+    expect(result.commentBody).toBeUndefined();
+  });
+
+  it("matches issue forms by title prefix even without the legacy marker", () => {
+    const config = createConfig();
+    const result = validateIssue({
+      title: "[bug] Crash after startup",
+      body: [
+        "## Environment",
+        "Paper 1.21 / Java 21",
+        "",
+        "## Steps to Reproduce",
+        "1. Start the server",
+        "2. Load the plugin and wait for crash",
+        "",
+        "## Expected Behavior",
+        "The plugin should boot successfully without crash"
+      ].join("\n"),
+      config: config.issues.validation,
+      commentMode: "zh-en"
+    });
+
+    expect(result.template?.key).toBe("bug");
     expect(result.valid).toBe(true);
     expect(result.commentBody).toBeUndefined();
   });
