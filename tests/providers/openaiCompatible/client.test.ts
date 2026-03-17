@@ -300,4 +300,54 @@ describe("OpenAiCompatibleProvider", () => {
       expect.objectContaining({ type: "input_image" })
     ]));
   });
+
+  it("includes repository code context in fix suggestion requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return {
+          output_text: JSON.stringify({
+            summary: "fix",
+            candidateFiles: [
+              {
+                path: "src/index.ts",
+                reason: "entry point"
+              }
+            ],
+            changeSuggestions: ["Update the entry path."],
+            patchDraft: "@@\n- old\n+ new",
+            verificationSteps: ["Run the app again."],
+            risks: ["Could affect startup."]
+          })
+        };
+      }
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const issue = createIssue();
+    const result = await createProvider({
+      apiStyle: "responses"
+    }).generateFixSuggestion(
+      issue,
+      parseIssueBody(issue.body),
+      createRepositoryContext(),
+      {
+        fallbackUsed: false,
+        files: [
+          {
+            path: "src/index.ts",
+            reason: "entry point",
+            excerpt: "export function main() {}"
+          }
+        ]
+      }
+    );
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const payload = JSON.parse(String(body.input[1]?.content));
+    expect(result.summary).toBe("fix");
+    expect(payload.codeContext.files[0]?.path).toBe("src/index.ts");
+    expect(payload.repositoryContext.fullName).toBe("octo/repo");
+  });
 });

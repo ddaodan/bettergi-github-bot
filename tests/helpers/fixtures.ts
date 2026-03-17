@@ -1,5 +1,6 @@
 import type {
   DuplicateCandidate,
+  IssueCommentContext,
   IssueContext,
   LabelDefinition,
   RepoBotConfig,
@@ -102,6 +103,18 @@ export function createConfig(): RepoBotConfig {
             techStack: []
           }
         }
+      },
+      commands: {
+        enabled: false,
+        mentions: ["@bot"],
+        access: "collaborators",
+        fix: {
+          enabled: false,
+          commentAnchor: "issue-bot:fix"
+        },
+        refresh: {
+          enabled: false
+        }
       }
     },
     pullRequests: {
@@ -142,6 +155,25 @@ export function createIssue(overrides: Partial<IssueContext> = {}): IssueContext
   };
 }
 
+export function createIssueCommentContext(overrides: Partial<IssueCommentContext> = {}): IssueCommentContext {
+  const issue = createIssue();
+  const base: IssueCommentContext = {
+    issue,
+    commentId: 100,
+    commentBody: "@bot /refresh",
+    commentAuthorLogin: "octocat",
+    commentAuthorType: "User",
+    commentAuthorAssociation: "COLLABORATOR",
+    action: "created"
+  };
+
+  return {
+    ...base,
+    ...overrides,
+    issue: overrides.issue ?? issue
+  };
+}
+
 export class FakeGateway implements GitHubGateway {
   public readonly comments: Array<{ issueNumber: number; body: string; id: number }> = [];
 
@@ -154,6 +186,8 @@ export class FakeGateway implements GitHubGateway {
   public readonly closedIssues: number[] = [];
 
   public readonly searchRequests: SearchIssueParams[] = [];
+
+  public readonly commentReactions: Array<{ commentId: number; reaction: "eyes" | "rocket" | "confused" }> = [];
 
   private commentId = 1;
 
@@ -168,11 +202,16 @@ export class FakeGateway implements GitHubGateway {
       topics: ["automation", "desktop"],
       homepage: "https://example.test"
     },
-    private readonly repositoryReadme = "# Example Repo\n\nThis repository automates desktop tasks."
+    private readonly repositoryReadme = "# Example Repo\n\nThis repository automates desktop tasks.",
+    private readonly issueComment?: IssueCommentContext
   ) {}
 
   public async getIssueContext(): Promise<IssueContext | undefined> {
     return this.issue;
+  }
+
+  public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {
+    return this.issueComment;
   }
 
   public async getRepositoryMetadata(): Promise<RepositoryMetadata> {
@@ -208,6 +247,10 @@ export class FakeGateway implements GitHubGateway {
       this.comments.splice(index, 1);
       this.deletedCommentIds.push(commentId);
     }
+  }
+
+  public async addIssueCommentReaction(commentId: number, reaction: "eyes" | "rocket" | "confused"): Promise<void> {
+    this.commentReactions.push({ commentId, reaction });
   }
 
   public async addLabels(issueNumber: number, labels: string[]): Promise<void> {

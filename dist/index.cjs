@@ -1001,14 +1001,14 @@ var require_util = __commonJS({
         }
         const port = url2.port != null ? url2.port : url2.protocol === "https:" ? 443 : 80;
         let origin = url2.origin != null ? url2.origin : `${url2.protocol}//${url2.hostname}:${port}`;
-        let path2 = url2.path != null ? url2.path : `${url2.pathname || ""}${url2.search || ""}`;
+        let path3 = url2.path != null ? url2.path : `${url2.pathname || ""}${url2.search || ""}`;
         if (origin.endsWith("/")) {
           origin = origin.substring(0, origin.length - 1);
         }
-        if (path2 && !path2.startsWith("/")) {
-          path2 = `/${path2}`;
+        if (path3 && !path3.startsWith("/")) {
+          path3 = `/${path3}`;
         }
-        url2 = new URL(origin + path2);
+        url2 = new URL(origin + path3);
       }
       return url2;
     }
@@ -2622,20 +2622,20 @@ var require_parseParams = __commonJS({
 var require_basename = __commonJS({
   "node_modules/@fastify/busboy/lib/utils/basename.js"(exports2, module2) {
     "use strict";
-    module2.exports = function basename(path2) {
-      if (typeof path2 !== "string") {
+    module2.exports = function basename(path3) {
+      if (typeof path3 !== "string") {
         return "";
       }
-      for (var i = path2.length - 1; i >= 0; --i) {
-        switch (path2.charCodeAt(i)) {
+      for (var i = path3.length - 1; i >= 0; --i) {
+        switch (path3.charCodeAt(i)) {
           case 47:
           // '/'
           case 92:
-            path2 = path2.slice(i + 1);
-            return path2 === ".." || path2 === "." ? "" : path2;
+            path3 = path3.slice(i + 1);
+            return path3 === ".." || path3 === "." ? "" : path3;
         }
       }
-      return path2 === ".." || path2 === "." ? "" : path2;
+      return path3 === ".." || path3 === "." ? "" : path3;
     };
   }
 });
@@ -5666,7 +5666,7 @@ var require_request = __commonJS({
     }
     var Request = class _Request {
       constructor(origin, {
-        path: path2,
+        path: path3,
         method,
         body,
         headers,
@@ -5680,11 +5680,11 @@ var require_request = __commonJS({
         throwOnError,
         expectContinue
       }, handler2) {
-        if (typeof path2 !== "string") {
+        if (typeof path3 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path2[0] !== "/" && !(path2.startsWith("http://") || path2.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path3[0] !== "/" && !(path3.startsWith("http://") || path3.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.exec(path2) !== null) {
+        } else if (invalidPathRegex.exec(path3) !== null) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -5747,7 +5747,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? util.buildURL(path2, query) : path2;
+        this.path = query ? util.buildURL(path3, query) : path3;
         this.origin = origin;
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" : idempotent;
         this.blocking = blocking == null ? false : blocking;
@@ -6755,9 +6755,9 @@ var require_RedirectHandler = __commonJS({
           return this.handler.onHeaders(statusCode, headers, resume, statusText);
         }
         const { origin, pathname, search } = util.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path2 = search ? `${pathname}${search}` : pathname;
+        const path3 = search ? `${pathname}${search}` : pathname;
         this.opts.headers = cleanRequestHeaders(this.opts.headers, statusCode === 303, this.opts.origin !== origin);
-        this.opts.path = path2;
+        this.opts.path = path3;
         this.opts.origin = origin;
         this.opts.maxRedirections = 0;
         this.opts.query = null;
@@ -7999,7 +7999,7 @@ var require_client = __commonJS({
         writeH2(client, client[kHTTP2Session], request2);
         return;
       }
-      const { body, method, path: path2, host, upgrade, headers, blocking, reset } = request2;
+      const { body, method, path: path3, host, upgrade, headers, blocking, reset } = request2;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
       if (body && typeof body.read === "function") {
         body.read(0);
@@ -8049,7 +8049,7 @@ var require_client = __commonJS({
       if (blocking) {
         socket[kBlocking] = true;
       }
-      let header = `${method} ${path2} HTTP/1.1\r
+      let header = `${method} ${path3} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -8112,7 +8112,7 @@ upgrade: ${upgrade}\r
       return true;
     }
     function writeH2(client, session, request2) {
-      const { body, method, path: path2, host, upgrade, expectContinue, signal, headers: reqHeaders } = request2;
+      const { body, method, path: path3, host, upgrade, expectContinue, signal, headers: reqHeaders } = request2;
       let headers;
       if (typeof reqHeaders === "string") headers = Request[kHTTP2CopyHeaders](reqHeaders.trim());
       else headers = reqHeaders;
@@ -8155,7 +8155,7 @@ upgrade: ${upgrade}\r
         });
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path2;
+      headers[HTTP2_HEADER_PATH] = path3;
       headers[HTTP2_HEADER_SCHEME] = "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
       if (body && typeof body.read === "function") {
@@ -10398,20 +10398,20 @@ var require_mock_utils = __commonJS({
       }
       return true;
     }
-    function safeUrl(path2) {
-      if (typeof path2 !== "string") {
-        return path2;
+    function safeUrl(path3) {
+      if (typeof path3 !== "string") {
+        return path3;
       }
-      const pathSegments = path2.split("?");
+      const pathSegments = path3.split("?");
       if (pathSegments.length !== 2) {
-        return path2;
+        return path3;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path2, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path2);
+    function matchKey(mockDispatch2, { path: path3, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path3);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -10429,7 +10429,7 @@ var require_mock_utils = __commonJS({
     function getMockDispatch(mockDispatches, key) {
       const basePath = key.query ? buildURL(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path2 }) => matchValue(safeUrl(path2), resolvedPath));
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path3 }) => matchValue(safeUrl(path3), resolvedPath));
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
       }
@@ -10466,9 +10466,9 @@ var require_mock_utils = __commonJS({
       }
     }
     function buildKey(opts) {
-      const { path: path2, method, body, headers, query } = opts;
+      const { path: path3, method, body, headers, query } = opts;
       return {
-        path: path2,
+        path: path3,
         method,
         body,
         headers,
@@ -10917,10 +10917,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path2, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
+          ({ method, path: path3, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path2,
+            Path: path3,
             "Status code": statusCode,
             Persistent: persist ? "\u2705" : "\u274C",
             Invocations: timesInvoked,
@@ -15541,8 +15541,8 @@ var require_util6 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path2) {
-      for (const char of path2) {
+    function validateCookiePath(path3) {
+      for (const char of path3) {
         const code = char.charCodeAt(0);
         if (code < 33 || char === ";") {
           throw new Error("Invalid cookie path");
@@ -17222,11 +17222,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path2 = opts.path;
+          let path3 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path2 = `/${path2}`;
+            path3 = `/${path3}`;
           }
-          url2 = new URL(util.parseOrigin(url2).origin + path2);
+          url2 = new URL(util.parseOrigin(url2).origin + path3);
         } else {
           if (!opts) {
             opts = typeof url2 === "object" ? url2 : {};
@@ -18449,7 +18449,7 @@ var require_path_utils = __commonJS({
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.toPlatformPath = exports2.toWin32Path = exports2.toPosixPath = void 0;
-    var path2 = __importStar(require("path"));
+    var path3 = __importStar(require("path"));
     function toPosixPath(pth) {
       return pth.replace(/[\\]/g, "/");
     }
@@ -18459,7 +18459,7 @@ var require_path_utils = __commonJS({
     }
     exports2.toWin32Path = toWin32Path;
     function toPlatformPath(pth) {
-      return pth.replace(/[/\\]/g, path2.sep);
+      return pth.replace(/[/\\]/g, path3.sep);
     }
     exports2.toPlatformPath = toPlatformPath;
   }
@@ -18523,7 +18523,7 @@ var require_io_util = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.getCmdPath = exports2.tryGetExecutablePath = exports2.isRooted = exports2.isDirectory = exports2.exists = exports2.READONLY = exports2.UV_FS_O_EXLOCK = exports2.IS_WINDOWS = exports2.unlink = exports2.symlink = exports2.stat = exports2.rmdir = exports2.rm = exports2.rename = exports2.readlink = exports2.readdir = exports2.open = exports2.mkdir = exports2.lstat = exports2.copyFile = exports2.chmod = void 0;
     var fs = __importStar(require("fs"));
-    var path2 = __importStar(require("path"));
+    var path3 = __importStar(require("path"));
     _a2 = fs.promises, exports2.chmod = _a2.chmod, exports2.copyFile = _a2.copyFile, exports2.lstat = _a2.lstat, exports2.mkdir = _a2.mkdir, exports2.open = _a2.open, exports2.readdir = _a2.readdir, exports2.readlink = _a2.readlink, exports2.rename = _a2.rename, exports2.rm = _a2.rm, exports2.rmdir = _a2.rmdir, exports2.stat = _a2.stat, exports2.symlink = _a2.symlink, exports2.unlink = _a2.unlink;
     exports2.IS_WINDOWS = process.platform === "win32";
     exports2.UV_FS_O_EXLOCK = 268435456;
@@ -18572,7 +18572,7 @@ var require_io_util = __commonJS({
         }
         if (stats && stats.isFile()) {
           if (exports2.IS_WINDOWS) {
-            const upperExt = path2.extname(filePath).toUpperCase();
+            const upperExt = path3.extname(filePath).toUpperCase();
             if (extensions.some((validExt) => validExt.toUpperCase() === upperExt)) {
               return filePath;
             }
@@ -18596,11 +18596,11 @@ var require_io_util = __commonJS({
           if (stats && stats.isFile()) {
             if (exports2.IS_WINDOWS) {
               try {
-                const directory = path2.dirname(filePath);
-                const upperName = path2.basename(filePath).toUpperCase();
+                const directory = path3.dirname(filePath);
+                const upperName = path3.basename(filePath).toUpperCase();
                 for (const actualName of yield exports2.readdir(directory)) {
                   if (upperName === actualName.toUpperCase()) {
-                    filePath = path2.join(directory, actualName);
+                    filePath = path3.join(directory, actualName);
                     break;
                   }
                 }
@@ -18695,7 +18695,7 @@ var require_io = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.findInPath = exports2.which = exports2.mkdirP = exports2.rmRF = exports2.mv = exports2.cp = void 0;
     var assert_1 = require("assert");
-    var path2 = __importStar(require("path"));
+    var path3 = __importStar(require("path"));
     var ioUtil = __importStar(require_io_util());
     function cp(source, dest, options = {}) {
       return __awaiter(this, void 0, void 0, function* () {
@@ -18704,7 +18704,7 @@ var require_io = __commonJS({
         if (destStat && destStat.isFile() && !force) {
           return;
         }
-        const newDest = destStat && destStat.isDirectory() && copySourceDirectory ? path2.join(dest, path2.basename(source)) : dest;
+        const newDest = destStat && destStat.isDirectory() && copySourceDirectory ? path3.join(dest, path3.basename(source)) : dest;
         if (!(yield ioUtil.exists(source))) {
           throw new Error(`no such file or directory: ${source}`);
         }
@@ -18716,7 +18716,7 @@ var require_io = __commonJS({
             yield cpDirRecursive(source, newDest, 0, force);
           }
         } else {
-          if (path2.relative(source, newDest) === "") {
+          if (path3.relative(source, newDest) === "") {
             throw new Error(`'${newDest}' and '${source}' are the same file`);
           }
           yield copyFile(source, newDest, force);
@@ -18729,7 +18729,7 @@ var require_io = __commonJS({
         if (yield ioUtil.exists(dest)) {
           let destExists = true;
           if (yield ioUtil.isDirectory(dest)) {
-            dest = path2.join(dest, path2.basename(source));
+            dest = path3.join(dest, path3.basename(source));
             destExists = yield ioUtil.exists(dest);
           }
           if (destExists) {
@@ -18740,7 +18740,7 @@ var require_io = __commonJS({
             }
           }
         }
-        yield mkdirP(path2.dirname(dest));
+        yield mkdirP(path3.dirname(dest));
         yield ioUtil.rename(source, dest);
       });
     }
@@ -18803,7 +18803,7 @@ var require_io = __commonJS({
         }
         const extensions = [];
         if (ioUtil.IS_WINDOWS && process.env["PATHEXT"]) {
-          for (const extension of process.env["PATHEXT"].split(path2.delimiter)) {
+          for (const extension of process.env["PATHEXT"].split(path3.delimiter)) {
             if (extension) {
               extensions.push(extension);
             }
@@ -18816,12 +18816,12 @@ var require_io = __commonJS({
           }
           return [];
         }
-        if (tool.includes(path2.sep)) {
+        if (tool.includes(path3.sep)) {
           return [];
         }
         const directories = [];
         if (process.env.PATH) {
-          for (const p of process.env.PATH.split(path2.delimiter)) {
+          for (const p of process.env.PATH.split(path3.delimiter)) {
             if (p) {
               directories.push(p);
             }
@@ -18829,7 +18829,7 @@ var require_io = __commonJS({
         }
         const matches = [];
         for (const directory of directories) {
-          const filePath = yield ioUtil.tryGetExecutablePath(path2.join(directory, tool), extensions);
+          const filePath = yield ioUtil.tryGetExecutablePath(path3.join(directory, tool), extensions);
           if (filePath) {
             matches.push(filePath);
           }
@@ -18945,7 +18945,7 @@ var require_toolrunner = __commonJS({
     var os = __importStar(require("os"));
     var events = __importStar(require("events"));
     var child = __importStar(require("child_process"));
-    var path2 = __importStar(require("path"));
+    var path3 = __importStar(require("path"));
     var io = __importStar(require_io());
     var ioUtil = __importStar(require_io_util());
     var timers_1 = require("timers");
@@ -19160,7 +19160,7 @@ var require_toolrunner = __commonJS({
       exec() {
         return __awaiter(this, void 0, void 0, function* () {
           if (!ioUtil.isRooted(this.toolPath) && (this.toolPath.includes("/") || IS_WINDOWS && this.toolPath.includes("\\"))) {
-            this.toolPath = path2.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
+            this.toolPath = path3.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
           }
           this.toolPath = yield io.which(this.toolPath, true);
           return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
@@ -19660,7 +19660,7 @@ var require_core = __commonJS({
     var file_command_1 = require_file_command();
     var utils_1 = require_utils();
     var os = __importStar(require("os"));
-    var path2 = __importStar(require("path"));
+    var path3 = __importStar(require("path"));
     var oidc_utils_1 = require_oidc_utils();
     var ExitCode;
     (function(ExitCode2) {
@@ -19688,7 +19688,7 @@ var require_core = __commonJS({
       } else {
         (0, command_1.issueCommand)("add-path", {}, inputPath);
       }
-      process.env["PATH"] = `${inputPath}${path2.delimiter}${process.env["PATH"]}`;
+      process.env["PATH"] = `${inputPath}${path3.delimiter}${process.env["PATH"]}`;
     }
     exports2.addPath = addPath;
     function getInput2(name, options) {
@@ -19752,10 +19752,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("error", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.error = error48;
-    function warning4(message, properties = {}) {
+    function warning5(message, properties = {}) {
       (0, command_1.issueCommand)("warning", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
-    exports2.warning = warning4;
+    exports2.warning = warning5;
     function notice(message, properties = {}) {
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
@@ -19844,8 +19844,8 @@ var require_context = __commonJS({
           if ((0, fs_1.existsSync)(process.env.GITHUB_EVENT_PATH)) {
             this.payload = JSON.parse((0, fs_1.readFileSync)(process.env.GITHUB_EVENT_PATH, { encoding: "utf8" }));
           } else {
-            const path2 = process.env.GITHUB_EVENT_PATH;
-            process.stdout.write(`GITHUB_EVENT_PATH ${path2} does not exist${os_1.EOL}`);
+            const path3 = process.env.GITHUB_EVENT_PATH;
+            process.stdout.write(`GITHUB_EVENT_PATH ${path3} does not exist${os_1.EOL}`);
           }
         }
         this.eventName = process.env.GITHUB_EVENT_NAME;
@@ -23936,7 +23936,7 @@ var require_github = __commonJS({
 });
 
 // src/index.ts
-var core8 = __toESM(require_core(), 1);
+var core9 = __toESM(require_core(), 1);
 
 // src/config/loadConfig.ts
 var import_promises = require("fs/promises");
@@ -27333,10 +27333,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema2) {
   return mergeDefs(schema2._zod.def);
 }
-function getElementAtPath(obj, path2) {
-  if (!path2)
+function getElementAtPath(obj, path3) {
+  if (!path3)
     return obj;
-  return path2.reduce((acc, key) => acc?.[key], obj);
+  return path3.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -27719,11 +27719,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path2, issues) {
+function prefixIssues(path3, issues) {
   return issues.map((iss) => {
     var _a2;
     (_a2 = iss).path ?? (_a2.path = []);
-    iss.path.unshift(path2);
+    iss.path.unshift(path3);
     return iss;
   });
 }
@@ -27906,7 +27906,7 @@ function formatError2(error48, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error48, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error49, path2 = []) => {
+  const processError = (error49, path3 = []) => {
     var _a2, _b;
     for (const issue2 of error49.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
@@ -27916,7 +27916,7 @@ function treeifyError(error48, mapper = (issue2) => issue2.message) {
       } else if (issue2.code === "invalid_element") {
         processError({ issues: issue2.issues }, issue2.path);
       } else {
-        const fullpath = [...path2, ...issue2.path];
+        const fullpath = [...path3, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -27948,8 +27948,8 @@ function treeifyError(error48, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path2 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path2) {
+  const path3 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path3) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -39926,13 +39926,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path2 = ref.slice(1).split("/").filter(Boolean);
-  if (path2.length === 0) {
+  const path3 = ref.slice(1).split("/").filter(Boolean);
+  if (path3.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path2[0] === defsKey) {
-    const key = path2[1];
+  if (path3[0] === defsKey) {
+    const key = path3[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -40404,6 +40404,23 @@ var projectContextSchema = external_exports.object({
     techStack: []
   }))
 });
+var issueCommandsSchema = external_exports.object({
+  enabled: external_exports.boolean().default(false),
+  mentions: external_exports.array(external_exports.string().min(1)).min(1).default(["@bot"]),
+  access: external_exports.enum(["collaborators"]).default("collaborators"),
+  fix: external_exports.object({
+    enabled: external_exports.boolean().default(false),
+    commentAnchor: external_exports.string().min(1).default("issue-bot:fix")
+  }).default(() => ({
+    enabled: false,
+    commentAnchor: "issue-bot:fix"
+  })),
+  refresh: external_exports.object({
+    enabled: external_exports.boolean().default(false)
+  }).default(() => ({
+    enabled: false
+  }))
+});
 var repoBotConfigSchema = external_exports.object({
   runtime: external_exports.object({
     languageMode: external_exports.enum(["auto", "zh", "zh-en"]).default("auto"),
@@ -40532,6 +40549,18 @@ var repoBotConfigSchema = external_exports.object({
           techStack: []
         }
       }
+    })),
+    commands: issueCommandsSchema.default(() => ({
+      enabled: false,
+      mentions: ["@bot"],
+      access: "collaborators",
+      fix: {
+        enabled: false,
+        commentAnchor: "issue-bot:fix"
+      },
+      refresh: {
+        enabled: false
+      }
     }))
   }).default(() => ({
     validation: {
@@ -40580,6 +40609,18 @@ var repoBotConfigSchema = external_exports.object({
           summary: "",
           techStack: []
         }
+      }
+    },
+    commands: {
+      enabled: false,
+      mentions: ["@bot"],
+      access: "collaborators",
+      fix: {
+        enabled: false,
+        commentAnchor: "issue-bot:fix"
+      },
+      refresh: {
+        enabled: false
       }
     }
   })),
@@ -40676,6 +40717,22 @@ function toIssueContext() {
     action: import_github.context.payload.action ?? ""
   };
 }
+function toIssueCommentContext() {
+  const issue2 = toIssueContext();
+  const comment = import_github.context.payload.comment;
+  if (!issue2 || !comment) {
+    return void 0;
+  }
+  return {
+    issue: issue2,
+    commentId: comment.id,
+    commentBody: comment.body ?? "",
+    commentAuthorLogin: comment.user?.login ?? "",
+    commentAuthorType: comment.user?.type ?? "",
+    commentAuthorAssociation: comment.author_association ?? "",
+    action: import_github.context.payload.action ?? ""
+  };
+}
 var OctokitGitHubGateway = class {
   constructor(token, dryRun) {
     this.dryRun = dryRun;
@@ -40684,6 +40741,9 @@ var OctokitGitHubGateway = class {
   octokit;
   async getIssueContext() {
     return toIssueContext();
+  }
+  async getIssueCommentContext() {
+    return toIssueCommentContext();
   }
   async getRepositoryMetadata() {
     const response = await this.octokit.rest.repos.get({
@@ -40766,6 +40826,22 @@ var OctokitGitHubGateway = class {
       repo: import_github.context.repo.repo,
       comment_id: commentId
     });
+  }
+  async addIssueCommentReaction(commentId, reaction) {
+    if (this.dryRun) {
+      core2.info(`[dry-run] add reaction ${reaction} to issue comment #${commentId}`);
+      return;
+    }
+    try {
+      await this.octokit.rest.reactions.createForIssueComment({
+        owner: import_github.context.repo.owner,
+        repo: import_github.context.repo.repo,
+        comment_id: commentId,
+        content: reaction
+      });
+    } catch (error48) {
+      core2.info(`Skip adding reaction "${reaction}" to issue comment #${commentId}: ${String(error48)}`);
+    }
   }
   async addLabels(issueNumber, labels) {
     if (labels.length === 0) {
@@ -41189,6 +41265,56 @@ var issueHelpSchema = {
     required: ["summary", "possibleCauses", "troubleshootingSteps", "missingInformation"]
   }
 };
+var fixSuggestionSchema = {
+  name: "fix_suggestion",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      summary: {
+        type: "string"
+      },
+      candidateFiles: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            path: {
+              type: "string"
+            },
+            reason: {
+              type: "string"
+            }
+          },
+          required: ["path", "reason"]
+        }
+      },
+      changeSuggestions: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      },
+      patchDraft: {
+        type: "string"
+      },
+      verificationSteps: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      },
+      risks: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      }
+    },
+    required: ["summary", "candidateFiles", "changeSuggestions", "patchDraft", "verificationSteps", "risks"]
+  }
+};
 function createIssueHelpInstruction(templateKey) {
   switch (templateKey) {
     case "bug":
@@ -41200,6 +41326,19 @@ function createIssueHelpInstruction(templateKey) {
       return "The issue type is feature or suggestion. Treat it as a proposal rather than a fault report. Focus on feasibility, implementation directions, tradeoffs, and recommended next steps. Use possibleCauses as feasible approaches or considerations.";
     default:
       return "The issue type is general feedback. Avoid pretending that every issue is a defect. Adapt the response to the issue intent while still filling the required JSON fields.";
+  }
+}
+function createFixInstruction(templateKey) {
+  switch (templateKey) {
+    case "bug":
+      return "The issue type is bug. Focus on a practical code-level fix, the most likely target files, and a realistic patch draft.";
+    case "question":
+      return "The issue type is question. If a code change seems useful, propose it carefully; otherwise keep the patch draft minimal and explain the uncertainty.";
+    case "feature":
+    case "suggestion":
+      return "The issue type is feature or suggestion. Treat the output as an implementation proposal and patch draft, not as a confirmed bug fix.";
+    default:
+      return "Treat the output as a cautious repository-specific implementation suggestion with a patch draft.";
   }
 }
 var MAX_ISSUE_IMAGES = 3;
@@ -41297,6 +41436,47 @@ var OpenAiCompatibleProvider = class {
       missingInformation: Array.isArray(parsedResult.missingInformation) ? parsedResult.missingInformation : []
     };
   }
+  async generateFixSuggestion(issue2, parsed, repositoryContext, codeContext) {
+    const templateKey = repositoryContext.templateKey ?? "unknown";
+    const content = await requestStructuredJson(this.config, this.apiKey, [
+      {
+        role: "system",
+        text: [
+          "You are a GitHub issue assistant generating repository-specific fix suggestions.",
+          "Use the provided repository context and code excerpts as the primary source of truth.",
+          "Do not claim that a patch is confirmed unless the code excerpts clearly support it.",
+          "If the evidence is incomplete, state the uncertainty in the summary, risks, and patch draft.",
+          "Keep the candidate files aligned with the provided code context whenever possible.",
+          "Write patchDraft as a compact unified diff or pseudo diff that an engineer could refine.",
+          createFixInstruction(templateKey),
+          "Return JSON only."
+        ].join(" ")
+      },
+      {
+        role: "user",
+        text: JSON.stringify({
+          repositoryContext,
+          codeContext,
+          issueType: templateKey,
+          issue: {
+            title: issue2.title,
+            body: issue2.body,
+            labels: issue2.labels,
+            sections: parsed.sections
+          }
+        })
+      }
+    ], fixSuggestionSchema);
+    const parsedResult = JSON.parse(extractJsonBlock(content));
+    return {
+      summary: parsedResult.summary ?? "Unable to generate a fix suggestion.",
+      candidateFiles: Array.isArray(parsedResult.candidateFiles) ? parsedResult.candidateFiles : [],
+      changeSuggestions: Array.isArray(parsedResult.changeSuggestions) ? parsedResult.changeSuggestions : [],
+      patchDraft: parsedResult.patchDraft ?? "",
+      verificationSteps: Array.isArray(parsedResult.verificationSteps) ? parsedResult.verificationSteps : [],
+      risks: Array.isArray(parsedResult.risks) ? parsedResult.risks : []
+    };
+  }
 };
 function tryCreateProvider(config2) {
   const apiKey = process.env.REPO_BOT_AI_API_KEY ?? "";
@@ -41308,8 +41488,8 @@ function tryCreateProvider(config2) {
   return provider;
 }
 
-// src/subjects/issue/run.ts
-var core7 = __toESM(require_core(), 1);
+// src/subjects/issue/fix.ts
+var core5 = __toESM(require_core(), 1);
 
 // src/github/comments.ts
 function createAnchor(anchor) {
@@ -41395,6 +41575,12 @@ function renderList(items, emptyLabel) {
     return [`- ${emptyLabel}`];
   }
   return items.map((item) => `- ${item}`);
+}
+function renderCandidateFiles(items, emptyLabel) {
+  if (items.length === 0) {
+    return [`- ${emptyLabel}`];
+  }
+  return items.map((item) => `- \`${item.path}\`${item.reason ? `\uFF1A${item.reason}` : ""}`);
 }
 function getAiCommentLayout(templateKey) {
   switch (templateKey) {
@@ -41578,6 +41764,78 @@ ${params.help.summary}`,
 
 ${en}`;
 }
+function renderFixSuggestionComment(params) {
+  const patchDraft = params.suggestion.patchDraft.trim() || "# patch draft unavailable";
+  const zh = [
+    "## AI \u4FEE\u590D\u5EFA\u8BAE",
+    "",
+    `### \u95EE\u9898\u5224\u65AD
+${params.suggestion.summary}`,
+    "",
+    "### \u5019\u9009\u4FEE\u6539\u6587\u4EF6",
+    ...renderCandidateFiles(params.suggestion.candidateFiles, "\u6682\u65E0"),
+    "",
+    "### \u4FEE\u6539\u5EFA\u8BAE",
+    ...renderList(params.suggestion.changeSuggestions, "\u6682\u65E0"),
+    "",
+    "### \u8865\u4E01\u8349\u6848",
+    "```diff",
+    patchDraft,
+    "```",
+    "",
+    "### \u9A8C\u8BC1\u5EFA\u8BAE",
+    ...renderList(params.suggestion.verificationSteps, "\u6682\u65E0"),
+    "",
+    "### \u98CE\u9669\u63D0\u793A",
+    ...renderList(params.suggestion.risks, "\u6682\u65E0"),
+    "",
+    zhAiNote
+  ].join("\n");
+  if (params.mode === "zh") {
+    return zh;
+  }
+  const en = [
+    "## AI Fix Suggestion",
+    "",
+    `### Assessment
+${params.suggestion.summary}`,
+    "",
+    "### Candidate Files",
+    ...renderCandidateFiles(params.suggestion.candidateFiles, "None"),
+    "",
+    "### Change Suggestions",
+    ...renderList(params.suggestion.changeSuggestions, "None"),
+    "",
+    "### Patch Draft",
+    "```diff",
+    patchDraft,
+    "```",
+    "",
+    "### Verification Steps",
+    ...renderList(params.suggestion.verificationSteps, "None"),
+    "",
+    "### Risks",
+    ...renderList(params.suggestion.risks, "None"),
+    "",
+    enAiNote
+  ].join("\n");
+  return `${zh}
+
+---
+
+${en}`;
+}
+function renderFixStatusComment(params) {
+  return bilingual(
+    params.mode,
+    `## ${params.titleZh}
+
+${params.messageZh}`,
+    `## ${params.titleEn}
+
+${params.messageEn}`
+  );
+}
 
 // src/i18n/language.ts
 function countMatches(text, pattern) {
@@ -41595,41 +41853,9 @@ function detectCommentMode(text, runtime) {
   return "zh";
 }
 
-// src/subjects/issue/aiHelp.ts
-var core4 = __toESM(require_core(), 1);
-async function generateIssueAiHelp(params) {
-  if (!params.config.enabled) {
-    return void 0;
-  }
-  if (!params.provider) {
-    core4.info("Skip AI help because provider is unavailable.");
-    return void 0;
-  }
-  const hasTriggerLabel = params.config.triggerLabels.length === 0 || params.config.triggerLabels.some((label) => params.issue.labels.includes(label));
-  if (!hasTriggerLabel) {
-    core4.info("Skip AI help because trigger labels do not match.");
-    return void 0;
-  }
-  try {
-    const help = await params.provider.generateHelp(
-      params.issue,
-      params.parsed,
-      params.repositoryContext
-    );
-    return renderAiHelpComment({
-      mode: params.commentMode,
-      templateKey: params.repositoryContext.templateKey,
-      help,
-      relatedIssues: params.relatedIssues
-    });
-  } catch (error48) {
-    core4.warning(`Skip AI help because provider request failed: ${String(error48)}`);
-    return void 0;
-  }
-}
-
-// src/subjects/issue/duplicateDetection.ts
-var core5 = __toESM(require_core(), 1);
+// src/subjects/issue/codeContext.ts
+var import_promises2 = require("fs/promises");
+var import_node_path2 = __toESM(require("path"), 1);
 
 // src/subjects/issue/parser.ts
 function normalizeHeading(value) {
@@ -41780,7 +42006,620 @@ function tokenize(value) {
   return normalizeText(value).split(" ").filter((token) => token.length >= 2);
 }
 
+// src/subjects/issue/codeContext.ts
+var EXCLUDED_DIRECTORIES = /* @__PURE__ */ new Set([
+  ".git",
+  ".github",
+  ".repo-bot",
+  "node_modules",
+  "dist",
+  "coverage",
+  "bin",
+  "obj",
+  ".tmp"
+]);
+var BINARY_EXTENSIONS = /* @__PURE__ */ new Set([
+  ".7z",
+  ".bmp",
+  ".class",
+  ".dll",
+  ".dylib",
+  ".exe",
+  ".gif",
+  ".gz",
+  ".ico",
+  ".jar",
+  ".jpeg",
+  ".jpg",
+  ".mp3",
+  ".mp4",
+  ".pdf",
+  ".png",
+  ".rar",
+  ".so",
+  ".ttf",
+  ".woff",
+  ".woff2",
+  ".zip"
+]);
+var ENTRY_FILE_CANDIDATES = [
+  "package.json",
+  "src/index.ts",
+  "src/index.tsx",
+  "src/index.js",
+  "src/main.ts",
+  "src/main.tsx",
+  "src/main.js",
+  "src/app.ts",
+  "src/app.tsx",
+  "src/app.js",
+  "Program.cs",
+  "appsettings.json"
+];
+var STOPWORDS = /* @__PURE__ */ new Set([
+  "the",
+  "and",
+  "for",
+  "that",
+  "this",
+  "with",
+  "from",
+  "when",
+  "where",
+  "what",
+  "which",
+  "issue",
+  "bug",
+  "feature",
+  "question",
+  "summary",
+  "environment",
+  "expected",
+  "behavior",
+  "steps",
+  "description",
+  "version"
+]);
+var MAX_FILE_BYTES = 300 * 1024;
+var MAX_CONTEXT_FILES = 8;
+var MAX_EXCERPT_CHARS = 2e3;
+var MAX_KEYWORDS = 24;
+var MAX_FALLBACK_ENTRY_FILES = 3;
+function normalizePath(value) {
+  return value.replace(/\\/g, "/");
+}
+function isLikelyText(buffer) {
+  if (buffer.includes(0)) {
+    return false;
+  }
+  const sample = buffer.subarray(0, Math.min(buffer.length, 4096));
+  let suspicious = 0;
+  for (const byte of sample) {
+    const isWhitespace2 = byte === 9 || byte === 10 || byte === 13;
+    const isPrintableAscii = byte >= 32 && byte <= 126;
+    const isUtf8Lead = byte >= 128;
+    if (!isWhitespace2 && !isPrintableAscii && !isUtf8Lead) {
+      suspicious += 1;
+    }
+  }
+  return suspicious / Math.max(sample.length, 1) < 0.1;
+}
+function truncateExcerpt(value) {
+  if (value.length <= MAX_EXCERPT_CHARS) {
+    return value.trim();
+  }
+  return `${value.slice(0, MAX_EXCERPT_CHARS).trimEnd()}
+...`;
+}
+function createExcerpt(content, keywords) {
+  const lower = content.toLowerCase();
+  let firstIndex = -1;
+  for (const keyword of keywords) {
+    const index = lower.indexOf(keyword);
+    if (index >= 0 && (firstIndex === -1 || index < firstIndex)) {
+      firstIndex = index;
+    }
+  }
+  if (firstIndex === -1) {
+    return truncateExcerpt(content);
+  }
+  const start = Math.max(0, firstIndex - 400);
+  const end = Math.min(content.length, start + MAX_EXCERPT_CHARS);
+  const excerpt = content.slice(start, end).trim();
+  const prefix = start > 0 ? "...\n" : "";
+  const suffix = end < content.length ? "\n..." : "";
+  return `${prefix}${excerpt}${suffix}`.trim();
+}
+function buildKeywords(params) {
+  const raw = [
+    params.issue.title,
+    params.issue.body,
+    ...Object.values(params.parsed.sections),
+    params.repositoryContext.projectProfile.name,
+    ...params.repositoryContext.projectProfile.aliases
+  ].join("\n");
+  return [...new Set(tokenize(raw))].filter((token) => {
+    if (STOPWORDS.has(token)) {
+      return false;
+    }
+    return /[^\x00-\x7F]/.test(token) ? token.length >= 2 : token.length >= 3;
+  }).sort((left, right) => right.length - left.length).slice(0, MAX_KEYWORDS);
+}
+function scoreFile(params) {
+  const normalizedPath = normalizePath(params.relativePath).toLowerCase();
+  const lowerContent = params.content.toLowerCase();
+  const pathHits = params.keywords.filter((keyword) => normalizedPath.includes(keyword)).length;
+  const contentHits = params.keywords.filter((keyword) => lowerContent.includes(keyword)).length;
+  const score = pathHits * 3 + contentHits;
+  if (score <= 0) {
+    return void 0;
+  }
+  let reason = "\u6587\u4EF6\u5185\u5BB9\u547D\u4E2D\u4E86 Issue \u5173\u952E\u8BCD\u3002";
+  if (pathHits > 0 && contentHits > 0) {
+    reason = "\u6587\u4EF6\u8DEF\u5F84\u548C\u5185\u5BB9\u90FD\u547D\u4E2D\u4E86 Issue \u5173\u952E\u8BCD\u3002";
+  } else if (pathHits > 0) {
+    reason = "\u6587\u4EF6\u8DEF\u5F84\u547D\u4E2D\u4E86 Issue \u5173\u952E\u8BCD\u3002";
+  }
+  return {
+    path: normalizePath(params.relativePath),
+    reason,
+    excerpt: createExcerpt(params.content, params.keywords),
+    score
+  };
+}
+async function walkFiles(root, currentDir = root) {
+  const entries = await (0, import_promises2.readdir)(currentDir, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const absolutePath = import_node_path2.default.join(currentDir, entry.name);
+    if (entry.isDirectory()) {
+      if (EXCLUDED_DIRECTORIES.has(entry.name)) {
+        continue;
+      }
+      files.push(...await walkFiles(root, absolutePath));
+      continue;
+    }
+    files.push(absolutePath);
+  }
+  return files;
+}
+async function readTextFile(filePath) {
+  const extension = import_node_path2.default.extname(filePath).toLowerCase();
+  if (BINARY_EXTENSIONS.has(extension)) {
+    return void 0;
+  }
+  const fileStat = await (0, import_promises2.stat)(filePath);
+  if (!fileStat.isFile() || fileStat.size > MAX_FILE_BYTES) {
+    return void 0;
+  }
+  const buffer = await (0, import_promises2.readFile)(filePath);
+  if (!isLikelyText(buffer)) {
+    return void 0;
+  }
+  return buffer.toString("utf8");
+}
+function createFallbackFile(pathLabel, reason, excerpt) {
+  const trimmed = excerpt.trim();
+  if (!trimmed) {
+    return void 0;
+  }
+  return {
+    path: normalizePath(pathLabel),
+    reason,
+    excerpt: truncateExcerpt(trimmed)
+  };
+}
+async function buildFallbackContext(params) {
+  const files = [];
+  const readmePath = import_node_path2.default.join(params.workspace, "README.md");
+  try {
+    const readme = await readTextFile(readmePath);
+    const readmeFile = createFallbackFile("README.md", "\u4ED3\u5E93 README \u56DE\u9000\u4E0A\u4E0B\u6587\u3002", readme ?? "");
+    if (readmeFile) {
+      files.push(readmeFile);
+    }
+  } catch {
+    const readmeFile = createFallbackFile(
+      "README.md",
+      "\u4ED3\u5E93 README \u56DE\u9000\u4E0A\u4E0B\u6587\u3002",
+      params.repositoryContext.readmeExcerpt
+    );
+    if (readmeFile) {
+      files.push(readmeFile);
+    }
+  }
+  for (const candidate of ENTRY_FILE_CANDIDATES) {
+    if (files.length >= 1 + MAX_FALLBACK_ENTRY_FILES) {
+      break;
+    }
+    const absolutePath = import_node_path2.default.join(params.workspace, candidate);
+    try {
+      const content = await readTextFile(absolutePath);
+      const fallbackFile = createFallbackFile(candidate, "\u4ED3\u5E93\u5165\u53E3\u6587\u4EF6\u56DE\u9000\u4E0A\u4E0B\u6587\u3002", content ?? "");
+      if (fallbackFile) {
+        files.push(fallbackFile);
+      }
+    } catch {
+      continue;
+    }
+  }
+  return {
+    files,
+    fallbackUsed: true
+  };
+}
+async function collectRepositoryCodeContext(params) {
+  const keywords = buildKeywords(params);
+  if (keywords.length === 0) {
+    return buildFallbackContext({
+      workspace: params.workspace,
+      repositoryContext: params.repositoryContext
+    });
+  }
+  const files = await walkFiles(params.workspace);
+  const ranked = [];
+  for (const absolutePath of files) {
+    try {
+      const content = await readTextFile(absolutePath);
+      if (!content) {
+        continue;
+      }
+      const relativePath = import_node_path2.default.relative(params.workspace, absolutePath);
+      const candidate = scoreFile({
+        relativePath,
+        content,
+        keywords
+      });
+      if (candidate) {
+        ranked.push(candidate);
+      }
+    } catch {
+      continue;
+    }
+  }
+  if (ranked.length === 0) {
+    return buildFallbackContext({
+      workspace: params.workspace,
+      repositoryContext: params.repositoryContext
+    });
+  }
+  ranked.sort((left, right) => right.score - left.score || left.path.localeCompare(right.path));
+  return {
+    files: ranked.slice(0, MAX_CONTEXT_FILES).map(({ path: filePath, reason, excerpt }) => ({
+      path: filePath,
+      reason,
+      excerpt
+    })),
+    fallbackUsed: false
+  };
+}
+
+// src/subjects/issue/projectContext.ts
+var core4 = __toESM(require_core(), 1);
+function normalizeWhitespace(value) {
+  return value.replace(/\s+/g, " ").trim();
+}
+function stripMarkdown(value) {
+  return value.replace(/<!--[\s\S]*?-->/g, " ").replace(/```[\s\S]*?```/g, " ").replace(/`([^`]+)`/g, "$1").replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/^#{1,6}\s+/gm, "").replace(/^\s{0,3}>\s?/gm, "").replace(/^\s*[-*+]\s+/gm, "").replace(/^\s*\d+\.\s+/gm, "").replace(/\|/g, " ").replace(/<[^>]+>/g, " ");
+}
+function truncateText(value, maxChars) {
+  if (value.length <= maxChars) {
+    return value;
+  }
+  return `${value.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`;
+}
+function uniqueValues(values) {
+  return [...new Set(values.map((item) => item.trim()).filter(Boolean))];
+}
+function buildProjectProfile(config2, metadata) {
+  return {
+    name: config2.profile.name.trim() || metadata.repo,
+    aliases: uniqueValues(config2.profile.aliases),
+    summary: config2.profile.summary.trim() || metadata.description.trim(),
+    techStack: uniqueValues(config2.profile.techStack)
+  };
+}
+function createReadmeExcerpt(markdown, maxChars) {
+  const normalized = normalizeWhitespace(stripMarkdown(markdown));
+  if (!normalized) {
+    return "";
+  }
+  return truncateText(normalized, maxChars);
+}
+async function resolveRepositoryAiContext(params) {
+  const fallbackMetadata = {
+    owner: params.issue.owner,
+    repo: params.issue.repo,
+    fullName: `${params.issue.owner}/${params.issue.repo}`,
+    description: "",
+    topics: [],
+    homepage: ""
+  };
+  if (!params.config.enabled) {
+    return {
+      ...fallbackMetadata,
+      issueUrl: params.issue.htmlUrl,
+      templateKey: params.templateKey ?? "unknown",
+      readmeExcerpt: "",
+      projectProfile: {
+        name: fallbackMetadata.repo,
+        aliases: [],
+        summary: "",
+        techStack: []
+      }
+    };
+  }
+  let metadata = fallbackMetadata;
+  if (params.config.includeRepositoryMetadata) {
+    try {
+      metadata = await params.gateway.getRepositoryMetadata();
+    } catch (error48) {
+      core4.info(`Skip repository metadata context: ${String(error48)}`);
+    }
+  }
+  let readmeExcerpt = "";
+  if (params.config.includeReadme) {
+    try {
+      const readme = await params.gateway.getRepositoryReadme();
+      if (readme) {
+        readmeExcerpt = createReadmeExcerpt(readme, params.config.readmeMaxChars);
+      }
+    } catch (error48) {
+      core4.info(`Skip repository README context: ${String(error48)}`);
+    }
+  }
+  return {
+    ...metadata,
+    issueUrl: params.issue.htmlUrl,
+    templateKey: params.templateKey ?? "unknown",
+    readmeExcerpt,
+    projectProfile: buildProjectProfile(params.config, metadata)
+  };
+}
+
+// src/core/constants.ts
+var DEFAULT_PLACEHOLDER_HINTS = [
+  "\u8BF7\u586B\u5199",
+  "please fill",
+  "todo",
+  "tbd",
+  "n/a",
+  "none",
+  "\u5F85\u8865\u5145",
+  "\u5F85\u586B\u5199",
+  "not provided"
+];
+
+// src/subjects/issue/validation.ts
+function isPlaceholder(content, hints) {
+  const normalized = normalizeText(content);
+  if (!normalized) {
+    return true;
+  }
+  return hints.some((hint) => {
+    const needle = normalizeText(hint);
+    if (!needle) {
+      return false;
+    }
+    return normalized === needle || normalized.startsWith(`${needle} `) || normalized.endsWith(` ${needle}`) || normalized.includes(` ${needle} `);
+  });
+}
+function validateIssue(params) {
+  if (!params.config.enabled) {
+    return {
+      executed: false,
+      valid: true,
+      parsed: parseIssueBody(params.body),
+      missingSections: [],
+      desiredLabels: [],
+      invalidLabels: []
+    };
+  }
+  const parsed = parseIssueBody(params.body);
+  const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey, params.title);
+  if (!template) {
+    return {
+      executed: true,
+      valid: false,
+      parsed,
+      missingSections: [],
+      desiredLabels: [],
+      invalidLabels: [],
+      commentBody: renderValidationComment({
+        mode: params.commentMode,
+        valid: false,
+        missingSections: ["\u672A\u627E\u5230\u53EF\u7528\u6A21\u677F / No matching template found"]
+      })
+    };
+  }
+  const missingSections = template.requiredSections.filter((rule) => {
+    const content = getSectionContent(parsed, rule);
+    const hints = [...DEFAULT_PLACEHOLDER_HINTS, ...rule.placeholderHints ?? []];
+    return isPlaceholder(content, hints);
+  }).map((rule) => ({
+    id: rule.id,
+    aliases: rule.aliases
+  }));
+  const valid = missingSections.length === 0;
+  return {
+    executed: true,
+    valid,
+    template,
+    parsed,
+    missingSections,
+    desiredLabels: valid ? template.labels.whenValid : [],
+    invalidLabels: valid ? [] : template.labels.whenInvalid,
+    commentBody: valid ? void 0 : renderValidationComment({
+      mode: params.commentMode,
+      valid: false,
+      templateKey: template.key,
+      missingSections: missingSections.map((item) => item.aliases[0] ?? item.id)
+    })
+  };
+}
+
+// src/subjects/issue/fix.ts
+function getFixCommentMode(issue2, config2) {
+  return detectCommentMode(`${issue2.title}
+${issue2.body}`, config2.runtime);
+}
+async function updateFixStatusComment(params) {
+  await upsertAnchoredComment({
+    gateway: params.gateway,
+    issueNumber: params.issueNumber,
+    anchor: params.config.issues.commands.fix.commentAnchor,
+    body: renderFixStatusComment({
+      mode: params.mode,
+      titleZh: params.titleZh,
+      titleEn: params.titleEn,
+      messageZh: params.messageZh,
+      messageEn: params.messageEn
+    })
+  });
+}
+async function runIssueFixCommand(params) {
+  const commentMode = getFixCommentMode(params.issue, params.config);
+  if (params.issue.state !== "open") {
+    await updateFixStatusComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      config: params.config,
+      mode: commentMode,
+      titleZh: "AI \u4FEE\u590D\u5EFA\u8BAE",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "\u5F53\u524D Issue \u5DF2\u5173\u95ED\uFF0C\u6682\u4E0D\u751F\u6210\u4FEE\u590D\u5EFA\u8BAE\u6216\u8865\u4E01\u8349\u6848\u3002",
+      messageEn: "This issue is already closed, so no fix suggestion or patch draft will be generated."
+    });
+    return "rejected";
+  }
+  const validation = validateIssue({
+    title: params.issue.title,
+    body: params.issue.body,
+    config: params.config.issues.validation,
+    commentMode
+  });
+  if (!validation.valid) {
+    await updateFixStatusComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      config: params.config,
+      mode: commentMode,
+      titleZh: "AI \u4FEE\u590D\u5EFA\u8BAE",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "\u5F53\u524D Issue \u8FD8\u672A\u901A\u8FC7\u6A21\u677F\u68C0\u67E5\uFF0C\u8BF7\u5148\u8865\u5168\u6A21\u677F\u540E\u518D\u6267\u884C `@bot /fix`\u3002",
+      messageEn: "This issue has not passed template validation yet. Complete the template first, then run `@bot /fix` again."
+    });
+    return "rejected";
+  }
+  if (params.issue.labels.includes(params.config.issues.validation.duplicateDetection.duplicateLabel)) {
+    await updateFixStatusComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      config: params.config,
+      mode: commentMode,
+      titleZh: "AI \u4FEE\u590D\u5EFA\u8BAE",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "\u5F53\u524D Issue \u5DF2\u6807\u8BB0\u4E3A\u91CD\u590D\uFF0C\u4E0D\u518D\u751F\u6210\u4FEE\u590D\u5EFA\u8BAE\u3002",
+      messageEn: "This issue is already marked as duplicate, so no fix suggestion will be generated."
+    });
+    return "rejected";
+  }
+  if (!params.provider) {
+    await updateFixStatusComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      config: params.config,
+      mode: commentMode,
+      titleZh: "AI \u4FEE\u590D\u5EFA\u8BAE",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "\u5F53\u524D\u4ED3\u5E93\u672A\u914D\u7F6E\u53EF\u7528\u7684 AI Provider\uFF0C\u6682\u65F6\u65E0\u6CD5\u751F\u6210\u4FEE\u590D\u5EFA\u8BAE\u3002",
+      messageEn: "No usable AI provider is configured for this repository, so a fix suggestion cannot be generated right now."
+    });
+    return "rejected";
+  }
+  const repositoryContext = await resolveRepositoryAiContext({
+    issue: params.issue,
+    gateway: params.gateway,
+    config: params.config.issues.aiHelp.projectContext,
+    templateKey: validation.template?.key ?? validation.parsed.marker
+  });
+  const codeContext = await collectRepositoryCodeContext({
+    workspace: params.workspace,
+    issue: params.issue,
+    parsed: validation.parsed,
+    repositoryContext
+  });
+  try {
+    const suggestion = await params.provider.generateFixSuggestion(
+      params.issue,
+      validation.parsed,
+      repositoryContext,
+      codeContext
+    );
+    await upsertAnchoredComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      anchor: params.config.issues.commands.fix.commentAnchor,
+      body: renderFixSuggestionComment({
+        mode: commentMode,
+        suggestion
+      })
+    });
+    return "success";
+  } catch (error48) {
+    core5.warning(`Skip /fix because provider request failed: ${String(error48)}`);
+    await updateFixStatusComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      config: params.config,
+      mode: commentMode,
+      titleZh: "AI \u4FEE\u590D\u5EFA\u8BAE",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "\u672C\u6B21\u672A\u80FD\u751F\u6210\u4FEE\u590D\u5EFA\u8BAE\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\uFF0C\u6216\u8865\u5145\u66F4\u5177\u4F53\u7684\u65E5\u5FD7\u3001\u590D\u73B0\u6B65\u9AA4\u548C\u76F8\u5173\u4EE3\u7801\u7EBF\u7D22\u3002",
+      messageEn: "A fix suggestion could not be generated this time. Please try again later, or provide more specific logs, repro steps, and code clues."
+    });
+    return "rejected";
+  }
+}
+
+// src/subjects/issue/run.ts
+var core8 = __toESM(require_core(), 1);
+
+// src/subjects/issue/aiHelp.ts
+var core6 = __toESM(require_core(), 1);
+async function generateIssueAiHelp(params) {
+  if (!params.config.enabled) {
+    return void 0;
+  }
+  if (!params.provider) {
+    core6.info("Skip AI help because provider is unavailable.");
+    return void 0;
+  }
+  const hasTriggerLabel = params.config.triggerLabels.length === 0 || params.config.triggerLabels.some((label) => params.issue.labels.includes(label));
+  if (!hasTriggerLabel) {
+    core6.info("Skip AI help because trigger labels do not match.");
+    return void 0;
+  }
+  try {
+    const help = await params.provider.generateHelp(
+      params.issue,
+      params.parsed,
+      params.repositoryContext
+    );
+    return renderAiHelpComment({
+      mode: params.commentMode,
+      templateKey: params.repositoryContext.templateKey,
+      help,
+      relatedIssues: params.relatedIssues
+    });
+  } catch (error48) {
+    core6.warning(`Skip AI help because provider request failed: ${String(error48)}`);
+    return void 0;
+  }
+}
+
 // src/subjects/issue/duplicateDetection.ts
+var core7 = __toESM(require_core(), 1);
 function jaccardSimilarity(left, right) {
   const leftSet = new Set(left);
   const rightSet = new Set(right);
@@ -41909,7 +42748,7 @@ async function detectDuplicate(params) {
         };
       }
     } catch (error48) {
-      core5.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
+      core7.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
     }
   }
   if (!bestReview) {
@@ -41976,179 +42815,29 @@ function computeManagedLabels(params) {
   };
 }
 
-// src/subjects/issue/projectContext.ts
-var core6 = __toESM(require_core(), 1);
-function normalizeWhitespace(value) {
-  return value.replace(/\s+/g, " ").trim();
-}
-function stripMarkdown(value) {
-  return value.replace(/<!--[\s\S]*?-->/g, " ").replace(/```[\s\S]*?```/g, " ").replace(/`([^`]+)`/g, "$1").replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/^#{1,6}\s+/gm, "").replace(/^\s{0,3}>\s?/gm, "").replace(/^\s*[-*+]\s+/gm, "").replace(/^\s*\d+\.\s+/gm, "").replace(/\|/g, " ").replace(/<[^>]+>/g, " ");
-}
-function truncateText(value, maxChars) {
-  if (value.length <= maxChars) {
-    return value;
-  }
-  return `${value.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`;
-}
-function uniqueValues(values) {
-  return [...new Set(values.map((item) => item.trim()).filter(Boolean))];
-}
-function buildProjectProfile(config2, metadata) {
-  return {
-    name: config2.profile.name.trim() || metadata.repo,
-    aliases: uniqueValues(config2.profile.aliases),
-    summary: config2.profile.summary.trim() || metadata.description.trim(),
-    techStack: uniqueValues(config2.profile.techStack)
-  };
-}
-function createReadmeExcerpt(markdown, maxChars) {
-  const normalized = normalizeWhitespace(stripMarkdown(markdown));
-  if (!normalized) {
-    return "";
-  }
-  return truncateText(normalized, maxChars);
-}
-async function resolveRepositoryAiContext(params) {
-  const fallbackMetadata = {
-    owner: params.issue.owner,
-    repo: params.issue.repo,
-    fullName: `${params.issue.owner}/${params.issue.repo}`,
-    description: "",
-    topics: [],
-    homepage: ""
-  };
-  if (!params.config.enabled) {
-    return {
-      ...fallbackMetadata,
-      issueUrl: params.issue.htmlUrl,
-      templateKey: params.templateKey ?? "unknown",
-      readmeExcerpt: "",
-      projectProfile: {
-        name: fallbackMetadata.repo,
-        aliases: [],
-        summary: "",
-        techStack: []
-      }
-    };
-  }
-  let metadata = fallbackMetadata;
-  if (params.config.includeRepositoryMetadata) {
-    try {
-      metadata = await params.gateway.getRepositoryMetadata();
-    } catch (error48) {
-      core6.info(`Skip repository metadata context: ${String(error48)}`);
-    }
-  }
-  let readmeExcerpt = "";
-  if (params.config.includeReadme) {
-    try {
-      const readme = await params.gateway.getRepositoryReadme();
-      if (readme) {
-        readmeExcerpt = createReadmeExcerpt(readme, params.config.readmeMaxChars);
-      }
-    } catch (error48) {
-      core6.info(`Skip repository README context: ${String(error48)}`);
-    }
-  }
-  return {
-    ...metadata,
-    issueUrl: params.issue.htmlUrl,
-    templateKey: params.templateKey ?? "unknown",
-    readmeExcerpt,
-    projectProfile: buildProjectProfile(params.config, metadata)
-  };
-}
-
-// src/core/constants.ts
-var DEFAULT_PLACEHOLDER_HINTS = [
-  "\u8BF7\u586B\u5199",
-  "please fill",
-  "todo",
-  "tbd",
-  "n/a",
-  "none",
-  "\u5F85\u8865\u5145",
-  "\u5F85\u586B\u5199",
-  "not provided"
-];
-
-// src/subjects/issue/validation.ts
-function isPlaceholder(content, hints) {
-  const normalized = normalizeText(content);
-  if (!normalized) {
-    return true;
-  }
-  return hints.some((hint) => {
-    const needle = normalizeText(hint);
-    if (!needle) {
-      return false;
-    }
-    return normalized === needle || normalized.startsWith(`${needle} `) || normalized.endsWith(` ${needle}`) || normalized.includes(` ${needle} `);
-  });
-}
-function validateIssue(params) {
-  if (!params.config.enabled) {
-    return {
-      executed: false,
-      valid: true,
-      parsed: parseIssueBody(params.body),
-      missingSections: [],
-      desiredLabels: [],
-      invalidLabels: []
-    };
-  }
-  const parsed = parseIssueBody(params.body);
-  const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey, params.title);
-  if (!template) {
-    return {
-      executed: true,
-      valid: false,
-      parsed,
-      missingSections: [],
-      desiredLabels: [],
-      invalidLabels: [],
-      commentBody: renderValidationComment({
-        mode: params.commentMode,
-        valid: false,
-        missingSections: ["\u672A\u627E\u5230\u53EF\u7528\u6A21\u677F / No matching template found"]
-      })
-    };
-  }
-  const missingSections = template.requiredSections.filter((rule) => {
-    const content = getSectionContent(parsed, rule);
-    const hints = [...DEFAULT_PLACEHOLDER_HINTS, ...rule.placeholderHints ?? []];
-    return isPlaceholder(content, hints);
-  }).map((rule) => ({
-    id: rule.id,
-    aliases: rule.aliases
-  }));
-  const valid = missingSections.length === 0;
-  return {
-    executed: true,
-    valid,
-    template,
-    parsed,
-    missingSections,
-    desiredLabels: valid ? template.labels.whenValid : [],
-    invalidLabels: valid ? [] : template.labels.whenInvalid,
-    commentBody: valid ? void 0 : renderValidationComment({
-      mode: params.commentMode,
-      valid: false,
-      templateKey: template.key,
-      missingSections: missingSections.map((item) => item.aliases[0] ?? item.id)
-    })
-  };
-}
-
 // src/subjects/issue/run.ts
-function shouldRunValidation(action) {
-  return ["opened", "edited", "reopened"].includes(action);
+function resolveIssueWorkflowTrigger(action) {
+  switch (action) {
+    case "opened":
+      return "issue_opened";
+    case "edited":
+      return "issue_edited";
+    case "reopened":
+      return "issue_reopened";
+    case "labeled":
+      return "issue_labeled";
+    default:
+      return void 0;
+  }
 }
-function shouldRunLabeling(action) {
-  return ["opened", "edited", "reopened", "labeled"].includes(action);
+function shouldRunValidation(trigger) {
+  return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
-function shouldRunAi(action) {
-  return ["opened", "edited", "reopened", "labeled"].includes(action);
+function shouldRunLabeling(trigger) {
+  return ["issue_opened", "issue_edited", "issue_reopened", "issue_labeled", "command_refresh"].includes(trigger);
+}
+function shouldRunAi(trigger) {
+  return ["issue_opened", "issue_edited", "issue_reopened", "issue_labeled", "command_refresh"].includes(trigger);
 }
 async function runIssueWorkflow(params) {
   const effectiveLabels = new Set(params.issue.labels);
@@ -42160,7 +42849,7 @@ ${params.issue.body}`, params.config.runtime);
     config: params.config.issues.validation,
     commentMode
   });
-  if (shouldRunValidation(params.issue.action)) {
+  if (shouldRunValidation(params.trigger)) {
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -42168,8 +42857,8 @@ ${params.issue.body}`, params.config.runtime);
       body: validation.commentBody
     });
   }
-  if (shouldRunValidation(params.issue.action) && validation.executed && !validation.valid) {
-    core7.info("Issue failed template validation. Skip duplicate detection and AI help.");
+  if (shouldRunValidation(params.trigger) && validation.executed && !validation.valid) {
+    core8.info("Issue failed template validation. Skip duplicate detection and AI help.");
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -42184,7 +42873,7 @@ ${params.issue.body}`, params.config.runtime);
   let duplicated = false;
   let duplicateCommentBody;
   let similarIssues = [];
-  if (shouldRunValidation(params.issue.action) && validation.valid) {
+  if (shouldRunValidation(params.trigger) && validation.valid) {
     const duplicateDecision = await detectDuplicate({
       issue: params.issue,
       parsed: validation.parsed,
@@ -42221,7 +42910,7 @@ ${params.issue.body}`, params.config.runtime);
       similarIssues = duplicateDecision.similarIssues ?? [];
     }
   }
-  if (shouldRunValidation(params.issue.action) && duplicated) {
+  if (shouldRunValidation(params.trigger) && duplicated) {
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -42234,7 +42923,7 @@ ${params.issue.body}`, params.config.runtime);
       anchor: params.config.issues.aiHelp.commentAnchor
     });
   }
-  if (shouldRunLabeling(params.issue.action) && params.config.issues.labeling.enabled && !duplicated) {
+  if (shouldRunLabeling(params.trigger) && params.config.issues.labeling.enabled && !duplicated) {
     const preservedLabels = [...effectiveLabels].filter((label) => params.config.issues.aiHelp.triggerLabels.includes(label));
     const managedLabels = computeManagedLabels({
       issue: params.issue,
@@ -42256,8 +42945,8 @@ ${params.issue.body}`, params.config.runtime);
       effectiveLabels.delete(label);
     }
   }
-  if (duplicated || !shouldRunAi(params.issue.action) || !validation.valid) {
-    if (!duplicated && shouldRunValidation(params.issue.action)) {
+  if (duplicated || !shouldRunAi(params.trigger) || !validation.valid) {
+    if (!duplicated && shouldRunValidation(params.trigger)) {
       const similarIssuesBody = similarIssues.length > 0 ? renderSimilarIssuesComment({
         mode: commentMode,
         issues: similarIssues
@@ -42290,7 +42979,7 @@ ${params.issue.body}`, params.config.runtime);
     provider: params.provider
   });
   if (!aiBody) {
-    if (shouldRunValidation(params.issue.action)) {
+    if (shouldRunValidation(params.trigger)) {
       const similarIssuesBody = similarIssues.length > 0 ? renderSimilarIssuesComment({
         mode: commentMode,
         issues: similarIssues
@@ -42310,7 +42999,7 @@ ${params.issue.body}`, params.config.runtime);
     anchor: params.config.issues.aiHelp.commentAnchor,
     body: aiBody
   });
-  if (shouldRunValidation(params.issue.action)) {
+  if (shouldRunValidation(params.trigger)) {
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -42319,13 +43008,113 @@ ${params.issue.body}`, params.config.runtime);
   }
 }
 
+// src/subjects/issue/commands.ts
+var COLLABORATOR_ASSOCIATIONS = /* @__PURE__ */ new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+function escapeRegex2(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function extractFirstPlainTextLine(body) {
+  const lines = body.split(/\r?\n/);
+  let inCodeBlock = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+    if (inCodeBlock || !trimmed) {
+      continue;
+    }
+    if (/^(>+|[-*+]\s|\d+\.\s)/.test(trimmed)) {
+      continue;
+    }
+    return trimmed;
+  }
+  return void 0;
+}
+function parseIssueCommentCommand(params) {
+  if (params.comment.commentAuthorType.toLowerCase() === "bot") {
+    return void 0;
+  }
+  const firstLine = extractFirstPlainTextLine(params.comment.commentBody);
+  if (!firstLine) {
+    return void 0;
+  }
+  const mentions = [...new Set(params.mentions.map((item) => item.trim()).filter(Boolean))];
+  if (mentions.length === 0) {
+    return void 0;
+  }
+  const pattern = new RegExp(`^(${mentions.map(escapeRegex2).join("|")})\\s+/(fix|refresh)\\b`, "i");
+  const match = firstLine.match(pattern);
+  if (!match?.[2]) {
+    return void 0;
+  }
+  return {
+    ...params.comment,
+    commandLine: firstLine,
+    command: match[2].toLowerCase()
+  };
+}
+function canExecuteIssueCommentCommand(params) {
+  if (!params.config.enabled) {
+    return false;
+  }
+  if (params.config.access === "collaborators") {
+    return COLLABORATOR_ASSOCIATIONS.has(params.command.commentAuthorAssociation.toUpperCase());
+  }
+  return false;
+}
+function isIssueCommentCommandEnabled(params) {
+  if (!params.config.enabled) {
+    return false;
+  }
+  switch (params.command.command) {
+    case "fix":
+      return params.config.fix.enabled;
+    case "refresh":
+      return params.config.refresh.enabled;
+    default:
+      return false;
+  }
+}
+async function runIssueCommentCommand(params) {
+  await params.gateway.addIssueCommentReaction(params.command.commentId, "eyes");
+  try {
+    if (params.command.command === "refresh") {
+      await runIssueWorkflow({
+        issue: params.command.issue,
+        trigger: "command_refresh",
+        config: params.config,
+        gateway: params.gateway,
+        provider: params.provider
+      });
+      await params.gateway.addIssueCommentReaction(params.command.commentId, "rocket");
+      return;
+    }
+    const outcome = await runIssueFixCommand({
+      workspace: params.workspace,
+      issue: params.command.issue,
+      config: params.config,
+      gateway: params.gateway,
+      provider: params.provider
+    });
+    await params.gateway.addIssueCommentReaction(
+      params.command.commentId,
+      outcome === "success" ? "rocket" : "confused"
+    );
+  } catch (error48) {
+    await params.gateway.addIssueCommentReaction(params.command.commentId, "confused");
+    throw error48;
+  }
+}
+
 // src/index.ts
 async function run() {
   try {
     const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
-    const configPath = core8.getInput("config-path") || ".github/repo-bot.yml";
-    const overridesJson = core8.getInput("config-overrides-json");
-    const dryRun = core8.getBooleanInput("dry-run", { required: false });
+    const configPath = core9.getInput("config-path") || ".github/repo-bot.yml";
+    const overridesJson = core9.getInput("config-overrides-json");
+    const dryRun = core9.getBooleanInput("dry-run", { required: false });
     const config2 = await loadRepoBotConfig({
       workspace,
       configPath,
@@ -42337,24 +43126,64 @@ async function run() {
       throw new Error("Missing REPO_BOT_GITHUB_TOKEN or GITHUB_TOKEN.");
     }
     if (process.env.REPO_BOT_GITHUB_TOKEN?.trim()) {
-      core8.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
+      core9.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
     }
     const gateway = new OctokitGitHubGateway(token, config2.runtime.dryRun);
     const provider = tryCreateProvider(config2.providers.openAiCompatible);
+    const issueComment = await gateway.getIssueCommentContext();
+    if (issueComment) {
+      const command = parseIssueCommentCommand({
+        comment: issueComment,
+        mentions: config2.issues.commands.mentions
+      });
+      if (!command) {
+        core9.info("Current issue comment does not contain a supported bot command.");
+        return;
+      }
+      if (!isIssueCommentCommandEnabled({
+        command,
+        config: config2.issues.commands
+      })) {
+        core9.info(`Issue command /${command.command} is disabled or unsupported.`);
+        return;
+      }
+      if (!canExecuteIssueCommentCommand({
+        command,
+        config: config2.issues.commands
+      })) {
+        core9.info(`Ignore issue command /${command.command} due to access restrictions.`);
+        return;
+      }
+      await runIssueCommentCommand({
+        workspace,
+        command,
+        config: config2,
+        gateway,
+        provider
+      });
+      core9.info(`Repo Bot completed command /${command.command} for issue #${command.issue.number}.`);
+      return;
+    }
     const issue2 = await gateway.getIssueContext();
     if (!issue2) {
-      core8.info("Current event is not a plain issue event. Nothing to do.");
+      core9.info("Current event is not a plain issue event. Nothing to do.");
+      return;
+    }
+    const trigger = resolveIssueWorkflowTrigger(issue2.action);
+    if (!trigger) {
+      core9.info(`Current issue action "${issue2.action}" is not handled.`);
       return;
     }
     await runIssueWorkflow({
       issue: issue2,
+      trigger,
       config: config2,
       gateway,
       provider
     });
-    core8.info(`Repo Bot completed for issue #${issue2.number}.`);
+    core9.info(`Repo Bot completed for issue #${issue2.number}.`);
   } catch (error48) {
-    core8.setFailed(error48 instanceof Error ? error48.message : String(error48));
+    core9.setFailed(error48 instanceof Error ? error48.message : String(error48));
   }
 }
 void run();

@@ -4,10 +4,12 @@ import type {
   AiHelpResult,
   DuplicateCandidate,
   DuplicateReviewResult,
+  FixSuggestionResult,
   IssueImageReference,
   IssueContext,
   ParsedIssue,
   ProviderConfig,
+  RepositoryCodeContext,
   RepositoryAiContext
 } from "../../core/types.js";
 
@@ -432,6 +434,57 @@ const issueHelpSchema: StructuredOutputSchema = {
   }
 };
 
+const fixSuggestionSchema: StructuredOutputSchema = {
+  name: "fix_suggestion",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      summary: {
+        type: "string"
+      },
+      candidateFiles: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            path: {
+              type: "string"
+            },
+            reason: {
+              type: "string"
+            }
+          },
+          required: ["path", "reason"]
+        }
+      },
+      changeSuggestions: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      },
+      patchDraft: {
+        type: "string"
+      },
+      verificationSteps: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      },
+      risks: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      }
+    },
+    required: ["summary", "candidateFiles", "changeSuggestions", "patchDraft", "verificationSteps", "risks"]
+  }
+};
+
 function createIssueHelpInstruction(templateKey: string): string {
   switch (templateKey) {
     case "bug":
@@ -443,6 +496,20 @@ function createIssueHelpInstruction(templateKey: string): string {
       return "The issue type is feature or suggestion. Treat it as a proposal rather than a fault report. Focus on feasibility, implementation directions, tradeoffs, and recommended next steps. Use possibleCauses as feasible approaches or considerations.";
     default:
       return "The issue type is general feedback. Avoid pretending that every issue is a defect. Adapt the response to the issue intent while still filling the required JSON fields.";
+  }
+}
+
+function createFixInstruction(templateKey: string): string {
+  switch (templateKey) {
+    case "bug":
+      return "The issue type is bug. Focus on a practical code-level fix, the most likely target files, and a realistic patch draft.";
+    case "question":
+      return "The issue type is question. If a code change seems useful, propose it carefully; otherwise keep the patch draft minimal and explain the uncertainty.";
+    case "feature":
+    case "suggestion":
+      return "The issue type is feature or suggestion. Treat the output as an implementation proposal and patch draft, not as a confirmed bug fix.";
+    default:
+      return "Treat the output as a cautious repository-specific implementation suggestion with a patch draft.";
   }
 }
 
@@ -556,6 +623,54 @@ export class OpenAiCompatibleProvider {
       possibleCauses: Array.isArray(parsedResult.possibleCauses) ? parsedResult.possibleCauses : [],
       troubleshootingSteps: Array.isArray(parsedResult.troubleshootingSteps) ? parsedResult.troubleshootingSteps : [],
       missingInformation: Array.isArray(parsedResult.missingInformation) ? parsedResult.missingInformation : []
+    };
+  }
+
+  public async generateFixSuggestion(
+    issue: IssueContext,
+    parsed: ParsedIssue,
+    repositoryContext: RepositoryAiContext,
+    codeContext: RepositoryCodeContext
+  ): Promise<FixSuggestionResult> {
+    const templateKey = repositoryContext.templateKey ?? "unknown";
+    const content = await requestStructuredJson(this.config, this.apiKey, [
+      {
+        role: "system",
+        text: [
+          "You are a GitHub issue assistant generating repository-specific fix suggestions.",
+          "Use the provided repository context and code excerpts as the primary source of truth.",
+          "Do not claim that a patch is confirmed unless the code excerpts clearly support it.",
+          "If the evidence is incomplete, state the uncertainty in the summary, risks, and patch draft.",
+          "Keep the candidate files aligned with the provided code context whenever possible.",
+          "Write patchDraft as a compact unified diff or pseudo diff that an engineer could refine.",
+          createFixInstruction(templateKey),
+          "Return JSON only."
+        ].join(" ")
+      },
+      {
+        role: "user",
+        text: JSON.stringify({
+          repositoryContext,
+          codeContext,
+          issueType: templateKey,
+          issue: {
+            title: issue.title,
+            body: issue.body,
+            labels: issue.labels,
+            sections: parsed.sections
+          }
+        })
+      }
+    ], fixSuggestionSchema);
+
+    const parsedResult = JSON.parse(extractJsonBlock(content)) as FixSuggestionResult;
+    return {
+      summary: parsedResult.summary ?? "Unable to generate a fix suggestion.",
+      candidateFiles: Array.isArray(parsedResult.candidateFiles) ? parsedResult.candidateFiles : [],
+      changeSuggestions: Array.isArray(parsedResult.changeSuggestions) ? parsedResult.changeSuggestions : [],
+      patchDraft: parsedResult.patchDraft ?? "",
+      verificationSteps: Array.isArray(parsedResult.verificationSteps) ? parsedResult.verificationSteps : [],
+      risks: Array.isArray(parsedResult.risks) ? parsedResult.risks : []
     };
   }
 }

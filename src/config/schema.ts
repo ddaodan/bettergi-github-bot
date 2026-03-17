@@ -75,6 +75,24 @@ const projectContextSchema = z.object({
   }))
 });
 
+const issueCommandsSchema = z.object({
+  enabled: z.boolean().default(false),
+  mentions: z.array(z.string().min(1)).min(1).default(["@bot"]),
+  access: z.enum(["collaborators"]).default("collaborators"),
+  fix: z.object({
+    enabled: z.boolean().default(false),
+    commentAnchor: z.string().min(1).default("issue-bot:fix")
+  }).default(() => ({
+    enabled: false,
+    commentAnchor: "issue-bot:fix"
+  })),
+  refresh: z.object({
+    enabled: z.boolean().default(false)
+  }).default(() => ({
+    enabled: false
+  }))
+});
+
 export const repoBotConfigSchema = z.object({
   runtime: z.object({
     languageMode: z.enum(["auto", "zh", "zh-en"]).default("auto"),
@@ -203,6 +221,18 @@ export const repoBotConfigSchema = z.object({
           techStack: []
         }
       }
+    })),
+    commands: issueCommandsSchema.default(() => ({
+      enabled: false,
+      mentions: ["@bot"],
+      access: "collaborators" as const,
+      fix: {
+        enabled: false,
+        commentAnchor: "issue-bot:fix"
+      },
+      refresh: {
+        enabled: false
+      }
     }))
   }).default(() => ({
     validation: {
@@ -251,6 +281,18 @@ export const repoBotConfigSchema = z.object({
           summary: "",
           techStack: []
         }
+      }
+    },
+    commands: {
+      enabled: false,
+      mentions: ["@bot"],
+      access: "collaborators" as const,
+      fix: {
+        enabled: false,
+        commentAnchor: "issue-bot:fix"
+      },
+      refresh: {
+        enabled: false
       }
     }
   })),

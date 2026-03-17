@@ -7,6 +7,10 @@ on:
       - edited
       - reopened
       - labeled
+  issue_comment:
+    types:
+      - created
+      - edited
 
 jobs:
   repo-bot:

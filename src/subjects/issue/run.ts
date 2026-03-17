@@ -1,6 +1,12 @@
 import * as core from "@actions/core";
 
-import type { CommentMode, IssueContext, RepoBotConfig, SimilarIssueCandidate } from "../../core/types.js";
+import type {
+  CommentMode,
+  IssueContext,
+  IssueWorkflowTrigger,
+  RepoBotConfig,
+  SimilarIssueCandidate
+} from "../../core/types.js";
 import { syncAnchoredComment, upsertAnchoredComment } from "../../github/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
 import { renderDuplicateComment, renderSimilarIssuesComment } from "../../i18n/comments.js";
@@ -12,20 +18,36 @@ import { computeManagedLabels } from "./labeling.js";
 import { resolveRepositoryAiContext } from "./projectContext.js";
 import { validateIssue } from "./validation.js";
 
-function shouldRunValidation(action: string): boolean {
-  return ["opened", "edited", "reopened"].includes(action);
+export function resolveIssueWorkflowTrigger(action: string): IssueWorkflowTrigger | undefined {
+  switch (action) {
+    case "opened":
+      return "issue_opened";
+    case "edited":
+      return "issue_edited";
+    case "reopened":
+      return "issue_reopened";
+    case "labeled":
+      return "issue_labeled";
+    default:
+      return undefined;
+  }
 }
 
-function shouldRunLabeling(action: string): boolean {
-  return ["opened", "edited", "reopened", "labeled"].includes(action);
+function shouldRunValidation(trigger: IssueWorkflowTrigger): boolean {
+  return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
 
-function shouldRunAi(action: string): boolean {
-  return ["opened", "edited", "reopened", "labeled"].includes(action);
+function shouldRunLabeling(trigger: IssueWorkflowTrigger): boolean {
+  return ["issue_opened", "issue_edited", "issue_reopened", "issue_labeled", "command_refresh"].includes(trigger);
+}
+
+function shouldRunAi(trigger: IssueWorkflowTrigger): boolean {
+  return ["issue_opened", "issue_edited", "issue_reopened", "issue_labeled", "command_refresh"].includes(trigger);
 }
 
 export async function runIssueWorkflow(params: {
   issue: IssueContext;
+  trigger: IssueWorkflowTrigger;
   config: RepoBotConfig;
   gateway: GitHubGateway;
   provider?: OpenAiCompatibleProvider;
@@ -39,7 +61,7 @@ export async function runIssueWorkflow(params: {
     commentMode
   });
 
-  if (shouldRunValidation(params.issue.action)) {
+  if (shouldRunValidation(params.trigger)) {
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -48,7 +70,7 @@ export async function runIssueWorkflow(params: {
     });
   }
 
-  if (shouldRunValidation(params.issue.action) && validation.executed && !validation.valid) {
+  if (shouldRunValidation(params.trigger) && validation.executed && !validation.valid) {
     core.info("Issue failed template validation. Skip duplicate detection and AI help.");
     await syncAnchoredComment({
       gateway: params.gateway,
@@ -65,7 +87,7 @@ export async function runIssueWorkflow(params: {
   let duplicated = false;
   let duplicateCommentBody: string | undefined;
   let similarIssues: SimilarIssueCandidate[] = [];
-  if (shouldRunValidation(params.issue.action) && validation.valid) {
+  if (shouldRunValidation(params.trigger) && validation.valid) {
     const duplicateDecision = await detectDuplicate({
       issue: params.issue,
       parsed: validation.parsed,
@@ -104,7 +126,7 @@ export async function runIssueWorkflow(params: {
     }
   }
 
-  if (shouldRunValidation(params.issue.action) && duplicated) {
+  if (shouldRunValidation(params.trigger) && duplicated) {
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -118,7 +140,7 @@ export async function runIssueWorkflow(params: {
     });
   }
 
-  if (shouldRunLabeling(params.issue.action) && params.config.issues.labeling.enabled && !duplicated) {
+  if (shouldRunLabeling(params.trigger) && params.config.issues.labeling.enabled && !duplicated) {
     const preservedLabels = [...effectiveLabels].filter((label) => params.config.issues.aiHelp.triggerLabels.includes(label));
     const managedLabels = computeManagedLabels({
       issue: params.issue,
@@ -143,8 +165,8 @@ export async function runIssueWorkflow(params: {
     }
   }
 
-  if (duplicated || !shouldRunAi(params.issue.action) || !validation.valid) {
-    if (!duplicated && shouldRunValidation(params.issue.action)) {
+  if (duplicated || !shouldRunAi(params.trigger) || !validation.valid) {
+    if (!duplicated && shouldRunValidation(params.trigger)) {
       const similarIssuesBody = similarIssues.length > 0
         ? renderSimilarIssuesComment({
           mode: commentMode,
@@ -183,7 +205,7 @@ export async function runIssueWorkflow(params: {
   });
 
   if (!aiBody) {
-    if (shouldRunValidation(params.issue.action)) {
+    if (shouldRunValidation(params.trigger)) {
       const similarIssuesBody = similarIssues.length > 0
         ? renderSimilarIssuesComment({
           mode: commentMode,
@@ -208,7 +230,7 @@ export async function runIssueWorkflow(params: {
     body: aiBody
   });
 
-  if (shouldRunValidation(params.issue.action)) {
+  if (shouldRunValidation(params.trigger)) {
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,

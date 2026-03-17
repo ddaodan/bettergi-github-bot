@@ -1,7 +1,13 @@
 import * as core from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 
-import type { DuplicateCandidate, IssueContext, LabelDefinition, RepositoryMetadata } from "../core/types.js";
+import type {
+  DuplicateCandidate,
+  IssueCommentContext,
+  IssueContext,
+  LabelDefinition,
+  RepositoryMetadata
+} from "../core/types.js";
 
 type IssueLabelValue = {
   name?: string | null;
@@ -23,12 +29,14 @@ export interface SearchIssueParams {
 
 export interface GitHubGateway {
   getIssueContext(): Promise<IssueContext | undefined>;
+  getIssueCommentContext(): Promise<IssueCommentContext | undefined>;
   getRepositoryMetadata(): Promise<RepositoryMetadata>;
   getRepositoryReadme(): Promise<string | undefined>;
   listComments(issueNumber: number): Promise<CommentRecord[]>;
   createComment(issueNumber: number, body: string): Promise<void>;
   updateComment(commentId: number, body: string): Promise<void>;
   deleteComment(commentId: number): Promise<void>;
+  addIssueCommentReaction(commentId: number, reaction: "eyes" | "rocket" | "confused"): Promise<void>;
   addLabels(issueNumber: number, labels: string[]): Promise<void>;
   removeLabel(issueNumber: number, label: string): Promise<void>;
   ensureLabels(definitions: Record<string, LabelDefinition>, labels: string[]): Promise<void>;
@@ -58,6 +66,24 @@ function toIssueContext(): IssueContext | undefined {
   };
 }
 
+function toIssueCommentContext(): IssueCommentContext | undefined {
+  const issue = toIssueContext();
+  const comment = context.payload.comment;
+  if (!issue || !comment) {
+    return undefined;
+  }
+
+  return {
+    issue,
+    commentId: comment.id,
+    commentBody: comment.body ?? "",
+    commentAuthorLogin: comment.user?.login ?? "",
+    commentAuthorType: comment.user?.type ?? "",
+    commentAuthorAssociation: comment.author_association ?? "",
+    action: context.payload.action ?? ""
+  };
+}
+
 export class OctokitGitHubGateway implements GitHubGateway {
   private readonly octokit;
 
@@ -70,6 +96,10 @@ export class OctokitGitHubGateway implements GitHubGateway {
 
   public async getIssueContext(): Promise<IssueContext | undefined> {
     return toIssueContext();
+  }
+
+  public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {
+    return toIssueCommentContext();
   }
 
   public async getRepositoryMetadata(): Promise<RepositoryMetadata> {
@@ -167,6 +197,24 @@ export class OctokitGitHubGateway implements GitHubGateway {
       repo: context.repo.repo,
       comment_id: commentId
     });
+  }
+
+  public async addIssueCommentReaction(commentId: number, reaction: "eyes" | "rocket" | "confused"): Promise<void> {
+    if (this.dryRun) {
+      core.info(`[dry-run] add reaction ${reaction} to issue comment #${commentId}`);
+      return;
+    }
+
+    try {
+      await this.octokit.rest.reactions.createForIssueComment({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        comment_id: commentId,
+        content: reaction
+      });
+    } catch (error) {
+      core.info(`Skip adding reaction "${reaction}" to issue comment #${commentId}: ${String(error)}`);
+    }
   }
 
   public async addLabels(issueNumber: number, labels: string[]): Promise<void> {

@@ -1,6 +1,6 @@
 # Repo Bot
 
-可复用的 GitHub Repo Bot，集中处理 issue 模板校验、重复 issue 检测、标签同步和 AI 帮助回复。
+可复用的 GitHub Repo Bot，集中处理 issue 模板校验、重复 issue 检测、标签同步、AI 帮助回复和 Issue 评论指令。
 
 ## 功能
 
@@ -8,6 +8,7 @@
 - 重复 issue 检测：规则初筛 + 可选 AI 复判；未自动关单时可折叠展示相似 issue
 - 标签同步：只管理配置中声明的托管标签
 - AI 帮助回复：支持 OpenAI-compatible API、`responses`/`chat_completions`
+- Issue 评论指令：支持 `@bot /refresh` 重跑完整 issue 流程，以及 `@bot /fix` 生成修复建议和补丁草案
 - 语言模式：默认中文；英文 issue 输出中英双语
 
 ## AI 帮助上下文
@@ -21,12 +22,12 @@ AI 帮助会按以下层级自动补上下文：
 
 推荐在业务仓库的 `.github/repo-bot.yml` 中填写 `issues.aiHelp.projectContext.profile`，尤其是项目存在缩写、品牌名或别名时。
 
-## AI 免责提示
+## AI 提示说明
 
-AI 帮助评论会固定追加免责提示：
+AI 生成的帮助评论和 `/fix` 建议评论会固定追加注释式提示：
 
-- 中文 issue：`免责声明：以上回复内容由 AI 生成，仅供参考，请结合项目文档、代码和维护者意见进一步确认。`
-- 英文 issue：中英双语评论中同时附带中文和英文免责声明
+- 中文 issue：`> 注：以上内容由 AI 生成，仅供参考，请结合项目文档、代码和维护者意见进一步确认。`
+- 英文 issue：中英双语评论中同时附带中文和英文 note
 
 ## 配置示例
 
@@ -60,6 +61,30 @@ issues:
           - .NET
 ```
 
+`issues.commands` 关键字段：
+
+```yml
+issues:
+  commands:
+    enabled: true
+    mentions:
+      - "@bot"
+    access: collaborators
+    fix:
+      enabled: true
+      commentAnchor: issue-bot:fix
+    refresh:
+      enabled: true
+```
+
+命令规则：
+
+- 仅处理 plain issue 的 `issue_comment` 事件，不处理 PR 评论
+- 必须显式 mention，例如 `@bot /refresh`、`@bot /fix`
+- 默认仅协作者可执行，未授权评论会被静默忽略
+- `/refresh` 重跑模板校验、重复检测、标签同步和 AI 评论，但不会刷新 `/fix` 评论
+- `/fix` 会维护单独的锚点评论，输出仓库上下文驱动的修复建议和补丁草案，不会自动提交代码
+
 ## AI 接口
 
 - `apiStyle: auto`：优先请求 `responses`，不支持时回退到 `chat/completions`
@@ -74,6 +99,7 @@ issues:
 3. 配置 `REPO_BOT_AI_API_KEY` secret
 4. 如需覆盖网关地址，配置 `REPO_BOT_AI_BASE_URL` variable
 5. 如需深度覆盖 YAML，配置 `REPO_BOT_CONFIG_OVERRIDES_JSON` variable
+6. 如需启用评论指令，业务仓库 workflow 还需要订阅 `issue_comment` 的 `created` / `edited`
 
 ## 运行说明
 

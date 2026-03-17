@@ -95,6 +95,23 @@ export interface AiHelpConfig {
   projectContext: ProjectContextConfig;
 }
 
+export interface IssueCommandsFixConfig {
+  enabled: boolean;
+  commentAnchor: string;
+}
+
+export interface IssueCommandsRefreshConfig {
+  enabled: boolean;
+}
+
+export interface IssueCommandsConfig {
+  enabled: boolean;
+  mentions: string[];
+  access: "collaborators";
+  fix: IssueCommandsFixConfig;
+  refresh: IssueCommandsRefreshConfig;
+}
+
 export interface ProviderConfig {
   enabled: boolean;
   baseUrl: string;
@@ -117,6 +134,7 @@ export interface RepoBotConfig {
     validation: ValidationConfig;
     labeling: LabelingConfig;
     aiHelp: AiHelpConfig;
+    commands: IssueCommandsConfig;
   };
   pullRequests: {
     review: {
@@ -150,8 +168,32 @@ export interface IssueContext extends RepositorySubjectContext {
   kind: "issue";
 }
 
+export type IssueWorkflowTrigger =
+  | "issue_opened"
+  | "issue_edited"
+  | "issue_reopened"
+  | "issue_labeled"
+  | "command_refresh";
+
 export interface PullRequestContext extends RepositorySubjectContext {
   kind: "pull_request";
+}
+
+export type IssueCommandType = "fix" | "refresh";
+
+export interface IssueCommentContext {
+  issue: IssueContext;
+  commentId: number;
+  commentBody: string;
+  commentAuthorLogin: string;
+  commentAuthorType: string;
+  commentAuthorAssociation: string;
+  action: string;
+}
+
+export interface IssueCommentCommandContext extends IssueCommentContext {
+  command: IssueCommandType;
+  commandLine: string;
 }
 
 export interface RepositoryMetadata {
@@ -226,6 +268,31 @@ export interface AiHelpResult {
   possibleCauses: string[];
   troubleshootingSteps: string[];
   missingInformation: string[];
+}
+
+export interface FixSuggestionCandidateFile {
+  path: string;
+  reason: string;
+}
+
+export interface RepositoryCodeContextFile {
+  path: string;
+  reason: string;
+  excerpt: string;
+}
+
+export interface RepositoryCodeContext {
+  files: RepositoryCodeContextFile[];
+  fallbackUsed: boolean;
+}
+
+export interface FixSuggestionResult {
+  summary: string;
+  candidateFiles: FixSuggestionCandidateFile[];
+  changeSuggestions: string[];
+  patchDraft: string;
+  verificationSteps: string[];
+  risks: string[];
 }
 
 export interface DuplicateReviewResult {

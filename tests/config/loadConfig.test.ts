@@ -36,6 +36,12 @@ describe("loadRepoBotConfig", () => {
                 aliases: ["BGI"]
               }
             }
+          },
+          commands: {
+            enabled: true,
+            fix: {
+              enabled: true
+            }
           }
         }
       }),
@@ -49,6 +55,9 @@ describe("loadRepoBotConfig", () => {
     expect(config.issues.aiHelp.projectContext.profile.name).toBe("BetterGI");
     expect(config.issues.aiHelp.projectContext.profile.aliases).toEqual(["BGI"]);
     expect(config.issues.aiHelp.projectContext.readmeMaxChars).toBe(3000);
+    expect(config.issues.commands.enabled).toBe(true);
+    expect(config.issues.commands.mentions).toEqual(["@bot"]);
+    expect(config.issues.commands.fix.commentAnchor).toBe("issue-bot:fix");
   });
 
   it("prefers secret baseUrl over YAML config", async () => {

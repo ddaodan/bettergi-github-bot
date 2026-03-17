@@ -1,5 +1,5 @@
 name: Repo Bot
-description: Reusable repository bot for issue validation, duplicate detection, labeling, and AI assistance.
+description: Reusable repository bot for issue validation, duplicate detection, labeling, AI assistance, and issue comment commands.
 inputs:
   config-path:
     description: Path to the repo bot YAML configuration in the caller repository.

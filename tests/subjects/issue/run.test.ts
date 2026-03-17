@@ -25,6 +25,7 @@ describe("runIssueWorkflow", () => {
 
     await runIssueWorkflow({
       issue,
+      trigger: "issue_opened",
       config,
       gateway
     });
@@ -41,6 +42,7 @@ describe("runIssueWorkflow", () => {
 
     await runIssueWorkflow({
       issue,
+      trigger: "issue_opened",
       config,
       gateway
     });
@@ -100,6 +102,7 @@ describe("runIssueWorkflow", () => {
 
     await runIssueWorkflow({
       issue,
+      trigger: "issue_opened",
       config,
       gateway
     });
@@ -178,6 +181,7 @@ describe("runIssueWorkflow", () => {
 
     await runIssueWorkflow({
       issue,
+      trigger: "issue_opened",
       config,
       gateway,
       provider
@@ -211,6 +215,7 @@ describe("runIssueWorkflow", () => {
 
     await runIssueWorkflow({
       issue,
+      trigger: "issue_edited",
       config,
       gateway
     });
@@ -261,6 +266,7 @@ describe("runIssueWorkflow", () => {
 
     await runIssueWorkflow({
       issue,
+      trigger: "issue_opened",
       config,
       gateway,
       provider
@@ -312,6 +318,7 @@ describe("runIssueWorkflow", () => {
 
     await runIssueWorkflow({
       issue,
+      trigger: "issue_opened",
       config,
       gateway,
       provider
@@ -358,6 +365,7 @@ describe("runIssueWorkflow", () => {
 
     await expect(runIssueWorkflow({
       issue,
+      trigger: "issue_opened",
       config,
       gateway,
       provider

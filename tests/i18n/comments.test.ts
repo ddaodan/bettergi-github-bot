@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { renderAiHelpComment, renderSimilarIssuesComment } from "../../src/i18n/comments.js";
+import {
+  renderAiHelpComment,
+  renderFixStatusComment,
+  renderFixSuggestionComment,
+  renderSimilarIssuesComment
+} from "../../src/i18n/comments.js";
 
 const help = {
   summary: "Example summary.",
@@ -95,5 +100,44 @@ describe("comment renderers", () => {
     expect(comment).toContain("## Possibly Related Issues");
     expect(comment).toContain("#16 | Score：0.33");
     expect(comment).toContain("Expand to view 1 related issues");
+  });
+
+  it("renders fix suggestions with patch draft and candidate files", () => {
+    const comment = renderFixSuggestionComment({
+      mode: "zh",
+      suggestion: {
+        summary: "需要调整配置保存逻辑。",
+        candidateFiles: [
+          {
+            path: "src/config/save.ts",
+            reason: "保存逻辑集中在这里。"
+          }
+        ],
+        changeSuggestions: ["统一处理 index 字段的旧格式。"],
+        patchDraft: "@@\n- old\n+ new",
+        verificationSteps: ["使用旧配置文件启动后再次保存。"],
+        risks: ["可能影响旧版本配置兼容。"]
+      }
+    });
+
+    expect(comment).toContain("## AI 修复建议");
+    expect(comment).toContain("`src/config/save.ts`：保存逻辑集中在这里。");
+    expect(comment).toContain("```diff");
+    expect(comment).toContain("> 注：以上内容由 AI 生成，仅供参考");
+  });
+
+  it("renders fix status comments without disclaimer wording", () => {
+    const comment = renderFixStatusComment({
+      mode: "zh-en",
+      titleZh: "AI 修复建议",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "当前 Issue 已关闭。",
+      messageEn: "This issue is already closed."
+    });
+
+    expect(comment).toContain("## AI 修复建议");
+    expect(comment).toContain("## AI Fix Suggestion");
+    expect(comment).not.toContain("免责声明");
+    expect(comment).not.toContain("> 注：以上内容由 AI 生成，仅供参考");
   });
 });
