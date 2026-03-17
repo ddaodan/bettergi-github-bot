@@ -21,8 +21,8 @@ const templateSchema = z.object({
 
 const duplicateDetectionSchema = z.object({
   enabled: z.boolean().default(true),
-  bypassLabels: z.array(z.string().min(1)).default(["no-auto-duplicate"]),
-  duplicateLabel: z.string().min(1).default("duplicate"),
+  bypassLabels: z.array(z.string().min(1)).default(["跳过重复检测"]),
+  duplicateLabel: z.string().min(1).default("重复"),
   searchResultLimit: z.number().int().positive().max(100).default(50),
   candidateLimit: z.number().int().positive().max(50).default(20),
   aiReviewMaxCandidates: z.number().int().positive().max(10).default(3),
@@ -53,6 +53,24 @@ const keywordRuleSchema = z.object({
   labels: z.array(z.string().min(1)).min(1),
   fields: z.array(z.enum(["title", "body", "sections"])).default(["title", "body"]),
   caseSensitive: z.boolean().default(false)
+});
+
+const labelCatalogRepositorySchema = z.object({
+  owner: z.string().default(""),
+  repo: z.string().default("")
+});
+
+const aiClassificationSchema = z.object({
+  enabled: z.boolean().default(false),
+  maxLabels: z.number().int().positive().max(10).default(3),
+  minConfidence: z.number().min(0).max(1).default(0.65),
+  include: z.array(z.string().min(1)).default([]),
+  exclude: z.array(z.string().min(1)).default([]),
+  prompt: z.string().default(""),
+  sourceRepository: labelCatalogRepositorySchema.default(() => ({
+    owner: "",
+    repo: ""
+  }))
 });
 
 const projectProfileSchema = z.object({
@@ -132,8 +150,8 @@ export const repoBotConfigSchema = z.object({
       templates: z.array(templateSchema).default([]),
       duplicateDetection: duplicateDetectionSchema.default(() => ({
         enabled: true,
-        bypassLabels: ["no-auto-duplicate"],
-        duplicateLabel: "duplicate",
+        bypassLabels: ["跳过重复检测"],
+        duplicateLabel: "重复",
         searchResultLimit: 50,
         candidateLimit: 20,
         aiReviewMaxCandidates: 3,
@@ -155,8 +173,8 @@ export const repoBotConfigSchema = z.object({
       templates: [],
       duplicateDetection: {
         enabled: true,
-        bypassLabels: ["no-auto-duplicate"],
-        duplicateLabel: "duplicate",
+        bypassLabels: ["跳过重复检测"],
+        duplicateLabel: "重复",
         searchResultLimit: 50,
         candidateLimit: 20,
         aiReviewMaxCandidates: 3,
@@ -181,13 +199,37 @@ export const repoBotConfigSchema = z.object({
         color: z.string().regex(/^[0-9a-fA-F]{6}$/),
         description: z.string().optional()
       })).default({}),
-      keywordRules: z.array(keywordRuleSchema).default([])
+      keywordRules: z.array(keywordRuleSchema).default([]),
+      aiClassification: aiClassificationSchema.default(() => ({
+        enabled: false,
+        maxLabels: 3,
+        minConfidence: 0.65,
+        include: [],
+        exclude: [],
+        prompt: "",
+        sourceRepository: {
+          owner: "",
+          repo: ""
+        }
+      }))
     }).default(() => ({
       enabled: true,
       autoCreateMissing: true,
       managed: [],
       definitions: {},
-      keywordRules: []
+      keywordRules: [],
+      aiClassification: {
+        enabled: false,
+        maxLabels: 3,
+        minConfidence: 0.65,
+        include: [],
+        exclude: [],
+        prompt: "",
+        sourceRepository: {
+          owner: "",
+          repo: ""
+        }
+      }
     })),
     aiHelp: z.object({
       enabled: z.boolean().default(false),
@@ -241,8 +283,8 @@ export const repoBotConfigSchema = z.object({
       templates: [],
       duplicateDetection: {
         enabled: true,
-        bypassLabels: ["no-auto-duplicate"],
-        duplicateLabel: "duplicate",
+        bypassLabels: ["跳过重复检测"],
+        duplicateLabel: "重复",
         searchResultLimit: 50,
         candidateLimit: 20,
         aiReviewMaxCandidates: 3,
@@ -264,7 +306,19 @@ export const repoBotConfigSchema = z.object({
       autoCreateMissing: true,
       managed: [],
       definitions: {},
-      keywordRules: []
+      keywordRules: [],
+      aiClassification: {
+        enabled: false,
+        maxLabels: 3,
+        minConfidence: 0.65,
+        include: [],
+        exclude: [],
+        prompt: "",
+        sourceRepository: {
+          owner: "",
+          repo: ""
+        }
+      }
     },
     aiHelp: {
       enabled: false,

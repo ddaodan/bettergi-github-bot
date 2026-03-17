@@ -353,4 +353,54 @@ describe("OpenAiCompatibleProvider", () => {
     expect(payload.codeContext.files[0]?.path).toBe("src/index.ts");
     expect(payload.repositoryContext.fullName).toBe("octo/repo");
   });
+
+  it("includes available labels in issue label classification requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return {
+          output_text: JSON.stringify({
+            labels: [
+              {
+                name: "一条龙",
+                confidence: 0.91,
+                reason: "Issue body repeatedly mentions 一条龙."
+              }
+            ]
+          })
+        };
+      }
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const issue = createIssue({
+      title: "[bug] 一条龙设置无法保存",
+      body: "一条龙配置保存失败"
+    });
+
+    const result = await createProvider({
+      apiStyle: "responses"
+    }).classifyIssueLabels({
+      issue,
+      parsed: parseIssueBody(issue.body),
+      repositoryContext: createRepositoryContext(),
+      availableLabels: [
+        { name: "一条龙", description: "一条龙相关问题" },
+        { name: "调度器", description: "调度器相关问题" }
+      ],
+      maxLabels: 2,
+      prompt: "优先选择具体功能模块标签。"
+    });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const payload = JSON.parse(String(body.input[1]?.content));
+    expect(result[0]?.name).toBe("一条龙");
+    expect(payload.availableLabels).toEqual([
+      { name: "一条龙", description: "一条龙相关问题" },
+      { name: "调度器", description: "调度器相关问题" }
+    ]);
+    expect(payload.maxLabels).toBe(2);
+    expect(payload.prompt).toContain("具体功能模块");
+  });
 });

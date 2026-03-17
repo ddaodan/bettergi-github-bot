@@ -2,7 +2,7 @@ name: Feature Request
 description: Suggest a new capability or improvement.
 title: "[feature] "
 labels:
-  - enhancement
+  - 功能建议
 body:
   - type: textarea
     id: summary

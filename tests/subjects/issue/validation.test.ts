@@ -45,7 +45,7 @@ describe("validateIssue", () => {
     });
 
     expect(result.valid).toBe(true);
-    expect(result.desiredLabels).toContain("type:bug");
+    expect(result.desiredLabels).toContain("BUG");
     expect(result.commentBody).toBeUndefined();
   });
 

@@ -65,12 +65,28 @@ export interface KeywordRule {
   caseSensitive: boolean;
 }
 
+export interface LabelCatalogRepository {
+  owner: string;
+  repo: string;
+}
+
+export interface LabelingAiClassificationConfig {
+  enabled: boolean;
+  maxLabels: number;
+  minConfidence: number;
+  include: string[];
+  exclude: string[];
+  prompt: string;
+  sourceRepository: LabelCatalogRepository;
+}
+
 export interface LabelingConfig {
   enabled: boolean;
   autoCreateMissing: boolean;
   managed: string[];
   definitions: Record<string, LabelDefinition>;
   keywordRules: KeywordRule[];
+  aiClassification: LabelingAiClassificationConfig;
 }
 
 export interface ProjectProfile {
@@ -297,6 +313,12 @@ export interface FixSuggestionResult {
 
 export interface DuplicateReviewResult {
   duplicate: boolean;
+  confidence: number;
+  reason: string;
+}
+
+export interface LabelClassificationResult {
+  name: string;
   confidence: number;
   reason: string;
 }

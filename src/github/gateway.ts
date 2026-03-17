@@ -27,11 +27,17 @@ export interface SearchIssueParams {
   limit: number;
 }
 
+export interface RepositoryLabelCatalogParams {
+  owner?: string;
+  repo?: string;
+}
+
 export interface GitHubGateway {
   getIssueContext(): Promise<IssueContext | undefined>;
   getIssueCommentContext(): Promise<IssueCommentContext | undefined>;
   getRepositoryMetadata(): Promise<RepositoryMetadata>;
   getRepositoryReadme(): Promise<string | undefined>;
+  getRepositoryLabels(params?: RepositoryLabelCatalogParams): Promise<Record<string, LabelDefinition>>;
   listComments(issueNumber: number): Promise<CommentRecord[]>;
   createComment(issueNumber: number, body: string): Promise<void>;
   updateComment(commentId: number, body: string): Promise<void>;
@@ -82,6 +88,52 @@ function toIssueCommentContext(): IssueCommentContext | undefined {
     commentAuthorAssociation: comment.author_association ?? "",
     action: context.payload.action ?? ""
   };
+}
+
+function getRepositoryCoordinates(params?: RepositoryLabelCatalogParams): { owner: string; repo: string } {
+  return {
+    owner: params?.owner ?? context.repo.owner,
+    repo: params?.repo ?? context.repo.repo
+  };
+}
+
+async function fetchPublicRepositoryLabels(owner: string, repo: string): Promise<Record<string, LabelDefinition>> {
+  const definitions: Record<string, LabelDefinition> = {};
+
+  for (let page = 1; page <= 10; page += 1) {
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/labels?per_page=100&page=${page}`, {
+      headers: {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "bettergi-repo-bot"
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub public labels API returned ${response.status} for ${owner}/${repo}.`);
+    }
+
+    const items = await response.json() as Array<{
+      name?: string;
+      color?: string;
+      description?: string | null;
+    }>;
+
+    for (const item of items) {
+      if (!item.name || !item.color) {
+        continue;
+      }
+      definitions[item.name] = {
+        color: item.color,
+        description: item.description ?? undefined
+      };
+    }
+
+    if (items.length < 100) {
+      break;
+    }
+  }
+
+  return definitions;
 }
 
 export class OctokitGitHubGateway implements GitHubGateway {
@@ -140,6 +192,41 @@ export class OctokitGitHubGateway implements GitHubGateway {
       }
       core.info(`Skip repository README context: ${String(error)}`);
       return undefined;
+    }
+  }
+
+  public async getRepositoryLabels(params?: RepositoryLabelCatalogParams): Promise<Record<string, LabelDefinition>> {
+    const { owner, repo } = getRepositoryCoordinates(params);
+
+    try {
+      const labels = await this.octokit.paginate(this.octokit.rest.issues.listLabelsForRepo, {
+        owner,
+        repo,
+        per_page: 100
+      });
+
+      return Object.fromEntries(labels
+        .filter((label) => Boolean(label.name) && Boolean(label.color))
+        .map((label) => [
+          label.name,
+          {
+            color: label.color,
+            description: label.description ?? undefined
+          }
+        ]));
+    } catch (error) {
+      const targetCurrentRepo = owner === context.repo.owner && repo === context.repo.repo;
+      if (targetCurrentRepo) {
+        throw error;
+      }
+
+      core.info(`Falling back to public label catalog fetch for ${owner}/${repo}: ${String(error)}`);
+      try {
+        return await fetchPublicRepositoryLabels(owner, repo);
+      } catch (fallbackError) {
+        core.warning(`Skip external label catalog ${owner}/${repo}: ${String(fallbackError)}`);
+        return {};
+      }
     }
   }
 

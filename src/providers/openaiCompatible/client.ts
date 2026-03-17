@@ -8,6 +8,7 @@ import type {
   FixSuggestionResult,
   IssueImageReference,
   IssueContext,
+  LabelClassificationResult,
   ParsedIssue,
   ProviderConfig,
   RepositoryCodeContext,
@@ -486,6 +487,36 @@ const fixSuggestionSchema: StructuredOutputSchema = {
   }
 };
 
+const labelClassificationSchema: StructuredOutputSchema = {
+  name: "label_classification",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      labels: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            name: {
+              type: "string"
+            },
+            confidence: {
+              type: "number"
+            },
+            reason: {
+              type: "string"
+            }
+          },
+          required: ["name", "confidence", "reason"]
+        }
+      }
+    },
+    required: ["labels"]
+  }
+};
+
 function createIssueHelpInstruction(templateKey: string): string {
   switch (templateKey) {
     case "bug":
@@ -683,6 +714,59 @@ export class OpenAiCompatibleProvider {
       verificationSteps: Array.isArray(parsedResult.verificationSteps) ? parsedResult.verificationSteps : [],
       risks: Array.isArray(parsedResult.risks) ? parsedResult.risks : []
     };
+  }
+
+  public async classifyIssueLabels(params: {
+    issue: IssueContext;
+    parsed: ParsedIssue;
+    repositoryContext: RepositoryAiContext;
+    availableLabels: Array<{
+      name: string;
+      description?: string;
+    }>;
+    maxLabels: number;
+    prompt?: string;
+  }): Promise<LabelClassificationResult[]> {
+    const content = await requestStructuredJson(this.config, this.apiKey, [
+      {
+        role: "system",
+        text: [
+          "You are a GitHub issue label classifier for the current repository.",
+          "Choose only labels that are directly supported by the issue content.",
+          "Never invent a label name and never return labels outside the provided availableLabels list.",
+          "Avoid weak guesses. If the issue does not clearly support a label, leave it out.",
+          `Return at most ${params.maxLabels} labels.`,
+          "Return JSON only."
+        ].join(" ")
+      },
+      {
+        role: "user",
+        text: JSON.stringify({
+          repositoryContext: params.repositoryContext,
+          issue: {
+            title: params.issue.title,
+            body: params.issue.body,
+            labels: params.issue.labels,
+            sections: params.parsed.sections
+          },
+          availableLabels: params.availableLabels,
+          maxLabels: params.maxLabels,
+          prompt: params.prompt ?? ""
+        })
+      }
+    ], labelClassificationSchema);
+
+    const parsedResult = JSON.parse(extractJsonBlock(content)) as {
+      labels?: LabelClassificationResult[];
+    };
+
+    return Array.isArray(parsedResult.labels)
+      ? parsedResult.labels.map((item) => ({
+        name: item.name ?? "",
+        confidence: Math.max(0, Math.min(1, Number(item.confidence) || 0)),
+        reason: item.reason ?? ""
+      }))
+      : [];
   }
 }
 

@@ -5,6 +5,7 @@ import type {
   IssueContext,
   IssueWorkflowTrigger,
   RepoBotConfig,
+  RepositoryAiContext,
   SimilarIssueCandidate
 } from "../../core/types.js";
 import { syncAnchoredComment, upsertAnchoredComment } from "../../github/comments.js";
@@ -12,6 +13,7 @@ import type { GitHubGateway } from "../../github/gateway.js";
 import { renderDuplicateComment, renderSimilarIssuesComment } from "../../i18n/comments.js";
 import { detectCommentMode } from "../../i18n/language.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
+import { classifyIssueContentLabels } from "./aiClassification.js";
 import { generateIssueAiHelp } from "./aiHelp.js";
 import { detectDuplicate } from "./duplicateDetection.js";
 import { computeManagedLabels } from "./labeling.js";
@@ -87,6 +89,7 @@ export async function runIssueWorkflow(params: {
   let duplicated = false;
   let duplicateCommentBody: string | undefined;
   let similarIssues: SimilarIssueCandidate[] = [];
+  let repositoryContext: RepositoryAiContext | undefined;
   if (shouldRunValidation(params.trigger) && validation.valid) {
     const duplicateDecision = await detectDuplicate({
       issue: params.issue,
@@ -163,6 +166,42 @@ export async function runIssueWorkflow(params: {
       await params.gateway.removeLabel(params.issue.number, label);
       effectiveLabels.delete(label);
     }
+
+    if (params.config.issues.labeling.aiClassification.enabled) {
+      repositoryContext ??= await resolveRepositoryAiContext({
+        issue: params.issue,
+        gateway: params.gateway,
+        config: params.config.issues.aiHelp.projectContext,
+        templateKey: validation.template?.key ?? validation.parsed.marker
+      });
+
+      const classified = await classifyIssueContentLabels({
+        issue: {
+          ...params.issue,
+          labels: [...effectiveLabels]
+        },
+        parsed: validation.parsed,
+        config: params.config.issues.labeling.aiClassification,
+        gateway: params.gateway,
+        repositoryContext,
+        provider: params.provider
+      });
+
+      const labelsToAdd = classified.labels.filter((label) => !effectiveLabels.has(label));
+      if (params.config.issues.labeling.autoCreateMissing) {
+        await params.gateway.ensureLabels({
+          ...params.config.issues.labeling.definitions,
+          ...classified.definitions
+        }, labelsToAdd);
+      }
+
+      if (labelsToAdd.length > 0) {
+        await params.gateway.addLabels(params.issue.number, labelsToAdd);
+        for (const label of labelsToAdd) {
+          effectiveLabels.add(label);
+        }
+      }
+    }
   }
 
   if (duplicated || !shouldRunAi(params.trigger) || !validation.valid) {
@@ -184,7 +223,7 @@ export async function runIssueWorkflow(params: {
     return;
   }
 
-  const repositoryContext = await resolveRepositoryAiContext({
+  repositoryContext ??= await resolveRepositoryAiContext({
     issue: params.issue,
     gateway: params.gateway,
     config: params.config.issues.aiHelp.projectContext,

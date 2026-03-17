@@ -101,7 +101,7 @@ describe("issue comment commands", () => {
     config.issues.commands.enabled = true;
     config.issues.commands.refresh.enabled = true;
     const issue = createIssue({
-      labels: ["type:bug"]
+      labels: ["BUG"]
     });
     const comment = createIssueCommentContext({
       issue,
@@ -262,7 +262,7 @@ describe("issue comment commands", () => {
     expect(invalidGateway.commentReactions.at(-1)?.reaction).toBe("confused");
 
     const duplicateIssue = createIssue({
-      labels: ["duplicate"]
+      labels: ["重复"]
     });
     const duplicateComment = createIssueCommentContext({
       issue: duplicateIssue,

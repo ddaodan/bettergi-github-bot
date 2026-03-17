@@ -17598,12 +17598,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info7 = this._prepareRequest(verb, parsedUrl, headers);
+          let info8 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info7, data);
+            response = yield this.requestRaw(info8, data);
             if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
               let authenticationHandler;
               for (const handler2 of this.handlers) {
@@ -17613,7 +17613,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info7, data);
+                return authenticationHandler.handleAuthentication(this, info8, data);
               } else {
                 return response;
               }
@@ -17636,8 +17636,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info7 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info7, data);
+              info8 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info8, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -17666,7 +17666,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info7, data) {
+      requestRaw(info8, data) {
         return __awaiter(this, void 0, void 0, function* () {
           return new Promise((resolve, reject) => {
             function callbackForResult(err, res) {
@@ -17678,7 +17678,7 @@ var require_lib = __commonJS({
                 resolve(res);
               }
             }
-            this.requestRawWithCallback(info7, data, callbackForResult);
+            this.requestRawWithCallback(info8, data, callbackForResult);
           });
         });
       }
@@ -17688,12 +17688,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info7, data, onResult) {
+      requestRawWithCallback(info8, data, onResult) {
         if (typeof data === "string") {
-          if (!info7.options.headers) {
-            info7.options.headers = {};
+          if (!info8.options.headers) {
+            info8.options.headers = {};
           }
-          info7.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info8.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult(err, res) {
@@ -17702,7 +17702,7 @@ var require_lib = __commonJS({
             onResult(err, res);
           }
         }
-        const req = info7.httpModule.request(info7.options, (msg) => {
+        const req = info8.httpModule.request(info8.options, (msg) => {
           const res = new HttpClientResponse(msg);
           handleResult(void 0, res);
         });
@@ -17714,7 +17714,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error(`Request timeout: ${info7.options.path}`));
+          handleResult(new Error(`Request timeout: ${info8.options.path}`));
         });
         req.on("error", function(err) {
           handleResult(err);
@@ -17750,27 +17750,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info7 = {};
-        info7.parsedUrl = requestUrl;
-        const usingSsl = info7.parsedUrl.protocol === "https:";
-        info7.httpModule = usingSsl ? https : http;
+        const info8 = {};
+        info8.parsedUrl = requestUrl;
+        const usingSsl = info8.parsedUrl.protocol === "https:";
+        info8.httpModule = usingSsl ? https : http;
         const defaultPort = usingSsl ? 443 : 80;
-        info7.options = {};
-        info7.options.host = info7.parsedUrl.hostname;
-        info7.options.port = info7.parsedUrl.port ? parseInt(info7.parsedUrl.port) : defaultPort;
-        info7.options.path = (info7.parsedUrl.pathname || "") + (info7.parsedUrl.search || "");
-        info7.options.method = method;
-        info7.options.headers = this._mergeHeaders(headers);
+        info8.options = {};
+        info8.options.host = info8.parsedUrl.hostname;
+        info8.options.port = info8.parsedUrl.port ? parseInt(info8.parsedUrl.port) : defaultPort;
+        info8.options.path = (info8.parsedUrl.pathname || "") + (info8.parsedUrl.search || "");
+        info8.options.method = method;
+        info8.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info7.options.headers["user-agent"] = this.userAgent;
+          info8.options.headers["user-agent"] = this.userAgent;
         }
-        info7.options.agent = this._getAgent(info7.parsedUrl);
+        info8.options.agent = this._getAgent(info8.parsedUrl);
         if (this.handlers) {
           for (const handler2 of this.handlers) {
-            handler2.prepareRequest(info7.options);
+            handler2.prepareRequest(info8.options);
           }
         }
-        return info7;
+        return info8;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -19752,18 +19752,18 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("error", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.error = error48;
-    function warning5(message, properties = {}) {
+    function warning7(message, properties = {}) {
       (0, command_1.issueCommand)("warning", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
-    exports2.warning = warning5;
+    exports2.warning = warning7;
     function notice(message, properties = {}) {
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.notice = notice;
-    function info7(message) {
+    function info8(message) {
       process.stdout.write(message + os.EOL);
     }
-    exports2.info = info7;
+    exports2.info = info8;
     function startGroup(name) {
       (0, command_1.issue)("group", name);
     }
@@ -23936,7 +23936,7 @@ var require_github = __commonJS({
 });
 
 // src/index.ts
-var core9 = __toESM(require_core(), 1);
+var core10 = __toESM(require_core(), 1);
 
 // src/config/loadConfig.ts
 var import_promises = require("fs/promises");
@@ -40354,8 +40354,8 @@ var templateSchema = external_exports.object({
 });
 var duplicateDetectionSchema = external_exports.object({
   enabled: external_exports.boolean().default(true),
-  bypassLabels: external_exports.array(external_exports.string().min(1)).default(["no-auto-duplicate"]),
-  duplicateLabel: external_exports.string().min(1).default("duplicate"),
+  bypassLabels: external_exports.array(external_exports.string().min(1)).default(["\u8DF3\u8FC7\u91CD\u590D\u68C0\u6D4B"]),
+  duplicateLabel: external_exports.string().min(1).default("\u91CD\u590D"),
   searchResultLimit: external_exports.number().int().positive().max(100).default(50),
   candidateLimit: external_exports.number().int().positive().max(50).default(20),
   aiReviewMaxCandidates: external_exports.number().int().positive().max(10).default(3),
@@ -40385,6 +40385,22 @@ var keywordRuleSchema = external_exports.object({
   labels: external_exports.array(external_exports.string().min(1)).min(1),
   fields: external_exports.array(external_exports.enum(["title", "body", "sections"])).default(["title", "body"]),
   caseSensitive: external_exports.boolean().default(false)
+});
+var labelCatalogRepositorySchema = external_exports.object({
+  owner: external_exports.string().default(""),
+  repo: external_exports.string().default("")
+});
+var aiClassificationSchema = external_exports.object({
+  enabled: external_exports.boolean().default(false),
+  maxLabels: external_exports.number().int().positive().max(10).default(3),
+  minConfidence: external_exports.number().min(0).max(1).default(0.65),
+  include: external_exports.array(external_exports.string().min(1)).default([]),
+  exclude: external_exports.array(external_exports.string().min(1)).default([]),
+  prompt: external_exports.string().default(""),
+  sourceRepository: labelCatalogRepositorySchema.default(() => ({
+    owner: "",
+    repo: ""
+  }))
 });
 var projectProfileSchema = external_exports.object({
   name: external_exports.string().default(""),
@@ -40460,8 +40476,8 @@ var repoBotConfigSchema = external_exports.object({
       templates: external_exports.array(templateSchema).default([]),
       duplicateDetection: duplicateDetectionSchema.default(() => ({
         enabled: true,
-        bypassLabels: ["no-auto-duplicate"],
-        duplicateLabel: "duplicate",
+        bypassLabels: ["\u8DF3\u8FC7\u91CD\u590D\u68C0\u6D4B"],
+        duplicateLabel: "\u91CD\u590D",
         searchResultLimit: 50,
         candidateLimit: 20,
         aiReviewMaxCandidates: 3,
@@ -40483,8 +40499,8 @@ var repoBotConfigSchema = external_exports.object({
       templates: [],
       duplicateDetection: {
         enabled: true,
-        bypassLabels: ["no-auto-duplicate"],
-        duplicateLabel: "duplicate",
+        bypassLabels: ["\u8DF3\u8FC7\u91CD\u590D\u68C0\u6D4B"],
+        duplicateLabel: "\u91CD\u590D",
         searchResultLimit: 50,
         candidateLimit: 20,
         aiReviewMaxCandidates: 3,
@@ -40509,13 +40525,37 @@ var repoBotConfigSchema = external_exports.object({
         color: external_exports.string().regex(/^[0-9a-fA-F]{6}$/),
         description: external_exports.string().optional()
       })).default({}),
-      keywordRules: external_exports.array(keywordRuleSchema).default([])
+      keywordRules: external_exports.array(keywordRuleSchema).default([]),
+      aiClassification: aiClassificationSchema.default(() => ({
+        enabled: false,
+        maxLabels: 3,
+        minConfidence: 0.65,
+        include: [],
+        exclude: [],
+        prompt: "",
+        sourceRepository: {
+          owner: "",
+          repo: ""
+        }
+      }))
     }).default(() => ({
       enabled: true,
       autoCreateMissing: true,
       managed: [],
       definitions: {},
-      keywordRules: []
+      keywordRules: [],
+      aiClassification: {
+        enabled: false,
+        maxLabels: 3,
+        minConfidence: 0.65,
+        include: [],
+        exclude: [],
+        prompt: "",
+        sourceRepository: {
+          owner: "",
+          repo: ""
+        }
+      }
     })),
     aiHelp: external_exports.object({
       enabled: external_exports.boolean().default(false),
@@ -40569,8 +40609,8 @@ var repoBotConfigSchema = external_exports.object({
       templates: [],
       duplicateDetection: {
         enabled: true,
-        bypassLabels: ["no-auto-duplicate"],
-        duplicateLabel: "duplicate",
+        bypassLabels: ["\u8DF3\u8FC7\u91CD\u590D\u68C0\u6D4B"],
+        duplicateLabel: "\u91CD\u590D",
         searchResultLimit: 50,
         candidateLimit: 20,
         aiReviewMaxCandidates: 3,
@@ -40592,7 +40632,19 @@ var repoBotConfigSchema = external_exports.object({
       autoCreateMissing: true,
       managed: [],
       definitions: {},
-      keywordRules: []
+      keywordRules: [],
+      aiClassification: {
+        enabled: false,
+        maxLabels: 3,
+        minConfidence: 0.65,
+        include: [],
+        exclude: [],
+        prompt: "",
+        sourceRepository: {
+          owner: "",
+          repo: ""
+        }
+      }
     },
     aiHelp: {
       enabled: false,
@@ -40733,6 +40785,40 @@ function toIssueCommentContext() {
     action: import_github.context.payload.action ?? ""
   };
 }
+function getRepositoryCoordinates(params) {
+  return {
+    owner: params?.owner ?? import_github.context.repo.owner,
+    repo: params?.repo ?? import_github.context.repo.repo
+  };
+}
+async function fetchPublicRepositoryLabels(owner, repo) {
+  const definitions = {};
+  for (let page = 1; page <= 10; page += 1) {
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/labels?per_page=100&page=${page}`, {
+      headers: {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "bettergi-repo-bot"
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`GitHub public labels API returned ${response.status} for ${owner}/${repo}.`);
+    }
+    const items = await response.json();
+    for (const item of items) {
+      if (!item.name || !item.color) {
+        continue;
+      }
+      definitions[item.name] = {
+        color: item.color,
+        description: item.description ?? void 0
+      };
+    }
+    if (items.length < 100) {
+      break;
+    }
+  }
+  return definitions;
+}
 var OctokitGitHubGateway = class {
   constructor(token, dryRun) {
     this.dryRun = dryRun;
@@ -40777,6 +40863,35 @@ var OctokitGitHubGateway = class {
       }
       core2.info(`Skip repository README context: ${String(error48)}`);
       return void 0;
+    }
+  }
+  async getRepositoryLabels(params) {
+    const { owner, repo } = getRepositoryCoordinates(params);
+    try {
+      const labels = await this.octokit.paginate(this.octokit.rest.issues.listLabelsForRepo, {
+        owner,
+        repo,
+        per_page: 100
+      });
+      return Object.fromEntries(labels.filter((label) => Boolean(label.name) && Boolean(label.color)).map((label) => [
+        label.name,
+        {
+          color: label.color,
+          description: label.description ?? void 0
+        }
+      ]));
+    } catch (error48) {
+      const targetCurrentRepo = owner === import_github.context.repo.owner && repo === import_github.context.repo.repo;
+      if (targetCurrentRepo) {
+        throw error48;
+      }
+      core2.info(`Falling back to public label catalog fetch for ${owner}/${repo}: ${String(error48)}`);
+      try {
+        return await fetchPublicRepositoryLabels(owner, repo);
+      } catch (fallbackError) {
+        core2.warning(`Skip external label catalog ${owner}/${repo}: ${String(fallbackError)}`);
+        return {};
+      }
     }
   }
   async listComments(issueNumber) {
@@ -41315,6 +41430,35 @@ var fixSuggestionSchema = {
     required: ["summary", "candidateFiles", "changeSuggestions", "patchDraft", "verificationSteps", "risks"]
   }
 };
+var labelClassificationSchema = {
+  name: "label_classification",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      labels: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            name: {
+              type: "string"
+            },
+            confidence: {
+              type: "number"
+            },
+            reason: {
+              type: "string"
+            }
+          },
+          required: ["name", "confidence", "reason"]
+        }
+      }
+    },
+    required: ["labels"]
+  }
+};
 function createIssueHelpInstruction(templateKey) {
   switch (templateKey) {
     case "bug":
@@ -41483,6 +41627,42 @@ var OpenAiCompatibleProvider = class {
       verificationSteps: Array.isArray(parsedResult.verificationSteps) ? parsedResult.verificationSteps : [],
       risks: Array.isArray(parsedResult.risks) ? parsedResult.risks : []
     };
+  }
+  async classifyIssueLabels(params) {
+    const content = await requestStructuredJson(this.config, this.apiKey, [
+      {
+        role: "system",
+        text: [
+          "You are a GitHub issue label classifier for the current repository.",
+          "Choose only labels that are directly supported by the issue content.",
+          "Never invent a label name and never return labels outside the provided availableLabels list.",
+          "Avoid weak guesses. If the issue does not clearly support a label, leave it out.",
+          `Return at most ${params.maxLabels} labels.`,
+          "Return JSON only."
+        ].join(" ")
+      },
+      {
+        role: "user",
+        text: JSON.stringify({
+          repositoryContext: params.repositoryContext,
+          issue: {
+            title: params.issue.title,
+            body: params.issue.body,
+            labels: params.issue.labels,
+            sections: params.parsed.sections
+          },
+          availableLabels: params.availableLabels,
+          maxLabels: params.maxLabels,
+          prompt: params.prompt ?? ""
+        })
+      }
+    ], labelClassificationSchema);
+    const parsedResult = JSON.parse(extractJsonBlock(content));
+    return Array.isArray(parsedResult.labels) ? parsedResult.labels.map((item) => ({
+      name: item.name ?? "",
+      confidence: Math.max(0, Math.min(1, Number(item.confidence) || 0)),
+      reason: item.reason ?? ""
+    })) : [];
   }
 };
 function tryCreateProvider(config2) {
@@ -42591,21 +42771,80 @@ async function runIssueFixCommand(params) {
 }
 
 // src/subjects/issue/run.ts
-var core8 = __toESM(require_core(), 1);
+var core9 = __toESM(require_core(), 1);
+
+// src/subjects/issue/aiClassification.ts
+var core6 = __toESM(require_core(), 1);
+function unique(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+async function classifyIssueContentLabels(params) {
+  if (!params.config.enabled) {
+    return { labels: [], definitions: {} };
+  }
+  if (!params.provider) {
+    core6.info("Skip AI label classification because provider is unavailable.");
+    return { labels: [], definitions: {} };
+  }
+  const owner = params.config.sourceRepository.owner.trim() || params.issue.owner;
+  const repo = params.config.sourceRepository.repo.trim() || params.issue.repo;
+  const labelCatalog = await params.gateway.getRepositoryLabels({ owner, repo });
+  let entries = Object.entries(labelCatalog);
+  if (params.config.include.length > 0) {
+    const include = new Set(params.config.include);
+    entries = entries.filter(([name]) => include.has(name));
+  }
+  if (params.config.exclude.length > 0) {
+    const exclude = new Set(params.config.exclude);
+    entries = entries.filter(([name]) => !exclude.has(name));
+  }
+  if (entries.length === 0) {
+    core6.info(`Skip AI label classification because no candidate labels are available from ${owner}/${repo}.`);
+    return { labels: [], definitions: {} };
+  }
+  try {
+    const classified = await params.provider.classifyIssueLabels({
+      issue: params.issue,
+      parsed: params.parsed,
+      repositoryContext: params.repositoryContext,
+      availableLabels: entries.map(([name, definition]) => ({
+        name,
+        description: definition.description
+      })),
+      maxLabels: params.config.maxLabels,
+      prompt: params.config.prompt
+    });
+    const allowed = new Map(entries);
+    const selected = unique(classified.filter((item) => item.confidence >= params.config.minConfidence).map((item) => item.name)).filter((name) => allowed.has(name)).slice(0, params.config.maxLabels);
+    const definitions = Object.fromEntries(selected.map((name) => [name, allowed.get(name)]).filter((entry) => Boolean(entry[1])));
+    if (selected.length > 0) {
+      core6.info(`AI label classification selected: ${selected.join(", ")}`);
+    } else {
+      core6.info("AI label classification did not select any labels above the confidence threshold.");
+    }
+    return {
+      labels: selected,
+      definitions
+    };
+  } catch (error48) {
+    core6.warning(`Skip AI label classification because provider request failed: ${String(error48)}`);
+    return { labels: [], definitions: {} };
+  }
+}
 
 // src/subjects/issue/aiHelp.ts
-var core6 = __toESM(require_core(), 1);
+var core7 = __toESM(require_core(), 1);
 async function generateIssueAiHelp(params) {
   if (!params.config.enabled) {
     return void 0;
   }
   if (!params.provider) {
-    core6.info("Skip AI help because provider is unavailable.");
+    core7.info("Skip AI help because provider is unavailable.");
     return void 0;
   }
   const hasTriggerLabel = params.config.triggerLabels.length === 0 || params.config.triggerLabels.some((label) => params.issue.labels.includes(label));
   if (!hasTriggerLabel) {
-    core6.info("Skip AI help because trigger labels do not match.");
+    core7.info("Skip AI help because trigger labels do not match.");
     return void 0;
   }
   try {
@@ -42621,13 +42860,13 @@ async function generateIssueAiHelp(params) {
       relatedIssues: params.relatedIssues
     });
   } catch (error48) {
-    core6.warning(`Skip AI help because provider request failed: ${String(error48)}`);
+    core7.warning(`Skip AI help because provider request failed: ${String(error48)}`);
     return void 0;
   }
 }
 
 // src/subjects/issue/duplicateDetection.ts
-var core7 = __toESM(require_core(), 1);
+var core8 = __toESM(require_core(), 1);
 function jaccardSimilarity(left, right) {
   const leftSet = new Set(left);
   const rightSet = new Set(right);
@@ -42756,7 +42995,7 @@ async function detectDuplicate(params) {
         };
       }
     } catch (error48) {
-      core7.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
+      core8.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
     }
   }
   if (!bestReview) {
@@ -42866,7 +43105,7 @@ ${params.issue.body}`, params.config.runtime);
     });
   }
   if (shouldRunValidation(params.trigger) && validation.executed && !validation.valid) {
-    core8.info("Issue failed template validation. Skip duplicate detection and AI help.");
+    core9.info("Issue failed template validation. Skip duplicate detection and AI help.");
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -42881,6 +43120,7 @@ ${params.issue.body}`, params.config.runtime);
   let duplicated = false;
   let duplicateCommentBody;
   let similarIssues = [];
+  let repositoryContext;
   if (shouldRunValidation(params.trigger) && validation.valid) {
     const duplicateDecision = await detectDuplicate({
       issue: params.issue,
@@ -42952,6 +43192,38 @@ ${params.issue.body}`, params.config.runtime);
       await params.gateway.removeLabel(params.issue.number, label);
       effectiveLabels.delete(label);
     }
+    if (params.config.issues.labeling.aiClassification.enabled) {
+      repositoryContext ??= await resolveRepositoryAiContext({
+        issue: params.issue,
+        gateway: params.gateway,
+        config: params.config.issues.aiHelp.projectContext,
+        templateKey: validation.template?.key ?? validation.parsed.marker
+      });
+      const classified = await classifyIssueContentLabels({
+        issue: {
+          ...params.issue,
+          labels: [...effectiveLabels]
+        },
+        parsed: validation.parsed,
+        config: params.config.issues.labeling.aiClassification,
+        gateway: params.gateway,
+        repositoryContext,
+        provider: params.provider
+      });
+      const labelsToAdd = classified.labels.filter((label) => !effectiveLabels.has(label));
+      if (params.config.issues.labeling.autoCreateMissing) {
+        await params.gateway.ensureLabels({
+          ...params.config.issues.labeling.definitions,
+          ...classified.definitions
+        }, labelsToAdd);
+      }
+      if (labelsToAdd.length > 0) {
+        await params.gateway.addLabels(params.issue.number, labelsToAdd);
+        for (const label of labelsToAdd) {
+          effectiveLabels.add(label);
+        }
+      }
+    }
   }
   if (duplicated || !shouldRunAi(params.trigger) || !validation.valid) {
     if (!duplicated && shouldRunValidation(params.trigger)) {
@@ -42968,7 +43240,7 @@ ${params.issue.body}`, params.config.runtime);
     }
     return;
   }
-  const repositoryContext = await resolveRepositoryAiContext({
+  repositoryContext ??= await resolveRepositoryAiContext({
     issue: params.issue,
     gateway: params.gateway,
     config: params.config.issues.aiHelp.projectContext,
@@ -43120,9 +43392,9 @@ async function runIssueCommentCommand(params) {
 async function run() {
   try {
     const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
-    const configPath = core9.getInput("config-path") || ".github/repo-bot.yml";
-    const overridesJson = core9.getInput("config-overrides-json");
-    const dryRun = core9.getBooleanInput("dry-run", { required: false });
+    const configPath = core10.getInput("config-path") || ".github/repo-bot.yml";
+    const overridesJson = core10.getInput("config-overrides-json");
+    const dryRun = core10.getBooleanInput("dry-run", { required: false });
     const config2 = await loadRepoBotConfig({
       workspace,
       configPath,
@@ -43134,7 +43406,7 @@ async function run() {
       throw new Error("Missing REPO_BOT_GITHUB_TOKEN or GITHUB_TOKEN.");
     }
     if (process.env.REPO_BOT_GITHUB_TOKEN?.trim()) {
-      core9.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
+      core10.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
     }
     const gateway = new OctokitGitHubGateway(token, config2.runtime.dryRun);
     const provider = tryCreateProvider(config2.providers.openAiCompatible);
@@ -43145,21 +43417,21 @@ async function run() {
         mentions: config2.issues.commands.mentions
       });
       if (!command) {
-        core9.info("Current issue comment does not contain a supported bot command.");
+        core10.info("Current issue comment does not contain a supported bot command.");
         return;
       }
       if (!isIssueCommentCommandEnabled({
         command,
         config: config2.issues.commands
       })) {
-        core9.info(`Issue command /${command.command} is disabled or unsupported.`);
+        core10.info(`Issue command /${command.command} is disabled or unsupported.`);
         return;
       }
       if (!canExecuteIssueCommentCommand({
         command,
         config: config2.issues.commands
       })) {
-        core9.info(`Ignore issue command /${command.command} due to access restrictions.`);
+        core10.info(`Ignore issue command /${command.command} due to access restrictions.`);
         return;
       }
       await runIssueCommentCommand({
@@ -43169,17 +43441,17 @@ async function run() {
         gateway,
         provider
       });
-      core9.info(`Repo Bot completed command /${command.command} for issue #${command.issue.number}.`);
+      core10.info(`Repo Bot completed command /${command.command} for issue #${command.issue.number}.`);
       return;
     }
     const issue2 = await gateway.getIssueContext();
     if (!issue2) {
-      core9.info("Current event is not a plain issue event. Nothing to do.");
+      core10.info("Current event is not a plain issue event. Nothing to do.");
       return;
     }
     const trigger = resolveIssueWorkflowTrigger(issue2.action);
     if (!trigger) {
-      core9.info(`Current issue action "${issue2.action}" is not handled.`);
+      core10.info(`Current issue action "${issue2.action}" is not handled.`);
       return;
     }
     await runIssueWorkflow({
@@ -43189,9 +43461,9 @@ async function run() {
       gateway,
       provider
     });
-    core9.info(`Repo Bot completed for issue #${issue2.number}.`);
+    core10.info(`Repo Bot completed for issue #${issue2.number}.`);
   } catch (error48) {
-    core9.setFailed(error48 instanceof Error ? error48.message : String(error48));
+    core10.setFailed(error48 instanceof Error ? error48.message : String(error48));
   }
 }
 void run();

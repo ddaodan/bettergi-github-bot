@@ -32,7 +32,7 @@ describe("runIssueWorkflow", () => {
 
     expect(gateway.comments).toHaveLength(1);
     expect(gateway.comments[0]?.body).toContain("issue-bot:validation");
-    expect(issue.labels).toContain("needs-template-fix");
+    expect(issue.labels).toContain("需要更多信息");
   });
 
   it("does not comment on valid issues when ai help is disabled", async () => {
@@ -47,7 +47,7 @@ describe("runIssueWorkflow", () => {
       gateway
     });
 
-    expect(issue.labels).toContain("type:bug");
+    expect(issue.labels).toContain("BUG");
     expect(gateway.comments).toHaveLength(0);
   });
 
@@ -116,11 +116,11 @@ describe("runIssueWorkflow", () => {
   it("merges related issues into the AI comment when AI help is generated", async () => {
     const config = createConfig();
     config.issues.aiHelp.enabled = true;
-    config.issues.aiHelp.triggerLabels = ["needs-ai-help"];
+    config.issues.aiHelp.triggerLabels = ["需要 AI 分析"];
     config.issues.labeling.keywordRules = [
       {
         keywords: ["一条龙"],
-        labels: ["needs-ai-help"],
+        labels: ["需要 AI 分析"],
         fields: ["title", "body"],
         caseSensitive: false
       }
@@ -198,6 +198,75 @@ describe("runIssueWorkflow", () => {
     expect(gateway.comments.some((comment) => comment.body.includes("issue-bot:similar-issues"))).toBe(false);
   });
 
+  it("adds AI-classified labels from an external repository catalog", async () => {
+    const config = createConfig();
+    config.issues.labeling.aiClassification.enabled = true;
+    config.issues.labeling.aiClassification.maxLabels = 2;
+    config.issues.labeling.aiClassification.minConfidence = 0.6;
+    config.issues.labeling.aiClassification.sourceRepository = {
+      owner: "babalae",
+      repo: "better-genshin-impact"
+    };
+    config.issues.labeling.aiClassification.exclude = ["重复"];
+    const issue = createIssue({
+      title: "[bug] 一条龙设置无法保存",
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "打开一条龙界面后保存失败",
+        "",
+        "## Expected Behavior",
+        "应该能够正常保存一条龙配置"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(
+      issue,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      {
+        "babalae/better-genshin-impact": {
+          "一条龙": { color: "D1A57A", description: "一条龙相关问题" },
+          "调度器": { color: "bfdadc", description: "调度器相关问题" },
+          "重复": { color: "cfd3d7", description: "重复问题" }
+        }
+      }
+    );
+    const provider = {
+      async classifyIssueLabels() {
+        return [
+          { name: "一条龙", confidence: 0.91, reason: "issue mentions 一条龙" },
+          { name: "重复", confidence: 0.9, reason: "should be filtered by exclude" }
+        ];
+      },
+      async reviewDuplicate() {
+        return {
+          duplicate: false,
+          confidence: 0.2,
+          reason: ""
+        };
+      }
+    } as unknown as OpenAiCompatibleProvider;
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway,
+      provider
+    });
+
+    expect(issue.labels).toContain("BUG");
+    expect(issue.labels).toContain("一条龙");
+    expect(issue.labels).not.toContain("重复");
+    expect(gateway.createdLabels.has("一条龙")).toBe(true);
+  });
+
   it("removes the old validation comment after the issue is fixed", async () => {
     const config = createConfig();
     const issue = createIssue({
@@ -272,7 +341,7 @@ describe("runIssueWorkflow", () => {
       provider
     });
 
-    expect(issue.labels).toContain("needs-ai-help");
+    expect(issue.labels).toContain("需要 AI 分析");
     expect(gateway.comments).toHaveLength(1);
     expect(gateway.comments[0]?.body).toContain("issue-bot:ai");
     expect(gateway.comments[0]?.body).toContain("AI Guidance");
@@ -371,7 +440,7 @@ describe("runIssueWorkflow", () => {
       provider
     })).resolves.toBeUndefined();
 
-    expect(issue.labels).toContain("needs-ai-help");
+    expect(issue.labels).toContain("需要 AI 分析");
     expect(gateway.comments.some((comment) => comment.body.includes("AI Guidance"))).toBe(false);
   });
 });

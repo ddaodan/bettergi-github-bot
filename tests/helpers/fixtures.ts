@@ -10,10 +10,10 @@ import type { CommentRecord, GitHubGateway, SearchIssueParams } from "../../src/
 
 export function createConfig(): RepoBotConfig {
   const definitions: Record<string, LabelDefinition> = {
-    "type:bug": { color: "d73a4a", description: "Bug report." },
-    "needs-template-fix": { color: "fbca04", description: "Template fix required." },
-    "needs-ai-help": { color: "0e8a16", description: "Ready for AI." },
-    duplicate: { color: "cfd3d7", description: "Duplicate issue." }
+    "BUG": { color: "d73a4a", description: "缺陷反馈。" },
+    "需要更多信息": { color: "fbca04", description: "需要补充必要信息。" },
+    "需要 AI 分析": { color: "0e8a16", description: "满足 AI 分析条件。" },
+    "重复": { color: "cfd3d7", description: "重复问题。" }
   };
 
   return {
@@ -48,15 +48,15 @@ export function createConfig(): RepoBotConfig {
               { id: "expected", aliases: ["Expected Behavior"] }
             ],
             labels: {
-              whenValid: ["type:bug"],
-              whenInvalid: ["needs-template-fix"]
+              whenValid: ["BUG"],
+              whenInvalid: ["需要更多信息"]
             }
           }
         ],
         duplicateDetection: {
           enabled: true,
-          bypassLabels: ["no-auto-duplicate"],
-          duplicateLabel: "duplicate",
+          bypassLabels: ["跳过重复检测"],
+          duplicateLabel: "重复",
           searchResultLimit: 50,
           candidateLimit: 20,
           aiReviewMaxCandidates: 3,
@@ -76,20 +76,32 @@ export function createConfig(): RepoBotConfig {
       labeling: {
         enabled: true,
         autoCreateMissing: true,
-        managed: ["type:bug", "needs-template-fix", "needs-ai-help", "duplicate"],
+        managed: ["BUG", "需要更多信息", "需要 AI 分析", "重复"],
         definitions,
         keywordRules: [
           {
             keywords: ["crash"],
-            labels: ["needs-ai-help"],
+            labels: ["需要 AI 分析"],
             fields: ["title", "body"],
             caseSensitive: false
           }
-        ]
+        ],
+        aiClassification: {
+          enabled: false,
+          maxLabels: 3,
+          minConfidence: 0.65,
+          include: [],
+          exclude: [],
+          prompt: "",
+          sourceRepository: {
+            owner: "",
+            repo: ""
+          }
+        }
       },
       aiHelp: {
         enabled: false,
-        triggerLabels: ["needs-ai-help"],
+        triggerLabels: ["需要 AI 分析"],
         commentAnchor: "issue-bot:ai",
         projectContext: {
           enabled: true,
@@ -203,7 +215,8 @@ export class FakeGateway implements GitHubGateway {
       homepage: "https://example.test"
     },
     private readonly repositoryReadme = "# Example Repo\n\nThis repository automates desktop tasks.",
-    private readonly issueComment?: IssueCommentContext
+    private readonly issueComment?: IssueCommentContext,
+    private readonly repositoryLabelsByRepo: Record<string, Record<string, LabelDefinition>> = {}
   ) {}
 
   public async getIssueContext(): Promise<IssueContext | undefined> {
@@ -220,6 +233,12 @@ export class FakeGateway implements GitHubGateway {
 
   public async getRepositoryReadme(): Promise<string | undefined> {
     return this.repositoryReadme;
+  }
+
+  public async getRepositoryLabels(params?: { owner?: string; repo?: string }): Promise<Record<string, LabelDefinition>> {
+    const owner = params?.owner ?? this.issue.owner;
+    const repo = params?.repo ?? this.issue.repo;
+    return this.repositoryLabelsByRepo[`${owner}/${repo}`] ?? {};
   }
 
   public async listComments(issueNumber: number): Promise<CommentRecord[]> {

@@ -59,7 +59,7 @@ describe("duplicate detection", () => {
     });
 
     expect(result.duplicateOf?.number).toBe(5);
-    expect(addDuplicateLabel).toHaveBeenCalledWith(["duplicate"]);
+    expect(addDuplicateLabel).toHaveBeenCalledWith(["重复"]);
     expect(closeIssue).toHaveBeenCalledOnce();
   });
 

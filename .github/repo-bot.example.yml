@@ -34,9 +34,9 @@ issues:
               - Expected Behavior
         labels:
           whenValid:
-            - type:bug
+            - BUG
           whenInvalid:
-            - needs-template-fix
+            - 需要更多信息
       - key: feature
         detect:
           markers:
@@ -52,9 +52,9 @@ issues:
               - Motivation
         labels:
           whenValid:
-            - type:feature
+            - 功能建议
           whenInvalid:
-            - needs-template-fix
+            - 需要更多信息
       - key: question
         detect:
           markers:
@@ -67,14 +67,14 @@ issues:
               - Question
         labels:
           whenValid:
-            - type:question
+            - 问题咨询
           whenInvalid:
-            - needs-template-fix
+            - 需要更多信息
     duplicateDetection:
       enabled: true
       bypassLabels:
-        - no-auto-duplicate
-      duplicateLabel: duplicate
+        - 跳过重复检测
+      duplicateLabel: 重复
       searchResultLimit: 50
       candidateLimit: 20
       aiReviewMaxCandidates: 3
@@ -91,44 +91,55 @@ issues:
     enabled: true
     autoCreateMissing: true
     managed:
-      - type:bug
-      - type:feature
-      - type:question
-      - needs-template-fix
-      - duplicate
-      - needs-ai-help
+      - BUG
+      - 功能建议
+      - 问题咨询
+      - 需要更多信息
+      - 重复
+      - 需要 AI 分析
     definitions:
-      type:bug:
+      BUG:
         color: d73a4a
-        description: Issue classified as a bug report.
-      type:feature:
+        description: 缺陷反馈。
+      功能建议:
         color: a2eeef
-        description: Issue classified as a feature request.
-      type:question:
+        description: 功能建议或改进请求。
+      问题咨询:
         color: 7057ff
-        description: Issue classified as a question.
-      needs-template-fix:
+        description: 使用问题或咨询。
+      需要更多信息:
         color: fbca04
-        description: Issue body is missing required template sections.
-      duplicate:
+        description: Issue 缺少必要信息。
+      重复:
         color: cfd3d7
-        description: Issue closed as a duplicate.
-      needs-ai-help:
+        description: 已存在相同或高度相似的问题。
+      需要 AI 分析:
         color: 0e8a16
-        description: Issue is ready for AI assistance.
+        description: 已满足 AI 辅助分析条件。
     keywordRules:
       - keywords:
           - crash
         labels:
-          - needs-ai-help
+          - 需要 AI 分析
         fields:
           - title
           - body
         caseSensitive: false
+    aiClassification:
+      enabled: false
+      maxLabels: 3
+      minConfidence: 0.65
+      include: []
+      exclude:
+        - 重复
+      prompt: 优先选择和具体功能模块、子系统或使用场景直接相关的标签，避免只选择流程状态标签。
+      sourceRepository:
+        owner: babalae
+        repo: better-genshin-impact
   aiHelp:
     enabled: false
     triggerLabels:
-      - needs-ai-help
+      - 需要 AI 分析
     commentAnchor: issue-bot:ai
     projectContext:
       enabled: true
