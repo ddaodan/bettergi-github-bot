@@ -341,12 +341,15 @@ describe("OpenAiCompatibleProvider", () => {
             excerpt: "export function main() {}"
           }
         ]
-      }
+      },
+      "zh"
     );
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const systemPrompt = String(body.input[0]?.content ?? "");
     const payload = JSON.parse(String(body.input[1]?.content));
     expect(result.summary).toBe("fix");
+    expect(systemPrompt).toContain("All human-readable JSON fields must be written in Simplified Chinese.");
     expect(payload.codeContext.files[0]?.path).toBe("src/index.ts");
     expect(payload.repositoryContext.fullName).toBe("octo/repo");
   });

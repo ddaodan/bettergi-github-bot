@@ -41341,6 +41341,12 @@ function createFixInstruction(templateKey) {
       return "Treat the output as a cautious repository-specific implementation suggestion with a patch draft.";
   }
 }
+function createOutputLanguageInstruction(mode) {
+  if (mode === "zh") {
+    return "All human-readable JSON fields must be written in Simplified Chinese. Keep file paths, code identifiers, and diff syntax unchanged where necessary.";
+  }
+  return "All human-readable JSON fields must be bilingual with Simplified Chinese first and English second. Keep file paths, code identifiers, and diff syntax unchanged where necessary.";
+}
 var MAX_ISSUE_IMAGES = 3;
 function summarizeIssueImages(images) {
   return images.slice(0, MAX_ISSUE_IMAGES).map((image) => ({
@@ -41436,7 +41442,7 @@ var OpenAiCompatibleProvider = class {
       missingInformation: Array.isArray(parsedResult.missingInformation) ? parsedResult.missingInformation : []
     };
   }
-  async generateFixSuggestion(issue2, parsed, repositoryContext, codeContext) {
+  async generateFixSuggestion(issue2, parsed, repositoryContext, codeContext, commentMode) {
     const templateKey = repositoryContext.templateKey ?? "unknown";
     const content = await requestStructuredJson(this.config, this.apiKey, [
       {
@@ -41448,6 +41454,7 @@ var OpenAiCompatibleProvider = class {
           "If the evidence is incomplete, state the uncertainty in the summary, risks, and patch draft.",
           "Keep the candidate files aligned with the provided code context whenever possible.",
           "Write patchDraft as a compact unified diff or pseudo diff that an engineer could refine.",
+          createOutputLanguageInstruction(commentMode),
           createFixInstruction(templateKey),
           "Return JSON only."
         ].join(" ")
@@ -42554,7 +42561,8 @@ async function runIssueFixCommand(params) {
       params.issue,
       validation.parsed,
       repositoryContext,
-      codeContext
+      codeContext,
+      commentMode
     );
     await upsertAnchoredComment({
       gateway: params.gateway,

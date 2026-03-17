@@ -130,7 +130,8 @@ export async function runIssueFixCommand(params: {
       params.issue,
       validation.parsed,
       repositoryContext,
-      codeContext
+      codeContext,
+      commentMode
     );
 
     await upsertAnchoredComment({

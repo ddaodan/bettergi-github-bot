@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 
 import type {
   AiHelpResult,
+  CommentMode,
   DuplicateCandidate,
   DuplicateReviewResult,
   FixSuggestionResult,
@@ -513,6 +514,14 @@ function createFixInstruction(templateKey: string): string {
   }
 }
 
+function createOutputLanguageInstruction(mode: CommentMode): string {
+  if (mode === "zh") {
+    return "All human-readable JSON fields must be written in Simplified Chinese. Keep file paths, code identifiers, and diff syntax unchanged where necessary.";
+  }
+
+  return "All human-readable JSON fields must be bilingual with Simplified Chinese first and English second. Keep file paths, code identifiers, and diff syntax unchanged where necessary.";
+}
+
 const MAX_ISSUE_IMAGES = 3;
 
 function summarizeIssueImages(images: IssueImageReference[]): Array<{
@@ -630,7 +639,8 @@ export class OpenAiCompatibleProvider {
     issue: IssueContext,
     parsed: ParsedIssue,
     repositoryContext: RepositoryAiContext,
-    codeContext: RepositoryCodeContext
+    codeContext: RepositoryCodeContext,
+    commentMode: CommentMode
   ): Promise<FixSuggestionResult> {
     const templateKey = repositoryContext.templateKey ?? "unknown";
     const content = await requestStructuredJson(this.config, this.apiKey, [
@@ -643,6 +653,7 @@ export class OpenAiCompatibleProvider {
           "If the evidence is incomplete, state the uncertainty in the summary, risks, and patch draft.",
           "Keep the candidate files aligned with the provided code context whenever possible.",
           "Write patchDraft as a compact unified diff or pseudo diff that an engineer could refine.",
+          createOutputLanguageInstruction(commentMode),
           createFixInstruction(templateKey),
           "Return JSON only."
         ].join(" ")
