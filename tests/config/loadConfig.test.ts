@@ -115,4 +115,26 @@ describe("loadRepoBotConfig", () => {
 
     expect(config.issues.autoProcessing.skipCreatedBefore).toBe("auto");
   });
+
+  it("accepts unquoted YAML timestamps for skipCreatedBefore", async () => {
+    const workspace = path.join(os.tmpdir(), `repo-bot-${Date.now()}-timestamp-cutoff`);
+    await mkdir(workspace, { recursive: true });
+    const configDir = path.join(workspace, ".github");
+    await mkdir(configDir, { recursive: true });
+    await writeFile(path.join(configDir, "repo-bot.yml"), [
+      "issues:",
+      "  autoProcessing:",
+      "    skipCreatedBefore: 2026-03-20T00:00:00+08:00"
+    ].join("\n"));
+
+    const config = await loadRepoBotConfig({
+      workspace,
+      configPath: ".github/repo-bot.yml",
+      overridesJson: "",
+      dryRunInput: false
+    });
+
+    expect(typeof config.issues.autoProcessing.skipCreatedBefore).toBe("string");
+    expect(Date.parse(config.issues.autoProcessing.skipCreatedBefore)).toBe(Date.parse("2026-03-20T00:00:00+08:00"));
+  });
 });

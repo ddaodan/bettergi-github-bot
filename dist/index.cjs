@@ -40438,7 +40438,7 @@ var issueCommandsSchema = external_exports.object({
   }))
 });
 var issueAutoProcessingSchema = external_exports.object({
-  skipCreatedBefore: external_exports.string().default("").refine((value) => {
+  skipCreatedBefore: external_exports.union([external_exports.string(), external_exports.date()]).default("").transform((value) => value instanceof Date ? value.toISOString() : value).refine((value) => {
     const trimmed = value.trim();
     return trimmed === "" || trimmed.toLowerCase() === "auto" || !Number.isNaN(Date.parse(trimmed));
   }, {

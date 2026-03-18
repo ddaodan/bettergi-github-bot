@@ -112,12 +112,15 @@ const issueCommandsSchema = z.object({
 });
 
 const issueAutoProcessingSchema = z.object({
-  skipCreatedBefore: z.string().default("").refine((value) => {
-    const trimmed = value.trim();
-    return trimmed === "" || trimmed.toLowerCase() === "auto" || !Number.isNaN(Date.parse(trimmed));
-  }, {
-    message: "issues.autoProcessing.skipCreatedBefore must be empty, \"auto\", or a valid date string."
-  })
+  skipCreatedBefore: z.union([z.string(), z.date()])
+    .default("")
+    .transform((value) => value instanceof Date ? value.toISOString() : value)
+    .refine((value) => {
+      const trimmed = value.trim();
+      return trimmed === "" || trimmed.toLowerCase() === "auto" || !Number.isNaN(Date.parse(trimmed));
+    }, {
+      message: "issues.autoProcessing.skipCreatedBefore must be empty, \"auto\", or a valid date string."
+    })
 });
 
 export const repoBotConfigSchema = z.object({
