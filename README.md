@@ -93,6 +93,8 @@ jobs:
 
 更多示例见 [`examples/consumer-workflow.yml`](examples/consumer-workflow.yml)。
 
+可复用 Workflow 会自动解析当前被调用的 Bot 仓库与引用版本，并在运行时 checkout 同一个仓库与 ref。业务仓库只需要维护 `uses: owner/repo/.github/workflows/repo-bot.yml@v1` 这一行，不需要再额外同步内部 action 路径。
+
 ### 2. 在业务仓库添加配置文件
 
 完整示例见 [`.github/repo-bot.example.yml`](.github/repo-bot.example.yml)。
@@ -113,6 +115,8 @@ providers:
     apiStyle: auto
 
 issues:
+  autoProcessing:
+    skipCreatedBefore: auto
   validation:
     enabled: true
     fallbackTemplateKey: bug
@@ -142,6 +146,24 @@ issues:
     refresh:
       enabled: false
 ```
+
+如果希望忽略历史存量 Issue 的自动处理，可以设置：
+
+```yml
+issues:
+  autoProcessing:
+    skipCreatedBefore: auto
+```
+
+行为说明：
+
+- `auto` 模式下，Bot 会在首次自动处理时写入一个精确到秒的 UTC 时间到仓库变量 `REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE`
+- 若使用 GitHub App 身份运行，建议为 App 开启仓库级 `Variables` 读写权限，否则自动写入可能失败并降级为不启用该门禁
+- 如果首次命中的是旧 Issue 的 `edited` / `reopened` / `labeled` 事件，Bot 会先记录当前精确时间，再跳过该次运行
+- 如果首次命中的是新的 `opened` 事件，Bot 会用该 Issue 的创建时间作为激活时间，不会误伤这条新 Issue
+- 激活时间之前创建的 Issue，不再因 `edited`、`reopened`、`labeled` 等自动事件触发 Bot 主流程
+- `@bot /refresh` 和 `@bot /fix` 这类显式指令不受影响，仍可手动触发
+- 如果需要手工指定固定时间，也可以直接填写完整时间字符串，例如 `2026-03-18T10:23:45+08:00`
 
 ### 3. 配置 Variables 与 Secrets
 
@@ -270,6 +292,19 @@ issues:
 - workflow 会优先使用 App token；未配置时自动回退到 `GITHUB_TOKEN`
 
 这也是后续扩展更多仓库自动化能力时更稳妥的鉴权方式。
+
+推荐接入策略：
+
+1. 短期优先“安装 App”，不要为了接入先做所有权转移
+2. 若多个仓库都要复用当前中央 Bot 仓库，可将 App 设为允许外部安装，再由目标仓库或组织的 owner 完成安装
+3. 若上游项目后续要长期独立维护这套自动化，再考虑由上游自己创建新的 App，或将现有 App 转移过去
+
+实践上，代码仓库与 App 身份是两层东西：
+
+- 中央仓库负责 workflow、Action、配置与版本发布
+- GitHub App 负责评论身份与更稳定的权限边界
+
+所以大多数情况下，只要目标仓库安装了 App，并在仓库里配置好 `REPO_BOT_GITHUB_APP_ID` 与 `REPO_BOT_GITHUB_APP_PRIVATE_KEY`，就不需要转移 App 所有权。
 
 ## 版本策略
 

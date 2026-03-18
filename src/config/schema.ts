@@ -111,6 +111,15 @@ const issueCommandsSchema = z.object({
   }))
 });
 
+const issueAutoProcessingSchema = z.object({
+  skipCreatedBefore: z.string().default("").refine((value) => {
+    const trimmed = value.trim();
+    return trimmed === "" || trimmed.toLowerCase() === "auto" || !Number.isNaN(Date.parse(trimmed));
+  }, {
+    message: "issues.autoProcessing.skipCreatedBefore must be empty, \"auto\", or a valid date string."
+  })
+});
+
 export const repoBotConfigSchema = z.object({
   runtime: z.object({
     languageMode: z.enum(["auto", "zh", "zh-en"]).default("auto"),
@@ -143,6 +152,9 @@ export const repoBotConfigSchema = z.object({
     }
   })),
   issues: z.object({
+    autoProcessing: issueAutoProcessingSchema.default(() => ({
+      skipCreatedBefore: ""
+    })),
     validation: z.object({
       enabled: z.boolean().default(true),
       fallbackTemplateKey: z.string().optional(),
@@ -277,6 +289,9 @@ export const repoBotConfigSchema = z.object({
       }
     }))
   }).default(() => ({
+    autoProcessing: {
+      skipCreatedBefore: ""
+    },
     validation: {
       enabled: true,
       commentAnchor: "issue-bot:validation",

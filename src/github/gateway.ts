@@ -35,6 +35,8 @@ export interface RepositoryLabelCatalogParams {
 export interface GitHubGateway {
   getIssueContext(): Promise<IssueContext | undefined>;
   getIssueCommentContext(): Promise<IssueCommentContext | undefined>;
+  getRepositoryVariable(name: string): Promise<string | undefined>;
+  upsertRepositoryVariable(name: string, value: string): Promise<void>;
   getRepositoryMetadata(): Promise<RepositoryMetadata>;
   getRepositoryReadme(): Promise<string | undefined>;
   getRepositoryLabels(params?: RepositoryLabelCatalogParams): Promise<Record<string, LabelDefinition>>;
@@ -152,6 +154,54 @@ export class OctokitGitHubGateway implements GitHubGateway {
 
   public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {
     return toIssueCommentContext();
+  }
+
+  public async getRepositoryVariable(name: string): Promise<string | undefined> {
+    try {
+      const response = await this.octokit.request("GET /repos/{owner}/{repo}/actions/variables/{name}", {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        name
+      });
+
+      return response.data.value ?? undefined;
+    } catch (error) {
+      const status = typeof error === "object" && error !== null && "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
+      if (status === 404) {
+        return undefined;
+      }
+
+      throw error;
+    }
+  }
+
+  public async upsertRepositoryVariable(name: string, value: string): Promise<void> {
+    if (this.dryRun) {
+      core.info(`[dry-run] upsert repository variable "${name}"`);
+      return;
+    }
+
+    const payload = {
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      name,
+      value
+    };
+
+    try {
+      await this.octokit.request("PATCH /repos/{owner}/{repo}/actions/variables/{name}", payload);
+    } catch (error) {
+      const status = typeof error === "object" && error !== null && "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
+      if (status !== 404) {
+        throw error;
+      }
+
+      await this.octokit.request("POST /repos/{owner}/{repo}/actions/variables", payload);
+    }
   }
 
   public async getRepositoryMetadata(): Promise<RepositoryMetadata> {

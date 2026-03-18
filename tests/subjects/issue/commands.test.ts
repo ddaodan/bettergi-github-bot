@@ -131,7 +131,10 @@ describe("issue comment commands", () => {
     const config = createConfig();
     config.issues.commands.enabled = true;
     config.issues.commands.refresh.enabled = true;
+    config.issues.autoProcessing.skipCreatedBefore = "2026-02-01";
     const issue = createIssue({
+      action: "edited",
+      createdAt: "2026-01-01T00:00:00Z",
       body: [
         "<!-- issue-template: bug -->",
         "",

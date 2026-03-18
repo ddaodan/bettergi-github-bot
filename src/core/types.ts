@@ -128,6 +128,10 @@ export interface IssueCommandsConfig {
   refresh: IssueCommandsRefreshConfig;
 }
 
+export interface IssueAutoProcessingConfig {
+  skipCreatedBefore: string;
+}
+
 export interface ProviderConfig {
   enabled: boolean;
   baseUrl: string;
@@ -147,6 +151,7 @@ export interface RepoBotConfig {
     openAiCompatible: ProviderConfig;
   };
   issues: {
+    autoProcessing: IssueAutoProcessingConfig;
     validation: ValidationConfig;
     labeling: LabelingConfig;
     aiHelp: AiHelpConfig;

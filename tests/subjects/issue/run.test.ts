@@ -51,6 +51,74 @@ describe("runIssueWorkflow", () => {
     expect(gateway.comments).toHaveLength(0);
   });
 
+  it("skips automatic processing for issues created before the cutoff date", async () => {
+    const config = createConfig();
+    config.issues.autoProcessing.skipCreatedBefore = "2026-02-01";
+    const issue = createIssue({
+      action: "edited",
+      createdAt: "2026-01-01T00:00:00Z",
+      labels: []
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_edited",
+      config,
+      gateway
+    });
+
+    expect(issue.labels).toHaveLength(0);
+    expect(gateway.comments).toHaveLength(0);
+    expect(gateway.searchRequests).toHaveLength(0);
+  });
+
+  it("initializes automatic cutoff and skips the first old issue event", async () => {
+    const config = createConfig();
+    config.issues.autoProcessing.skipCreatedBefore = "auto";
+    const issue = createIssue({
+      action: "edited",
+      createdAt: "2026-01-01T00:00:00Z",
+      labels: []
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_edited",
+      config,
+      gateway
+    });
+
+    const stored = gateway.repositoryVariables.get("REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE");
+    expect(stored).toBeTruthy();
+    expect(Number.isNaN(Date.parse(stored!))).toBe(false);
+    expect(Date.parse(stored!)).toBeGreaterThan(Date.parse(issue.createdAt));
+    expect(issue.labels).toHaveLength(0);
+    expect(gateway.comments).toHaveLength(0);
+  });
+
+  it("initializes automatic cutoff from a newly opened issue without skipping it", async () => {
+    const config = createConfig();
+    config.issues.autoProcessing.skipCreatedBefore = "auto";
+    const issue = createIssue({
+      action: "opened",
+      createdAt: "2026-03-18T10:11:12.000Z",
+      labels: []
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+
+    expect(gateway.repositoryVariables.get("REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE")).toBe(issue.createdAt);
+    expect(issue.labels).toContain("BUG");
+  });
+
   it("adds a collapsible similar-issues comment when candidates are close but AI help is unavailable", async () => {
     const config = createConfig();
     const issue = createIssue({

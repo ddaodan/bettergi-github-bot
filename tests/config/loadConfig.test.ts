@@ -58,6 +58,7 @@ describe("loadRepoBotConfig", () => {
     expect(config.issues.commands.enabled).toBe(true);
     expect(config.issues.commands.mentions).toEqual(["@bot"]);
     expect(config.issues.commands.fix.commentAnchor).toBe("issue-bot:fix");
+    expect(config.issues.autoProcessing.skipCreatedBefore).toBe("");
   });
 
   it("prefers secret baseUrl over YAML config", async () => {
@@ -92,5 +93,26 @@ describe("loadRepoBotConfig", () => {
         process.env.REPO_BOT_AI_BASE_URL = previous;
       }
     }
+  });
+
+  it("accepts auto skipCreatedBefore mode", async () => {
+    const workspace = path.join(os.tmpdir(), `repo-bot-${Date.now()}-auto-cutoff`);
+    await mkdir(workspace, { recursive: true });
+    const configDir = path.join(workspace, ".github");
+    await mkdir(configDir, { recursive: true });
+    await writeFile(path.join(configDir, "repo-bot.yml"), [
+      "issues:",
+      "  autoProcessing:",
+      "    skipCreatedBefore: auto"
+    ].join("\n"));
+
+    const config = await loadRepoBotConfig({
+      workspace,
+      configPath: ".github/repo-bot.yml",
+      overridesJson: "",
+      dryRunInput: false
+    });
+
+    expect(config.issues.autoProcessing.skipCreatedBefore).toBe("auto");
   });
 });

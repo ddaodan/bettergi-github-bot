@@ -41,6 +41,27 @@ jobs:
       issues: write
       contents: read
     steps:
+      - name: Resolve repo bot source
+        id: bot-source
+        shell: bash
+        env:
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          repository="${WORKFLOW_REF%%/.github/workflows/*}"
+          ref="${WORKFLOW_REF#*@}"
+
+          if [ -z "$repository" ] || [ "$repository" = "$WORKFLOW_REF" ]; then
+            echo "Unable to resolve reusable workflow repository from github.workflow_ref=$WORKFLOW_REF" >&2
+            exit 1
+          fi
+
+          if [ -z "$ref" ] || [ "$ref" = "$WORKFLOW_REF" ]; then
+            echo "Unable to resolve reusable workflow ref from github.workflow_ref=$WORKFLOW_REF" >&2
+            exit 1
+          fi
+
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
       - name: Detect GitHub App configuration
         id: auth-mode
         shell: bash
@@ -58,7 +79,8 @@ jobs:
       - name: Checkout repo bot repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/bettergi-github-bot
+          repository: ${{ steps.bot-source.outputs.repository }}
+          ref: ${{ steps.bot-source.outputs.ref }}
           path: .repo-bot
       - name: Create GitHub App token
         if: ${{ steps.auth-mode.outputs.use_app == 'true' }}

@@ -31,6 +31,9 @@ export function createConfig(): RepoBotConfig {
       }
     },
     issues: {
+      autoProcessing: {
+        skipCreatedBefore: ""
+      },
       validation: {
         enabled: true,
         fallbackTemplateKey: "bug",
@@ -201,6 +204,8 @@ export class FakeGateway implements GitHubGateway {
 
   public readonly commentReactions: Array<{ commentId: number; reaction: "eyes" | "rocket" | "confused" }> = [];
 
+  public readonly repositoryVariables = new Map<string, string>();
+
   private commentId = 1;
 
   public constructor(
@@ -225,6 +230,14 @@ export class FakeGateway implements GitHubGateway {
 
   public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {
     return this.issueComment;
+  }
+
+  public async getRepositoryVariable(name: string): Promise<string | undefined> {
+    return this.repositoryVariables.get(name);
+  }
+
+  public async upsertRepositoryVariable(name: string, value: string): Promise<void> {
+    this.repositoryVariables.set(name, value);
   }
 
   public async getRepositoryMetadata(): Promise<RepositoryMetadata> {

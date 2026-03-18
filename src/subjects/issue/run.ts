@@ -20,6 +20,8 @@ import { computeManagedLabels } from "./labeling.js";
 import { resolveRepositoryAiContext } from "./projectContext.js";
 import { validateIssue } from "./validation.js";
 
+const AUTO_PROCESSING_CUTOFF_VARIABLE = "REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE";
+
 export function resolveIssueWorkflowTrigger(action: string): IssueWorkflowTrigger | undefined {
   switch (action) {
     case "opened":
@@ -33,6 +35,87 @@ export function resolveIssueWorkflowTrigger(action: string): IssueWorkflowTrigge
     default:
       return undefined;
   }
+}
+
+function isAutomaticIssueWorkflowTrigger(trigger: IssueWorkflowTrigger): boolean {
+  return trigger !== "command_refresh";
+}
+
+async function resolveIssueAutoProcessingCutoff(params: {
+  issue: IssueContext;
+  trigger: IssueWorkflowTrigger;
+  config: RepoBotConfig;
+  gateway: GitHubGateway;
+}): Promise<string | undefined> {
+  if (!isAutomaticIssueWorkflowTrigger(params.trigger)) {
+    return undefined;
+  }
+
+  const rawCutoff = params.config.issues.autoProcessing.skipCreatedBefore.trim();
+  if (!rawCutoff) {
+    return undefined;
+  }
+
+  if (rawCutoff.toLowerCase() !== "auto") {
+    return rawCutoff;
+  }
+
+  try {
+    const stored = (await params.gateway.getRepositoryVariable(AUTO_PROCESSING_CUTOFF_VARIABLE))?.trim();
+    if (stored) {
+      if (Number.isNaN(Date.parse(stored))) {
+        core.warning(
+          `Repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE} contains an invalid date string: ${stored}. Ignore automatic cutoff.`
+        );
+        return undefined;
+      }
+
+      return stored;
+    }
+  } catch (error) {
+    core.warning(
+      `Unable to read repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}. Ignore automatic cutoff: ${String(error)}`
+    );
+    return undefined;
+  }
+
+  const activationTimestamp = params.trigger === "issue_opened"
+    ? params.issue.createdAt
+    : new Date().toISOString();
+
+  try {
+    await params.gateway.upsertRepositoryVariable(AUTO_PROCESSING_CUTOFF_VARIABLE, activationTimestamp);
+    core.info(
+      `Initialized automatic issue cutoff at ${activationTimestamp} in repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}.`
+    );
+  } catch (error) {
+    core.warning(
+      `Unable to initialize repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}. Ignore automatic cutoff: ${String(error)}`
+    );
+    return undefined;
+  }
+
+  return activationTimestamp;
+}
+
+async function shouldSkipIssueAutoProcessing(params: {
+  issue: IssueContext;
+  trigger: IssueWorkflowTrigger;
+  config: RepoBotConfig;
+  gateway: GitHubGateway;
+}): Promise<boolean> {
+  const cutoff = await resolveIssueAutoProcessingCutoff(params);
+  if (!cutoff) {
+    return false;
+  }
+
+  const cutoffTimestamp = Date.parse(cutoff);
+  const createdTimestamp = Date.parse(params.issue.createdAt);
+  if (Number.isNaN(cutoffTimestamp) || Number.isNaN(createdTimestamp)) {
+    return false;
+  }
+
+  return createdTimestamp < cutoffTimestamp;
 }
 
 function shouldRunValidation(trigger: IssueWorkflowTrigger): boolean {
@@ -54,6 +137,18 @@ export async function runIssueWorkflow(params: {
   gateway: GitHubGateway;
   provider?: OpenAiCompatibleProvider;
 }): Promise<void> {
+  if (await shouldSkipIssueAutoProcessing({
+    issue: params.issue,
+    trigger: params.trigger,
+    config: params.config,
+    gateway: params.gateway
+  })) {
+    core.info(
+      `Skip automatic processing for issue #${params.issue.number}: created at ${params.issue.createdAt} is earlier than the configured activation cutoff.`
+    );
+    return;
+  }
+
   const effectiveLabels = new Set(params.issue.labels);
   const commentMode: CommentMode = detectCommentMode(`${params.issue.title}\n${params.issue.body}`, params.config.runtime);
   const validation = validateIssue({

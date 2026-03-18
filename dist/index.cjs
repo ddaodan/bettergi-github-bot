@@ -19752,10 +19752,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("error", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.error = error48;
-    function warning7(message, properties = {}) {
+    function warning8(message, properties = {}) {
       (0, command_1.issueCommand)("warning", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
-    exports2.warning = warning7;
+    exports2.warning = warning8;
     function notice(message, properties = {}) {
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
@@ -40437,6 +40437,14 @@ var issueCommandsSchema = external_exports.object({
     enabled: false
   }))
 });
+var issueAutoProcessingSchema = external_exports.object({
+  skipCreatedBefore: external_exports.string().default("").refine((value) => {
+    const trimmed = value.trim();
+    return trimmed === "" || trimmed.toLowerCase() === "auto" || !Number.isNaN(Date.parse(trimmed));
+  }, {
+    message: 'issues.autoProcessing.skipCreatedBefore must be empty, "auto", or a valid date string.'
+  })
+});
 var repoBotConfigSchema = external_exports.object({
   runtime: external_exports.object({
     languageMode: external_exports.enum(["auto", "zh", "zh-en"]).default("auto"),
@@ -40469,6 +40477,9 @@ var repoBotConfigSchema = external_exports.object({
     }
   })),
   issues: external_exports.object({
+    autoProcessing: issueAutoProcessingSchema.default(() => ({
+      skipCreatedBefore: ""
+    })),
     validation: external_exports.object({
       enabled: external_exports.boolean().default(true),
       fallbackTemplateKey: external_exports.string().optional(),
@@ -40603,6 +40614,9 @@ var repoBotConfigSchema = external_exports.object({
       }
     }))
   }).default(() => ({
+    autoProcessing: {
+      skipCreatedBefore: ""
+    },
     validation: {
       enabled: true,
       commentAnchor: "issue-bot:validation",
@@ -40830,6 +40844,43 @@ var OctokitGitHubGateway = class {
   }
   async getIssueCommentContext() {
     return toIssueCommentContext();
+  }
+  async getRepositoryVariable(name) {
+    try {
+      const response = await this.octokit.request("GET /repos/{owner}/{repo}/actions/variables/{name}", {
+        owner: import_github.context.repo.owner,
+        repo: import_github.context.repo.repo,
+        name
+      });
+      return response.data.value ?? void 0;
+    } catch (error48) {
+      const status = typeof error48 === "object" && error48 !== null && "status" in error48 ? error48.status : void 0;
+      if (status === 404) {
+        return void 0;
+      }
+      throw error48;
+    }
+  }
+  async upsertRepositoryVariable(name, value) {
+    if (this.dryRun) {
+      core2.info(`[dry-run] upsert repository variable "${name}"`);
+      return;
+    }
+    const payload = {
+      owner: import_github.context.repo.owner,
+      repo: import_github.context.repo.repo,
+      name,
+      value
+    };
+    try {
+      await this.octokit.request("PATCH /repos/{owner}/{repo}/actions/variables/{name}", payload);
+    } catch (error48) {
+      const status = typeof error48 === "object" && error48 !== null && "status" in error48 ? error48.status : void 0;
+      if (status !== 404) {
+        throw error48;
+      }
+      await this.octokit.request("POST /repos/{owner}/{repo}/actions/variables", payload);
+    }
   }
   async getRepositoryMetadata() {
     const response = await this.octokit.rest.repos.get({
@@ -43063,6 +43114,7 @@ function computeManagedLabels(params) {
 }
 
 // src/subjects/issue/run.ts
+var AUTO_PROCESSING_CUTOFF_VARIABLE = "REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE";
 function resolveIssueWorkflowTrigger(action) {
   switch (action) {
     case "opened":
@@ -43077,6 +43129,63 @@ function resolveIssueWorkflowTrigger(action) {
       return void 0;
   }
 }
+function isAutomaticIssueWorkflowTrigger(trigger) {
+  return trigger !== "command_refresh";
+}
+async function resolveIssueAutoProcessingCutoff(params) {
+  if (!isAutomaticIssueWorkflowTrigger(params.trigger)) {
+    return void 0;
+  }
+  const rawCutoff = params.config.issues.autoProcessing.skipCreatedBefore.trim();
+  if (!rawCutoff) {
+    return void 0;
+  }
+  if (rawCutoff.toLowerCase() !== "auto") {
+    return rawCutoff;
+  }
+  try {
+    const stored = (await params.gateway.getRepositoryVariable(AUTO_PROCESSING_CUTOFF_VARIABLE))?.trim();
+    if (stored) {
+      if (Number.isNaN(Date.parse(stored))) {
+        core9.warning(
+          `Repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE} contains an invalid date string: ${stored}. Ignore automatic cutoff.`
+        );
+        return void 0;
+      }
+      return stored;
+    }
+  } catch (error48) {
+    core9.warning(
+      `Unable to read repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}. Ignore automatic cutoff: ${String(error48)}`
+    );
+    return void 0;
+  }
+  const activationTimestamp = params.trigger === "issue_opened" ? params.issue.createdAt : (/* @__PURE__ */ new Date()).toISOString();
+  try {
+    await params.gateway.upsertRepositoryVariable(AUTO_PROCESSING_CUTOFF_VARIABLE, activationTimestamp);
+    core9.info(
+      `Initialized automatic issue cutoff at ${activationTimestamp} in repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}.`
+    );
+  } catch (error48) {
+    core9.warning(
+      `Unable to initialize repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}. Ignore automatic cutoff: ${String(error48)}`
+    );
+    return void 0;
+  }
+  return activationTimestamp;
+}
+async function shouldSkipIssueAutoProcessing(params) {
+  const cutoff = await resolveIssueAutoProcessingCutoff(params);
+  if (!cutoff) {
+    return false;
+  }
+  const cutoffTimestamp = Date.parse(cutoff);
+  const createdTimestamp = Date.parse(params.issue.createdAt);
+  if (Number.isNaN(cutoffTimestamp) || Number.isNaN(createdTimestamp)) {
+    return false;
+  }
+  return createdTimestamp < cutoffTimestamp;
+}
 function shouldRunValidation(trigger) {
   return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
@@ -43087,6 +43196,17 @@ function shouldRunAi(trigger) {
   return ["issue_opened", "issue_edited", "issue_reopened", "issue_labeled", "command_refresh"].includes(trigger);
 }
 async function runIssueWorkflow(params) {
+  if (await shouldSkipIssueAutoProcessing({
+    issue: params.issue,
+    trigger: params.trigger,
+    config: params.config,
+    gateway: params.gateway
+  })) {
+    core9.info(
+      `Skip automatic processing for issue #${params.issue.number}: created at ${params.issue.createdAt} is earlier than the configured activation cutoff.`
+    );
+    return;
+  }
   const effectiveLabels = new Set(params.issue.labels);
   const commentMode = detectCommentMode(`${params.issue.title}
 ${params.issue.body}`, params.config.runtime);
