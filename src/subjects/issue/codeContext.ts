@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { containsSensitiveText, isSensitivePath } from "../../core/aiSafety.js";
 import type {
   IssueContext,
   ParsedIssue,
@@ -227,6 +228,10 @@ async function walkFiles(root: string, currentDir = root): Promise<string[]> {
 }
 
 async function readTextFile(filePath: string): Promise<string | undefined> {
+  if (isSensitivePath(filePath)) {
+    return undefined;
+  }
+
   const extension = path.extname(filePath).toLowerCase();
   if (BINARY_EXTENSIONS.has(extension)) {
     return undefined;
@@ -242,12 +247,17 @@ async function readTextFile(filePath: string): Promise<string | undefined> {
     return undefined;
   }
 
-  return buffer.toString("utf8");
+  const content = buffer.toString("utf8");
+  if (containsSensitiveText(content)) {
+    return undefined;
+  }
+
+  return content;
 }
 
 function createFallbackFile(pathLabel: string, reason: string, excerpt: string): RepositoryCodeContextFile | undefined {
   const trimmed = excerpt.trim();
-  if (!trimmed) {
+  if (!trimmed || isSensitivePath(pathLabel) || containsSensitiveText(trimmed)) {
     return undefined;
   }
 

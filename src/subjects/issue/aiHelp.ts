@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 
+import { sanitizeAiHelpResultForComment } from "../../core/aiSafety.js";
 import type {
   CommentMode,
   IssueContext,
@@ -43,10 +44,18 @@ export async function generateIssueAiHelp(params: {
       params.parsed,
       params.repositoryContext
     );
+    const sanitizedHelp = sanitizeAiHelpResultForComment({
+      help,
+      mode: params.commentMode,
+      blockedTexts: [
+        params.issue.body,
+        JSON.stringify(params.repositoryContext)
+      ]
+    });
     return renderAiHelpComment({
       mode: params.commentMode,
       templateKey: params.repositoryContext.templateKey,
-      help,
+      help: sanitizedHelp,
       relatedIssues: params.relatedIssues
     });
   } catch (error) {

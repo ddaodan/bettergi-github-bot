@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 
+import { sanitizeFixSuggestionForComment } from "../../core/aiSafety.js";
 import type { CommentMode, IssueContext, RepoBotConfig } from "../../core/types.js";
 import { upsertAnchoredComment } from "../../github/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
@@ -133,6 +134,16 @@ export async function runIssueFixCommand(params: {
       codeContext,
       commentMode
     );
+    const sanitizedSuggestion = sanitizeFixSuggestionForComment({
+      suggestion,
+      mode: commentMode,
+      blockedTexts: [
+        params.issue.body,
+        repositoryContext.readmeExcerpt,
+        JSON.stringify(repositoryContext),
+        JSON.stringify(codeContext)
+      ]
+    });
 
     await upsertAnchoredComment({
       gateway: params.gateway,
@@ -140,7 +151,7 @@ export async function runIssueFixCommand(params: {
       anchor: params.config.issues.commands.fix.commentAnchor,
       body: renderFixSuggestionComment({
         mode: commentMode,
-        suggestion
+        suggestion: sanitizedSuggestion
       })
     });
 

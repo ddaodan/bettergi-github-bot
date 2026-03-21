@@ -14,6 +14,10 @@ import type {
   RepositoryCodeContext,
   RepositoryAiContext
 } from "../../core/types.js";
+import {
+  createAiSecurityInstruction,
+  partitionIssueImagesForAi
+} from "../../core/aiSafety.js";
 
 type ProviderMessage = {
   role: "system" | "user";
@@ -579,7 +583,11 @@ export class OpenAiCompatibleProvider {
     const content = await requestStructuredJson(this.config, this.apiKey, [
       {
         role: "system",
-        text: "You are a GitHub repository bot. Decide whether two issues describe the same problem. Return JSON only. `duplicate` must be boolean and `confidence` must be between 0 and 1."
+        text: [
+          "You are a GitHub repository bot. Decide whether two issues describe the same problem.",
+          createAiSecurityInstruction(),
+          "Return JSON only. `duplicate` must be boolean and `confidence` must be between 0 and 1."
+        ].join(" ")
       },
       {
         role: "user",
@@ -608,9 +616,13 @@ export class OpenAiCompatibleProvider {
     repositoryContext: RepositoryAiContext
   ): Promise<AiHelpResult> {
     const templateKey = repositoryContext.templateKey ?? "unknown";
-    const images = summarizeIssueImages(parsed.images);
+    const { allowed: allowedImages, skipped: skippedImages } = partitionIssueImagesForAi(parsed.images);
+    const images = summarizeIssueImages(allowedImages);
     if (images.length > 0) {
       core.info(`Including ${images.length} issue image(s) in AI help request.`);
+    }
+    if (skippedImages.length > 0) {
+      core.info(`Skipping ${skippedImages.length} non-GitHub-hosted issue image(s) for AI input.`);
     }
 
     const messages: ProviderMessage[] = [
@@ -623,6 +635,7 @@ export class OpenAiCompatibleProvider {
           "Do not ask the user to provide the current repository link, repository name, or project identity again.",
           "If issue images are attached, use them as supporting evidence for the current repository issue.",
           "If more information is needed, ask only for truly missing technical details such as module, version, logs, environment, or reproduction steps.",
+          createAiSecurityInstruction(),
           createIssueHelpInstruction(templateKey),
           "Return JSON only."
         ].join(" ")
@@ -684,6 +697,7 @@ export class OpenAiCompatibleProvider {
           "If the evidence is incomplete, state the uncertainty in the summary, risks, and patch draft.",
           "Keep the candidate files aligned with the provided code context whenever possible.",
           "Write patchDraft as a compact unified diff or pseudo diff that an engineer could refine.",
+          createAiSecurityInstruction(),
           createOutputLanguageInstruction(commentMode),
           createFixInstruction(templateKey),
           "Return JSON only."
@@ -735,6 +749,7 @@ export class OpenAiCompatibleProvider {
           "Choose only labels that are directly supported by the issue content.",
           "Never invent a label name and never return labels outside the provided availableLabels list.",
           "Avoid weak guesses. If the issue does not clearly support a label, leave it out.",
+          createAiSecurityInstruction(),
           `Return at most ${params.maxLabels} labels.`,
           "Return JSON only."
         ].join(" ")
