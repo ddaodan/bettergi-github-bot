@@ -442,11 +442,16 @@ export class OctokitGitHubGateway implements GitHubGateway {
   }
 
   public async searchIssues(params: SearchIssueParams): Promise<DuplicateCandidate[]> {
-    const terms = params.terms.map((term) => `"${term}"`).join(" ");
+    const terms = params.terms
+      .map((term) => normalizeSearchIssueTerm(term))
+      .filter(Boolean);
+    const searchExpression = terms.length <= 1
+      ? terms[0] ?? ""
+      : `(${terms.join(" OR ")})`;
     const query = [
       `repo:${params.owner}/${params.repo}`,
       "is:issue",
-      terms
+      searchExpression
     ].filter(Boolean).join(" ");
 
     const searchResponse = await this.octokit.rest.search.issuesAndPullRequests({
@@ -510,4 +515,13 @@ export class OctokitGitHubGateway implements GitHubGateway {
 
     return [...merged.values()];
   }
+}
+
+function normalizeSearchIssueTerm(value: string): string {
+  const normalized = value.trim().replace(/\s+/g, " ").replace(/"/g, "");
+  if (!normalized) {
+    return "";
+  }
+
+  return `"${normalized}"`;
 }

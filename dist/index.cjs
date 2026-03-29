@@ -41085,11 +41085,12 @@ var OctokitGitHubGateway = class {
     });
   }
   async searchIssues(params) {
-    const terms = params.terms.map((term) => `"${term}"`).join(" ");
+    const terms = params.terms.map((term) => normalizeSearchIssueTerm(term)).filter(Boolean);
+    const searchExpression = terms.length <= 1 ? terms[0] ?? "" : `(${terms.join(" OR ")})`;
     const query = [
       `repo:${params.owner}/${params.repo}`,
       "is:issue",
-      terms
+      searchExpression
     ].filter(Boolean).join(" ");
     const searchResponse = await this.octokit.rest.search.issuesAndPullRequests({
       q: query,
@@ -41143,6 +41144,13 @@ var OctokitGitHubGateway = class {
     return [...merged.values()];
   }
 };
+function normalizeSearchIssueTerm(value) {
+  const normalized = value.trim().replace(/\s+/g, " ").replace(/"/g, "");
+  if (!normalized) {
+    return "";
+  }
+  return `"${normalized}"`;
+}
 
 // src/providers/openaiCompatible/client.ts
 var core3 = __toESM(require_core(), 1);
@@ -43121,6 +43129,64 @@ async function generateIssueAiHelp(params) {
 
 // src/subjects/issue/duplicateDetection.ts
 var core8 = __toESM(require_core(), 1);
+var MAX_DUPLICATE_SEARCH_TERMS = 8;
+var MAX_DUPLICATE_SEARCH_PHRASES = 4;
+var MAX_DUPLICATE_TITLE_TOKENS = 3;
+var MAX_DUPLICATE_CONTENT_TOKENS = 3;
+var DUPLICATE_PRIMARY_SECTION_HINTS = [
+  "description",
+  "summary",
+  "question",
+  "problem",
+  "issue",
+  "details",
+  "\u73B0\u8C61",
+  "\u63CF\u8FF0",
+  "\u95EE\u9898",
+  "\u53CD\u9988",
+  "\u9700\u6C42",
+  "\u5EFA\u8BAE",
+  "steps",
+  "reproduce",
+  "repro",
+  "\u590D\u73B0",
+  "\u91CD\u73B0",
+  "\u6B65\u9AA4",
+  "error",
+  "errors",
+  "exception",
+  "crash",
+  "stack",
+  "trace",
+  "log",
+  "logs",
+  "\u62A5\u9519",
+  "\u9519\u8BEF",
+  "\u5F02\u5E38",
+  "\u65E5\u5FD7",
+  "\u5806\u6808"
+];
+var DUPLICATE_SECONDARY_SECTION_HINTS = [
+  "expected",
+  "behavior",
+  "actual",
+  "result",
+  "\u9884\u671F",
+  "\u7ED3\u679C"
+];
+var DUPLICATE_IGNORED_SECTION_HINTS = [
+  "environment",
+  "version",
+  "system",
+  "platform",
+  "java",
+  "os",
+  "\u7CFB\u7EDF\u73AF\u5883",
+  "\u8FD0\u884C\u73AF\u5883",
+  "\u73AF\u5883",
+  "\u7248\u672C",
+  "\u5E73\u53F0"
+];
 function jaccardSimilarity(left, right) {
   const leftSet = new Set(left);
   const rightSet = new Set(right);
@@ -43157,6 +43223,64 @@ function buildIssueSignature(title, parsed) {
   const sectionSummary = Object.entries(parsed.sections).filter(([key]) => key !== "__root__").sort(([left], [right]) => left.localeCompare(right)).map(([key, value]) => `${key}:${normalizeText(value).slice(0, 120)}`).join("|");
   return normalizeText(`${title}|${sectionSummary}`);
 }
+function unique3(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+function stripDuplicateSearchTitlePrefix(value) {
+  return value.replace(/^(?:\s*(?:\[[^\]]+\]|【[^】]+】|\([^)]+\)|（[^）]+）)\s*)+/u, "").trim();
+}
+function normalizeDuplicateSearchTerm(value) {
+  return normalizeText(value).slice(0, 80).trim();
+}
+function extractDuplicateSearchLines(value) {
+  return value.split(/\r?\n/).map((line) => line.replace(/^\s*(?:[-*+]\s+|\d+\.\s+)/, "").trim()).map(normalizeDuplicateSearchTerm).filter((line) => line.length >= 4);
+}
+function getDuplicateSectionPriority(key) {
+  if (key === "__root__") {
+    return 1;
+  }
+  if (DUPLICATE_IGNORED_SECTION_HINTS.some((hint) => key.includes(hint))) {
+    return -1;
+  }
+  if (DUPLICATE_PRIMARY_SECTION_HINTS.some((hint) => key.includes(hint))) {
+    return 3;
+  }
+  if (DUPLICATE_SECONDARY_SECTION_HINTS.some((hint) => key.includes(hint))) {
+    return 2;
+  }
+  return 1;
+}
+function collectDuplicateSearchPhrases(parsed) {
+  const prioritizedSections = Object.entries(parsed.sections).map(([key, value]) => ({
+    key,
+    value,
+    priority: getDuplicateSectionPriority(key)
+  })).filter((entry) => entry.priority >= 0 && entry.value.trim()).sort((left, right) => right.priority - left.priority || left.key.localeCompare(right.key));
+  const phrases = [];
+  for (const entry of prioritizedSections) {
+    phrases.push(...extractDuplicateSearchLines(entry.value));
+    if (phrases.length >= MAX_DUPLICATE_SEARCH_PHRASES * 2) {
+      break;
+    }
+  }
+  return unique3(phrases).slice(0, MAX_DUPLICATE_SEARCH_PHRASES);
+}
+function prioritizeDuplicateSearchTokens(values, limit) {
+  return unique3(values.map(normalizeDuplicateSearchTerm).flatMap(tokenize).filter((token) => token.length >= 2 && token.length <= 24)).sort((left, right) => right.length - left.length || left.localeCompare(right)).slice(0, limit);
+}
+function buildDuplicateSearchTerms(issue2, parsed) {
+  const title = stripDuplicateSearchTitlePrefix(issue2.title);
+  const normalizedTitle = normalizeDuplicateSearchTerm(title);
+  const sectionPhrases = collectDuplicateSearchPhrases(parsed);
+  const titleTokens = prioritizeDuplicateSearchTokens([title], MAX_DUPLICATE_TITLE_TOKENS);
+  const contentTokens = prioritizeDuplicateSearchTokens(sectionPhrases, MAX_DUPLICATE_CONTENT_TOKENS);
+  return unique3([
+    normalizedTitle,
+    ...sectionPhrases,
+    ...titleTokens,
+    ...contentTokens
+  ]).slice(0, MAX_DUPLICATE_SEARCH_TERMS);
+}
 function rankCandidate(issue2, parsed, candidate) {
   const currentSignature = buildIssueSignature(issue2.title, parsed);
   const candidateSignature = buildIssueSignature(candidate.title, parseIssueBody(candidate.body));
@@ -43192,7 +43316,7 @@ async function detectDuplicate(params) {
   if (params.issue.labels.some((label) => params.config.bypassLabels.includes(label))) {
     return { executed: true, skippedReason: "bypass label matched" };
   }
-  const terms = [...new Set(tokenize(params.issue.title).slice(0, 6))];
+  const terms = buildDuplicateSearchTerms(params.issue, params.parsed);
   const searchResults = await params.searchIssues(terms, params.config.searchResultLimit);
   const ranked = searchResults.map((candidate) => ({
     candidate,

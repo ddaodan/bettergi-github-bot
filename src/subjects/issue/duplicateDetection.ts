@@ -12,6 +12,68 @@ import type {
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
 import { normalizeText, parseIssueBody, tokenize } from "./parser.js";
 
+const MAX_DUPLICATE_SEARCH_TERMS = 8;
+const MAX_DUPLICATE_SEARCH_PHRASES = 4;
+const MAX_DUPLICATE_TITLE_TOKENS = 3;
+const MAX_DUPLICATE_CONTENT_TOKENS = 3;
+
+const DUPLICATE_PRIMARY_SECTION_HINTS = [
+  "description",
+  "summary",
+  "question",
+  "problem",
+  "issue",
+  "details",
+  "现象",
+  "描述",
+  "问题",
+  "反馈",
+  "需求",
+  "建议",
+  "steps",
+  "reproduce",
+  "repro",
+  "复现",
+  "重现",
+  "步骤",
+  "error",
+  "errors",
+  "exception",
+  "crash",
+  "stack",
+  "trace",
+  "log",
+  "logs",
+  "报错",
+  "错误",
+  "异常",
+  "日志",
+  "堆栈"
+];
+
+const DUPLICATE_SECONDARY_SECTION_HINTS = [
+  "expected",
+  "behavior",
+  "actual",
+  "result",
+  "预期",
+  "结果"
+];
+
+const DUPLICATE_IGNORED_SECTION_HINTS = [
+  "environment",
+  "version",
+  "system",
+  "platform",
+  "java",
+  "os",
+  "系统环境",
+  "运行环境",
+  "环境",
+  "版本",
+  "平台"
+];
+
 function jaccardSimilarity(left: string[], right: string[]): number {
   const leftSet = new Set(left);
   const rightSet = new Set(right);
@@ -56,6 +118,93 @@ export function buildIssueSignature(title: string, parsed: ParsedIssue): string 
     .join("|");
 
   return normalizeText(`${title}|${sectionSummary}`);
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function stripDuplicateSearchTitlePrefix(value: string): string {
+  return value
+    .replace(/^(?:\s*(?:\[[^\]]+\]|【[^】]+】|\([^)]+\)|（[^）]+）)\s*)+/u, "")
+    .trim();
+}
+
+function normalizeDuplicateSearchTerm(value: string): string {
+  return normalizeText(value).slice(0, 80).trim();
+}
+
+function extractDuplicateSearchLines(value: string): string[] {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*(?:[-*+]\s+|\d+\.\s+)/, "").trim())
+    .map(normalizeDuplicateSearchTerm)
+    .filter((line) => line.length >= 4);
+}
+
+function getDuplicateSectionPriority(key: string): number {
+  if (key === "__root__") {
+    return 1;
+  }
+
+  if (DUPLICATE_IGNORED_SECTION_HINTS.some((hint) => key.includes(hint))) {
+    return -1;
+  }
+
+  if (DUPLICATE_PRIMARY_SECTION_HINTS.some((hint) => key.includes(hint))) {
+    return 3;
+  }
+
+  if (DUPLICATE_SECONDARY_SECTION_HINTS.some((hint) => key.includes(hint))) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function collectDuplicateSearchPhrases(parsed: ParsedIssue): string[] {
+  const prioritizedSections = Object.entries(parsed.sections)
+    .map(([key, value]) => ({
+      key,
+      value,
+      priority: getDuplicateSectionPriority(key)
+    }))
+    .filter((entry) => entry.priority >= 0 && entry.value.trim())
+    .sort((left, right) => right.priority - left.priority || left.key.localeCompare(right.key));
+
+  const phrases: string[] = [];
+  for (const entry of prioritizedSections) {
+    phrases.push(...extractDuplicateSearchLines(entry.value));
+    if (phrases.length >= MAX_DUPLICATE_SEARCH_PHRASES * 2) {
+      break;
+    }
+  }
+
+  return unique(phrases).slice(0, MAX_DUPLICATE_SEARCH_PHRASES);
+}
+
+function prioritizeDuplicateSearchTokens(values: string[], limit: number): string[] {
+  return unique(values
+    .map(normalizeDuplicateSearchTerm)
+    .flatMap(tokenize)
+    .filter((token) => token.length >= 2 && token.length <= 24))
+    .sort((left, right) => right.length - left.length || left.localeCompare(right))
+    .slice(0, limit);
+}
+
+export function buildDuplicateSearchTerms(issue: IssueContext, parsed: ParsedIssue): string[] {
+  const title = stripDuplicateSearchTitlePrefix(issue.title);
+  const normalizedTitle = normalizeDuplicateSearchTerm(title);
+  const sectionPhrases = collectDuplicateSearchPhrases(parsed);
+  const titleTokens = prioritizeDuplicateSearchTokens([title], MAX_DUPLICATE_TITLE_TOKENS);
+  const contentTokens = prioritizeDuplicateSearchTokens(sectionPhrases, MAX_DUPLICATE_CONTENT_TOKENS);
+
+  return unique([
+    normalizedTitle,
+    ...sectionPhrases,
+    ...titleTokens,
+    ...contentTokens
+  ]).slice(0, MAX_DUPLICATE_SEARCH_TERMS);
 }
 
 function rankCandidate(issue: IssueContext, parsed: ParsedIssue, candidate: DuplicateCandidate): number {
@@ -115,7 +264,7 @@ export async function detectDuplicate(params: {
     return { executed: true, skippedReason: "bypass label matched" };
   }
 
-  const terms = [...new Set(tokenize(params.issue.title).slice(0, 6))];
+  const terms = buildDuplicateSearchTerms(params.issue, params.parsed);
   const searchResults = await params.searchIssues(terms, params.config.searchResultLimit);
 
   const ranked = searchResults

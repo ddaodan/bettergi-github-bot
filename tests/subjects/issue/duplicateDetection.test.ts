@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { chooseCanonicalIssue, detectDuplicate } from "../../../src/subjects/issue/duplicateDetection.js";
+import {
+  buildDuplicateSearchTerms,
+  chooseCanonicalIssue,
+  detectDuplicate
+} from "../../../src/subjects/issue/duplicateDetection.js";
 import { parseIssueBody } from "../../../src/subjects/issue/parser.js";
 import { createConfig, createIssue } from "../../helpers/fixtures.js";
 
@@ -116,5 +120,67 @@ describe("duplicate detection", () => {
     expect(result.duplicateOf).toBeUndefined();
     expect(result.similarIssues?.[0]?.candidate.number).toBe(17);
     expect(result.similarIssues?.[0]?.score).toBeGreaterThanOrEqual(0.3);
+  });
+
+  it("builds duplicate search terms from informative sections instead of only using the title", () => {
+    const issue = createIssue({
+      title: "[bug] Save failed",
+      body: [
+        "## Environment",
+        "Windows 11 / Java 21",
+        "",
+        "## Description",
+        "One dragon configuration cannot be saved after editing route options.",
+        "",
+        "## Steps to Reproduce",
+        "Open one dragon settings and click save after changing the route.",
+        "",
+        "## Expected Behavior",
+        "The one dragon configuration should be saved successfully."
+      ].join("\n")
+    });
+
+    const terms = buildDuplicateSearchTerms(issue, parseIssueBody(issue.body));
+
+    expect(terms).toContain("save failed");
+    expect(terms).toContain("one dragon configuration cannot be saved after editing route options");
+    expect(terms).toContain("open one dragon settings and click save after changing the route");
+    expect(terms).not.toContain("windows 11 java 21");
+  });
+
+  it("passes section-derived search terms into duplicate candidate retrieval", async () => {
+    const config = createConfig();
+    const issue = createIssue({
+      title: "[bug] Save failed",
+      body: [
+        "## Environment",
+        "Windows 11 / Java 21",
+        "",
+        "## Description",
+        "One dragon configuration cannot be saved after editing route options.",
+        "",
+        "## Steps to Reproduce",
+        "Open one dragon settings and click save after changing the route.",
+        "",
+        "## Expected Behavior",
+        "The one dragon configuration should be saved successfully."
+      ].join("\n")
+    });
+
+    const searchIssues = vi.fn().mockResolvedValue([]);
+
+    await detectDuplicate({
+      issue,
+      parsed: parseIssueBody(issue.body),
+      config: config.issues.validation.duplicateDetection,
+      searchIssues,
+      addDuplicateLabel: async () => undefined,
+      closeIssue: async () => undefined
+    });
+
+    const terms = searchIssues.mock.calls[0]?.[0] as string[];
+    expect(terms).toContain("one dragon configuration cannot be saved after editing route options");
+    expect(terms).toContain("open one dragon settings and click save after changing the route");
+    expect(terms).not.toContain("windows 11 java 21");
   });
 });
