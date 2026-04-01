@@ -73,12 +73,34 @@ describe("runIssueWorkflow", () => {
     expect(gateway.searchRequests).toHaveLength(0);
   });
 
-  it("initializes automatic cutoff and skips the first old issue event", async () => {
+  it("hard-skips all automatic events for issues created before 2026-04-01", async () => {
+    const config = createConfig();
+    const issue = createIssue({
+      action: "edited",
+      createdAt: "2026-03-31T23:59:59Z",
+      labels: []
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_edited",
+      config,
+      gateway
+    });
+
+    expect(issue.labels).toHaveLength(0);
+    expect(gateway.comments).toHaveLength(0);
+    expect(gateway.searchRequests).toHaveLength(0);
+    expect(gateway.repositoryVariables.size).toBe(0);
+  });
+
+  it("initializes automatic cutoff for newer edited issues when auto mode is enabled", async () => {
     const config = createConfig();
     config.issues.autoProcessing.skipCreatedBefore = "auto";
     const issue = createIssue({
       action: "edited",
-      createdAt: "2026-01-01T00:00:00Z",
+      createdAt: "2026-04-01T12:34:56Z",
       labels: []
     });
     const gateway = new FakeGateway(issue);
@@ -93,9 +115,10 @@ describe("runIssueWorkflow", () => {
     const stored = gateway.repositoryVariables.get("REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE");
     expect(stored).toBeTruthy();
     expect(Number.isNaN(Date.parse(stored!))).toBe(false);
-    expect(Date.parse(stored!)).toBeGreaterThan(Date.parse(issue.createdAt));
+    expect(Date.parse(stored!)).toBeGreaterThanOrEqual(Date.parse(issue.createdAt));
     expect(issue.labels).toHaveLength(0);
     expect(gateway.comments).toHaveLength(0);
+    expect(gateway.searchRequests).toHaveLength(0);
   });
 
   it("initializes automatic cutoff from a newly opened issue without skipping it", async () => {
@@ -103,7 +126,7 @@ describe("runIssueWorkflow", () => {
     config.issues.autoProcessing.skipCreatedBefore = "auto";
     const issue = createIssue({
       action: "opened",
-      createdAt: "2026-03-18T10:11:12.000Z",
+      createdAt: "2026-04-02T10:11:12.000Z",
       labels: []
     });
     const gateway = new FakeGateway(issue);

@@ -43442,6 +43442,7 @@ function computeManagedLabels(params) {
 
 // src/subjects/issue/run.ts
 var AUTO_PROCESSING_CUTOFF_VARIABLE = "REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE";
+var LEGACY_ISSUE_HARDCODED_CUTOFF = "2026-04-01T00:00:00Z";
 function resolveIssueWorkflowTrigger(action) {
   switch (action) {
     case "opened":
@@ -43502,12 +43503,19 @@ async function resolveIssueAutoProcessingCutoff(params) {
   return activationTimestamp;
 }
 async function shouldSkipIssueAutoProcessing(params) {
+  if (!isAutomaticIssueWorkflowTrigger(params.trigger)) {
+    return false;
+  }
+  const hardcodedCutoffTimestamp = Date.parse(LEGACY_ISSUE_HARDCODED_CUTOFF);
+  const createdTimestamp = Date.parse(params.issue.createdAt);
+  if (!Number.isNaN(hardcodedCutoffTimestamp) && !Number.isNaN(createdTimestamp) && createdTimestamp < hardcodedCutoffTimestamp) {
+    return true;
+  }
   const cutoff = await resolveIssueAutoProcessingCutoff(params);
   if (!cutoff) {
     return false;
   }
   const cutoffTimestamp = Date.parse(cutoff);
-  const createdTimestamp = Date.parse(params.issue.createdAt);
   if (Number.isNaN(cutoffTimestamp) || Number.isNaN(createdTimestamp)) {
     return false;
   }
@@ -43530,7 +43538,7 @@ async function runIssueWorkflow(params) {
     gateway: params.gateway
   })) {
     core9.info(
-      `Skip automatic processing for issue #${params.issue.number}: created at ${params.issue.createdAt} is earlier than the configured activation cutoff.`
+      `Skip automatic processing for issue #${params.issue.number}: created at ${params.issue.createdAt} is earlier than the automatic cutoff or the hardcoded legacy cutoff ${LEGACY_ISSUE_HARDCODED_CUTOFF}.`
     );
     return;
   }

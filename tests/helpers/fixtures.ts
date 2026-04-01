@@ -163,8 +163,8 @@ export function createIssue(overrides: Partial<IssueContext> = {}): IssueContext
     state: "open",
     labels: [],
     htmlUrl: "https://example.test/issues/1",
-    createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z",
+    createdAt: "2026-04-02T00:00:00Z",
+    updatedAt: "2026-04-02T00:00:00Z",
     action: "opened",
     ...overrides
   };
