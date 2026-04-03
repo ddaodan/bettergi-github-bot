@@ -286,14 +286,19 @@ export interface DuplicateDecision {
 
 export interface AiHelpResult {
   summary: string;
+  summaryEn?: string;
   possibleCauses: string[];
+  possibleCausesEn?: string[];
   troubleshootingSteps: string[];
+  troubleshootingStepsEn?: string[];
   missingInformation: string[];
+  missingInformationEn?: string[];
 }
 
 export interface FixSuggestionCandidateFile {
   path: string;
   reason: string;
+  reasonEn?: string;
 }
 
 export interface RepositoryCodeContextFile {
@@ -309,11 +314,15 @@ export interface RepositoryCodeContext {
 
 export interface FixSuggestionResult {
   summary: string;
+  summaryEn?: string;
   candidateFiles: FixSuggestionCandidateFile[];
   changeSuggestions: string[];
+  changeSuggestionsEn?: string[];
   patchDraft: string;
   verificationSteps: string[];
+  verificationStepsEn?: string[];
   risks: string[];
+  risksEn?: string[];
 }
 
 export interface DuplicateReviewResult {

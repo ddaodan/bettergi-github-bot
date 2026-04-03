@@ -194,9 +194,14 @@ export function sanitizeAiHelpResultForComment(params: {
 
   return {
     summary: sanitizeCommentField(params.help.summary, params.mode, blockedTexts),
+    summaryEn: sanitizeCommentField(params.help.summaryEn ?? "", params.mode, blockedTexts),
     possibleCauses: sanitizeStringList(params.help.possibleCauses, params.mode, blockedTexts),
+    possibleCausesEn: sanitizeStringList(params.help.possibleCausesEn ?? [], params.mode, blockedTexts),
     troubleshootingSteps: sanitizeStringList(params.help.troubleshootingSteps, params.mode, blockedTexts),
+    troubleshootingStepsEn: sanitizeStringList(params.help.troubleshootingStepsEn ?? [], params.mode, blockedTexts),
     missingInformation: sanitizeStringList(params.help.missingInformation, params.mode, blockedTexts)
+    ,
+    missingInformationEn: sanitizeStringList(params.help.missingInformationEn ?? [], params.mode, blockedTexts)
   };
 }
 
@@ -210,17 +215,22 @@ export function sanitizeFixSuggestionForComment(params: {
 
   return {
     summary: sanitizeCommentField(params.suggestion.summary, params.mode, blockedTexts),
+    summaryEn: sanitizeCommentField(params.suggestion.summaryEn ?? "", params.mode, blockedTexts),
     candidateFiles: params.suggestion.candidateFiles
       .filter((item) => item.path.trim() && !isSensitivePath(item.path))
       .map((item) => ({
         path: item.path.trim(),
-        reason: sanitizeCommentField(item.reason, params.mode, blockedTexts)
+        reason: sanitizeCommentField(item.reason, params.mode, blockedTexts),
+        reasonEn: sanitizeCommentField(item.reasonEn ?? "", params.mode, blockedTexts)
       })),
     changeSuggestions: sanitizeStringList(params.suggestion.changeSuggestions, params.mode, blockedTexts),
+    changeSuggestionsEn: sanitizeStringList(params.suggestion.changeSuggestionsEn ?? [], params.mode, blockedTexts),
     patchDraft: patchDraft && (looksLikeContextDump(patchDraft) || containsSensitiveText(patchDraft))
       ? patchOmittedMessage(params.mode)
       : replaceSensitiveSegments(patchDraft),
     verificationSteps: sanitizeStringList(params.suggestion.verificationSteps, params.mode, blockedTexts),
-    risks: sanitizeStringList(params.suggestion.risks, params.mode, blockedTexts)
+    verificationStepsEn: sanitizeStringList(params.suggestion.verificationStepsEn ?? [], params.mode, blockedTexts),
+    risks: sanitizeStringList(params.suggestion.risks, params.mode, blockedTexts),
+    risksEn: sanitizeStringList(params.suggestion.risksEn ?? [], params.mode, blockedTexts)
   };
 }

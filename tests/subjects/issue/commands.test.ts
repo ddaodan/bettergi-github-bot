@@ -356,12 +356,16 @@ describe("issue comment commands", () => {
     const provider = {
       async generateFixSuggestion() {
         return {
-          summary: "Adjust the save path handling.",
+          summary: "调整配置保存路径处理。",
+          summaryEn: "Adjust the save path handling.",
           candidateFiles: [],
-          changeSuggestions: ["Normalize the config path before persisting."],
+          changeSuggestions: ["先统一配置路径，再执行保存。"],
+          changeSuggestionsEn: ["Normalize the config path before persisting."],
           patchDraft: "@@\n- old\n+ new",
-          verificationSteps: ["Save the config again."],
-          risks: []
+          verificationSteps: ["重新保存一次配置。"],
+          verificationStepsEn: ["Save the config again."],
+          risks: [],
+          risksEn: []
         };
       }
     } as unknown as OpenAiCompatibleProvider;
@@ -379,5 +383,7 @@ describe("issue comment commands", () => {
 
     expect(gateway.comments[0]?.body).toContain("## AI 修复建议");
     expect(gateway.comments[0]?.body).toContain("## AI Fix Suggestion");
+    expect(gateway.comments[0]?.body).toContain("Adjust the save path handling.");
+    expect(gateway.comments[0]?.body).toContain("Normalize the config path before persisting.");
   });
 });

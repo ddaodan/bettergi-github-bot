@@ -76,15 +76,28 @@ function renderList(items: string[], emptyLabel: string): string[] {
   return items.map((item) => `- ${item}`);
 }
 
+function resolveLocalizedText(primary: string | undefined, fallback: string): string {
+  const value = primary?.trim();
+  return value ? value : fallback;
+}
+
+function resolveLocalizedList(primary: string[] | undefined, fallback: string[]): string[] {
+  return (primary?.length ?? 0) > 0 ? primary! : fallback;
+}
+
 function renderCandidateFiles(
   items: FixSuggestionResult["candidateFiles"],
-  emptyLabel: string
+  emptyLabel: string,
+  reasonSelector: (item: FixSuggestionResult["candidateFiles"][number]) => string | undefined = (item) => item.reason
 ): string[] {
   if (items.length === 0) {
     return [`- ${emptyLabel}`];
   }
 
-  return items.map((item) => `- \`${item.path}\`${item.reason ? `：${item.reason}` : ""}`);
+  return items.map((item) => {
+    const reason = resolveLocalizedText(reasonSelector(item), item.reason);
+    return `- \`${item.path}\`${reason ? `：${reason}` : ""}`;
+  });
 }
 
 function renderIssueState(mode: "zh" | "en", state: "open" | "closed"): string {
@@ -270,16 +283,16 @@ export function renderAiHelpComment(params: {
       : undefined,
     `## ${layout.titleEn}`,
     "",
-    `### ${layout.summaryEn}\n${params.help.summary}`,
+    `### ${layout.summaryEn}\n${resolveLocalizedText(params.help.summaryEn, params.help.summary)}`,
     "",
     `### ${layout.analysisEn}`,
-    ...renderList(params.help.possibleCauses, "None"),
+    ...renderList(resolveLocalizedList(params.help.possibleCausesEn, params.help.possibleCauses), "None"),
     "",
     `### ${layout.actionEn}`,
-    ...renderList(params.help.troubleshootingSteps, "None"),
+    ...renderList(resolveLocalizedList(params.help.troubleshootingStepsEn, params.help.troubleshootingSteps), "None"),
     "",
     `### ${layout.missingEn}`,
-    ...renderList(params.help.missingInformation, "None"),
+    ...renderList(resolveLocalizedList(params.help.missingInformationEn, params.help.missingInformation), "None"),
     "",
     enAiNote
   ].filter((section) => section !== undefined);
@@ -325,13 +338,13 @@ export function renderFixSuggestionComment(params: {
   const en = [
     "## AI Fix Suggestion",
     "",
-    `### Assessment\n${params.suggestion.summary}`,
+    `### Assessment\n${resolveLocalizedText(params.suggestion.summaryEn, params.suggestion.summary)}`,
     "",
     "### Candidate Files",
-    ...renderCandidateFiles(params.suggestion.candidateFiles, "None"),
+    ...renderCandidateFiles(params.suggestion.candidateFiles, "None", (item) => item.reasonEn),
     "",
     "### Change Suggestions",
-    ...renderList(params.suggestion.changeSuggestions, "None"),
+    ...renderList(resolveLocalizedList(params.suggestion.changeSuggestionsEn, params.suggestion.changeSuggestions), "None"),
     "",
     "### Patch Draft",
     "```diff",
@@ -339,10 +352,10 @@ export function renderFixSuggestionComment(params: {
     "```",
     "",
     "### Verification Steps",
-    ...renderList(params.suggestion.verificationSteps, "None"),
+    ...renderList(resolveLocalizedList(params.suggestion.verificationStepsEn, params.suggestion.verificationSteps), "None"),
     "",
     "### Risks",
-    ...renderList(params.suggestion.risks, "None"),
+    ...renderList(resolveLocalizedList(params.suggestion.risksEn, params.suggestion.risks), "None"),
     "",
     enAiNote
   ].join("\n");

@@ -41299,9 +41299,13 @@ function sanitizeAiHelpResultForComment(params) {
   const blockedTexts = unique((params.blockedTexts ?? []).filter(Boolean));
   return {
     summary: sanitizeCommentField(params.help.summary, params.mode, blockedTexts),
+    summaryEn: sanitizeCommentField(params.help.summaryEn ?? "", params.mode, blockedTexts),
     possibleCauses: sanitizeStringList(params.help.possibleCauses, params.mode, blockedTexts),
+    possibleCausesEn: sanitizeStringList(params.help.possibleCausesEn ?? [], params.mode, blockedTexts),
     troubleshootingSteps: sanitizeStringList(params.help.troubleshootingSteps, params.mode, blockedTexts),
-    missingInformation: sanitizeStringList(params.help.missingInformation, params.mode, blockedTexts)
+    troubleshootingStepsEn: sanitizeStringList(params.help.troubleshootingStepsEn ?? [], params.mode, blockedTexts),
+    missingInformation: sanitizeStringList(params.help.missingInformation, params.mode, blockedTexts),
+    missingInformationEn: sanitizeStringList(params.help.missingInformationEn ?? [], params.mode, blockedTexts)
   };
 }
 function sanitizeFixSuggestionForComment(params) {
@@ -41309,14 +41313,19 @@ function sanitizeFixSuggestionForComment(params) {
   const patchDraft = params.suggestion.patchDraft.trim();
   return {
     summary: sanitizeCommentField(params.suggestion.summary, params.mode, blockedTexts),
+    summaryEn: sanitizeCommentField(params.suggestion.summaryEn ?? "", params.mode, blockedTexts),
     candidateFiles: params.suggestion.candidateFiles.filter((item) => item.path.trim() && !isSensitivePath(item.path)).map((item) => ({
       path: item.path.trim(),
-      reason: sanitizeCommentField(item.reason, params.mode, blockedTexts)
+      reason: sanitizeCommentField(item.reason, params.mode, blockedTexts),
+      reasonEn: sanitizeCommentField(item.reasonEn ?? "", params.mode, blockedTexts)
     })),
     changeSuggestions: sanitizeStringList(params.suggestion.changeSuggestions, params.mode, blockedTexts),
+    changeSuggestionsEn: sanitizeStringList(params.suggestion.changeSuggestionsEn ?? [], params.mode, blockedTexts),
     patchDraft: patchDraft && (looksLikeContextDump(patchDraft) || containsSensitiveText(patchDraft)) ? patchOmittedMessage(params.mode) : replaceSensitiveSegments(patchDraft),
     verificationSteps: sanitizeStringList(params.suggestion.verificationSteps, params.mode, blockedTexts),
-    risks: sanitizeStringList(params.suggestion.risks, params.mode, blockedTexts)
+    verificationStepsEn: sanitizeStringList(params.suggestion.verificationStepsEn ?? [], params.mode, blockedTexts),
+    risks: sanitizeStringList(params.suggestion.risks, params.mode, blockedTexts),
+    risksEn: sanitizeStringList(params.suggestion.risksEn ?? [], params.mode, blockedTexts)
   };
 }
 
@@ -41575,87 +41584,241 @@ var duplicateReviewSchema = {
     required: ["duplicate", "confidence", "reason"]
   }
 };
-var issueHelpSchema = {
-  name: "issue_help",
-  schema: {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      summary: {
-        type: "string"
-      },
-      possibleCauses: {
-        type: "array",
-        items: {
-          type: "string"
-        }
-      },
-      troubleshootingSteps: {
-        type: "array",
-        items: {
-          type: "string"
-        }
-      },
-      missingInformation: {
-        type: "array",
-        items: {
-          type: "string"
-        }
-      }
-    },
-    required: ["summary", "possibleCauses", "troubleshootingSteps", "missingInformation"]
-  }
-};
-var fixSuggestionSchema = {
-  name: "fix_suggestion",
-  schema: {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      summary: {
-        type: "string"
-      },
-      candidateFiles: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            path: {
-              type: "string"
-            },
-            reason: {
+function createIssueHelpSchema(mode) {
+  if (mode === "zh") {
+    return {
+      name: "issue_help",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          summary: {
+            type: "string"
+          },
+          possibleCauses: {
+            type: "array",
+            items: {
               type: "string"
             }
           },
-          required: ["path", "reason"]
-        }
-      },
-      changeSuggestions: {
-        type: "array",
-        items: {
-          type: "string"
-        }
-      },
-      patchDraft: {
-        type: "string"
-      },
-      verificationSteps: {
-        type: "array",
-        items: {
-          type: "string"
-        }
-      },
-      risks: {
-        type: "array",
-        items: {
-          type: "string"
-        }
+          troubleshootingSteps: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+          missingInformation: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          }
+        },
+        required: ["summary", "possibleCauses", "troubleshootingSteps", "missingInformation"]
       }
-    },
-    required: ["summary", "candidateFiles", "changeSuggestions", "patchDraft", "verificationSteps", "risks"]
+    };
   }
-};
+  return {
+    name: "issue_help_bilingual",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        summaryZh: {
+          type: "string"
+        },
+        summaryEn: {
+          type: "string"
+        },
+        possibleCausesZh: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        possibleCausesEn: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        troubleshootingStepsZh: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        troubleshootingStepsEn: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        missingInformationZh: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        missingInformationEn: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        }
+      },
+      required: [
+        "summaryZh",
+        "summaryEn",
+        "possibleCausesZh",
+        "possibleCausesEn",
+        "troubleshootingStepsZh",
+        "troubleshootingStepsEn",
+        "missingInformationZh",
+        "missingInformationEn"
+      ]
+    }
+  };
+}
+function createFixSuggestionSchema(mode) {
+  if (mode === "zh") {
+    return {
+      name: "fix_suggestion",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          summary: {
+            type: "string"
+          },
+          candidateFiles: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                path: {
+                  type: "string"
+                },
+                reason: {
+                  type: "string"
+                }
+              },
+              required: ["path", "reason"]
+            }
+          },
+          changeSuggestions: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+          patchDraft: {
+            type: "string"
+          },
+          verificationSteps: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+          risks: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          }
+        },
+        required: ["summary", "candidateFiles", "changeSuggestions", "patchDraft", "verificationSteps", "risks"]
+      }
+    };
+  }
+  return {
+    name: "fix_suggestion_bilingual",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        summaryZh: {
+          type: "string"
+        },
+        summaryEn: {
+          type: "string"
+        },
+        candidateFiles: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              path: {
+                type: "string"
+              },
+              reasonZh: {
+                type: "string"
+              },
+              reasonEn: {
+                type: "string"
+              }
+            },
+            required: ["path", "reasonZh", "reasonEn"]
+          }
+        },
+        changeSuggestionsZh: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        changeSuggestionsEn: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        patchDraft: {
+          type: "string"
+        },
+        verificationStepsZh: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        verificationStepsEn: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        risksZh: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        risksEn: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        }
+      },
+      required: [
+        "summaryZh",
+        "summaryEn",
+        "candidateFiles",
+        "changeSuggestionsZh",
+        "changeSuggestionsEn",
+        "patchDraft",
+        "verificationStepsZh",
+        "verificationStepsEn",
+        "risksZh",
+        "risksEn"
+      ]
+    }
+  };
+}
 var labelClassificationSchema = {
   name: "label_classification",
   schema: {
@@ -41715,7 +41878,61 @@ function createOutputLanguageInstruction(mode) {
   if (mode === "zh") {
     return "All human-readable JSON fields must be written in Simplified Chinese. Keep file paths, code identifiers, and diff syntax unchanged where necessary.";
   }
-  return "All human-readable JSON fields must be bilingual with Simplified Chinese first and English second. Keep file paths, code identifiers, and diff syntax unchanged where necessary.";
+  return "When the schema contains paired *Zh and *En fields, write Simplified Chinese into every *Zh field and natural English into every matching *En field. Do not repeat Chinese in the English fields. Keep file paths, code identifiers, and diff syntax unchanged where necessary.";
+}
+function parseIssueHelpResult(content, mode) {
+  const parsedResult = JSON.parse(extractJsonBlock(content));
+  if (mode === "zh") {
+    return {
+      summary: String(parsedResult.summary ?? "Unable to generate a summary."),
+      possibleCauses: Array.isArray(parsedResult.possibleCauses) ? parsedResult.possibleCauses : [],
+      troubleshootingSteps: Array.isArray(parsedResult.troubleshootingSteps) ? parsedResult.troubleshootingSteps : [],
+      missingInformation: Array.isArray(parsedResult.missingInformation) ? parsedResult.missingInformation : []
+    };
+  }
+  return {
+    summary: String(parsedResult.summaryZh ?? parsedResult.summary ?? "Unable to generate a summary."),
+    summaryEn: String(parsedResult.summaryEn ?? ""),
+    possibleCauses: Array.isArray(parsedResult.possibleCausesZh) ? parsedResult.possibleCausesZh : Array.isArray(parsedResult.possibleCauses) ? parsedResult.possibleCauses : [],
+    possibleCausesEn: Array.isArray(parsedResult.possibleCausesEn) ? parsedResult.possibleCausesEn : [],
+    troubleshootingSteps: Array.isArray(parsedResult.troubleshootingStepsZh) ? parsedResult.troubleshootingStepsZh : Array.isArray(parsedResult.troubleshootingSteps) ? parsedResult.troubleshootingSteps : [],
+    troubleshootingStepsEn: Array.isArray(parsedResult.troubleshootingStepsEn) ? parsedResult.troubleshootingStepsEn : [],
+    missingInformation: Array.isArray(parsedResult.missingInformationZh) ? parsedResult.missingInformationZh : Array.isArray(parsedResult.missingInformation) ? parsedResult.missingInformation : [],
+    missingInformationEn: Array.isArray(parsedResult.missingInformationEn) ? parsedResult.missingInformationEn : []
+  };
+}
+function parseFixSuggestionResult(content, mode) {
+  const parsedResult = JSON.parse(extractJsonBlock(content));
+  const candidateFiles = Array.isArray(parsedResult.candidateFiles) ? parsedResult.candidateFiles : [];
+  if (mode === "zh") {
+    return {
+      summary: String(parsedResult.summary ?? "Unable to generate a fix suggestion."),
+      candidateFiles: candidateFiles.map((item) => ({
+        path: String(item.path ?? ""),
+        reason: String(item.reason ?? "")
+      })),
+      changeSuggestions: Array.isArray(parsedResult.changeSuggestions) ? parsedResult.changeSuggestions : [],
+      patchDraft: String(parsedResult.patchDraft ?? ""),
+      verificationSteps: Array.isArray(parsedResult.verificationSteps) ? parsedResult.verificationSteps : [],
+      risks: Array.isArray(parsedResult.risks) ? parsedResult.risks : []
+    };
+  }
+  return {
+    summary: String(parsedResult.summaryZh ?? parsedResult.summary ?? "Unable to generate a fix suggestion."),
+    summaryEn: String(parsedResult.summaryEn ?? ""),
+    candidateFiles: candidateFiles.map((item) => ({
+      path: String(item.path ?? ""),
+      reason: String(item.reasonZh ?? item.reason ?? ""),
+      reasonEn: String(item.reasonEn ?? "")
+    })),
+    changeSuggestions: Array.isArray(parsedResult.changeSuggestionsZh) ? parsedResult.changeSuggestionsZh : Array.isArray(parsedResult.changeSuggestions) ? parsedResult.changeSuggestions : [],
+    changeSuggestionsEn: Array.isArray(parsedResult.changeSuggestionsEn) ? parsedResult.changeSuggestionsEn : [],
+    patchDraft: String(parsedResult.patchDraft ?? ""),
+    verificationSteps: Array.isArray(parsedResult.verificationStepsZh) ? parsedResult.verificationStepsZh : Array.isArray(parsedResult.verificationSteps) ? parsedResult.verificationSteps : [],
+    verificationStepsEn: Array.isArray(parsedResult.verificationStepsEn) ? parsedResult.verificationStepsEn : [],
+    risks: Array.isArray(parsedResult.risksZh) ? parsedResult.risksZh : Array.isArray(parsedResult.risks) ? parsedResult.risks : [],
+    risksEn: Array.isArray(parsedResult.risksEn) ? parsedResult.risksEn : []
+  };
 }
 var MAX_ISSUE_IMAGES = 3;
 function summarizeIssueImages(images) {
@@ -41761,7 +41978,7 @@ var OpenAiCompatibleProvider = class {
       reason: parsed.reason ?? ""
     };
   }
-  async generateHelp(issue2, parsed, repositoryContext) {
+  async generateHelp(issue2, parsed, repositoryContext, commentMode) {
     const templateKey = repositoryContext.templateKey ?? "unknown";
     const { allowed: allowedImages, skipped: skippedImages } = partitionIssueImagesForAi(parsed.images);
     const images = summarizeIssueImages(allowedImages);
@@ -41782,6 +41999,7 @@ var OpenAiCompatibleProvider = class {
           "If issue images are attached, use them as supporting evidence for the current repository issue.",
           "If more information is needed, ask only for truly missing technical details such as module, version, logs, environment, or reproduction steps.",
           createAiSecurityInstruction(),
+          createOutputLanguageInstruction(commentMode),
           createIssueHelpInstruction(templateKey),
           "Return JSON only."
         ].join(" ")
@@ -41805,21 +42023,20 @@ var OpenAiCompatibleProvider = class {
     ];
     let content;
     try {
-      content = await requestStructuredJson(this.config, this.apiKey, messages, issueHelpSchema);
+      content = await requestStructuredJson(this.config, this.apiKey, messages, createIssueHelpSchema(commentMode));
     } catch (error48) {
       if (!hasImages(messages) || !shouldRetryWithoutImages(error48)) {
         throw error48;
       }
       core3.warning(`AI provider rejected image inputs. Retrying issue help without images: ${String(error48)}`);
-      content = await requestStructuredJson(this.config, this.apiKey, stripImages(messages), issueHelpSchema);
+      content = await requestStructuredJson(
+        this.config,
+        this.apiKey,
+        stripImages(messages),
+        createIssueHelpSchema(commentMode)
+      );
     }
-    const parsedResult = JSON.parse(extractJsonBlock(content));
-    return {
-      summary: parsedResult.summary ?? "Unable to generate a summary.",
-      possibleCauses: Array.isArray(parsedResult.possibleCauses) ? parsedResult.possibleCauses : [],
-      troubleshootingSteps: Array.isArray(parsedResult.troubleshootingSteps) ? parsedResult.troubleshootingSteps : [],
-      missingInformation: Array.isArray(parsedResult.missingInformation) ? parsedResult.missingInformation : []
-    };
+    return parseIssueHelpResult(content, commentMode);
   }
   async generateFixSuggestion(issue2, parsed, repositoryContext, codeContext, commentMode) {
     const templateKey = repositoryContext.templateKey ?? "unknown";
@@ -41853,16 +42070,8 @@ var OpenAiCompatibleProvider = class {
           }
         })
       }
-    ], fixSuggestionSchema);
-    const parsedResult = JSON.parse(extractJsonBlock(content));
-    return {
-      summary: parsedResult.summary ?? "Unable to generate a fix suggestion.",
-      candidateFiles: Array.isArray(parsedResult.candidateFiles) ? parsedResult.candidateFiles : [],
-      changeSuggestions: Array.isArray(parsedResult.changeSuggestions) ? parsedResult.changeSuggestions : [],
-      patchDraft: parsedResult.patchDraft ?? "",
-      verificationSteps: Array.isArray(parsedResult.verificationSteps) ? parsedResult.verificationSteps : [],
-      risks: Array.isArray(parsedResult.risks) ? parsedResult.risks : []
-    };
+    ], createFixSuggestionSchema(commentMode));
+    return parseFixSuggestionResult(content, commentMode);
   }
   async classifyIssueLabels(params) {
     const content = await requestStructuredJson(this.config, this.apiKey, [
@@ -42000,11 +42209,21 @@ function renderList(items, emptyLabel) {
   }
   return items.map((item) => `- ${item}`);
 }
-function renderCandidateFiles(items, emptyLabel) {
+function resolveLocalizedText(primary, fallback) {
+  const value = primary?.trim();
+  return value ? value : fallback;
+}
+function resolveLocalizedList(primary, fallback) {
+  return (primary?.length ?? 0) > 0 ? primary : fallback;
+}
+function renderCandidateFiles(items, emptyLabel, reasonSelector = (item) => item.reason) {
   if (items.length === 0) {
     return [`- ${emptyLabel}`];
   }
-  return items.map((item) => `- \`${item.path}\`${item.reason ? `\uFF1A${item.reason}` : ""}`);
+  return items.map((item) => {
+    const reason = resolveLocalizedText(reasonSelector(item), item.reason);
+    return `- \`${item.path}\`${reason ? `\uFF1A${reason}` : ""}`;
+  });
 }
 function getAiCommentLayout(templateKey) {
   switch (templateKey) {
@@ -42168,16 +42387,16 @@ ${params.help.summary}`,
     `## ${layout.titleEn}`,
     "",
     `### ${layout.summaryEn}
-${params.help.summary}`,
+${resolveLocalizedText(params.help.summaryEn, params.help.summary)}`,
     "",
     `### ${layout.analysisEn}`,
-    ...renderList(params.help.possibleCauses, "None"),
+    ...renderList(resolveLocalizedList(params.help.possibleCausesEn, params.help.possibleCauses), "None"),
     "",
     `### ${layout.actionEn}`,
-    ...renderList(params.help.troubleshootingSteps, "None"),
+    ...renderList(resolveLocalizedList(params.help.troubleshootingStepsEn, params.help.troubleshootingSteps), "None"),
     "",
     `### ${layout.missingEn}`,
-    ...renderList(params.help.missingInformation, "None"),
+    ...renderList(resolveLocalizedList(params.help.missingInformationEn, params.help.missingInformation), "None"),
     "",
     enAiNote
   ].filter((section) => section !== void 0);
@@ -42222,13 +42441,13 @@ ${params.suggestion.summary}`,
     "## AI Fix Suggestion",
     "",
     `### Assessment
-${params.suggestion.summary}`,
+${resolveLocalizedText(params.suggestion.summaryEn, params.suggestion.summary)}`,
     "",
     "### Candidate Files",
-    ...renderCandidateFiles(params.suggestion.candidateFiles, "None"),
+    ...renderCandidateFiles(params.suggestion.candidateFiles, "None", (item) => item.reasonEn),
     "",
     "### Change Suggestions",
-    ...renderList(params.suggestion.changeSuggestions, "None"),
+    ...renderList(resolveLocalizedList(params.suggestion.changeSuggestionsEn, params.suggestion.changeSuggestions), "None"),
     "",
     "### Patch Draft",
     "```diff",
@@ -42236,10 +42455,10 @@ ${params.suggestion.summary}`,
     "```",
     "",
     "### Verification Steps",
-    ...renderList(params.suggestion.verificationSteps, "None"),
+    ...renderList(resolveLocalizedList(params.suggestion.verificationStepsEn, params.suggestion.verificationSteps), "None"),
     "",
     "### Risks",
-    ...renderList(params.suggestion.risks, "None"),
+    ...renderList(resolveLocalizedList(params.suggestion.risksEn, params.suggestion.risks), "None"),
     "",
     enAiNote
   ].join("\n");
@@ -43105,7 +43324,8 @@ async function generateIssueAiHelp(params) {
     const help = await params.provider.generateHelp(
       params.issue,
       params.parsed,
-      params.repositoryContext
+      params.repositoryContext,
+      params.commentMode
     );
     const sanitizedHelp = sanitizeAiHelpResultForComment({
       help,

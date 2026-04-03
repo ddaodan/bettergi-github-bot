@@ -42,7 +42,8 @@ export async function generateIssueAiHelp(params: {
     const help = await params.provider.generateHelp(
       params.issue,
       params.parsed,
-      params.repositoryContext
+      params.repositoryContext,
+      params.commentMode
     );
     const sanitizedHelp = sanitizeAiHelpResultForComment({
       help,

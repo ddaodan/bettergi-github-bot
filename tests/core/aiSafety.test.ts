@@ -63,15 +63,21 @@ describe("aiSafety", () => {
         possibleCauses: [
           "Authorization: Bearer ghp_1234567890abcdefghijklmnopqrstuvwxyz"
         ],
+        possibleCausesEn: [
+          "Authorization: Bearer ghp_1234567890abcdefghijklmnopqrstuvwxyz"
+        ],
         troubleshootingSteps: [
           "This is the full original issue body that should never be copied verbatim into a public comment because it is too long and too detailed."
         ],
-        missingInformation: []
+        troubleshootingStepsEn: [],
+        missingInformation: [],
+        missingInformationEn: []
       }
     });
 
     expect(result.summary).toBe("出于安全原因，无法公开转储内部上下文或敏感信息。");
     expect(result.possibleCauses[0]).toContain("[REDACTED]");
+    expect(result.possibleCausesEn?.[0]).toContain("[REDACTED]");
     expect(result.troubleshootingSteps[0]).toBe("出于安全原因，无法公开转储内部上下文或敏感信息。");
   });
 
@@ -80,20 +86,25 @@ describe("aiSafety", () => {
       mode: "zh-en",
       suggestion: {
         summary: "Summarize the fix.",
+        summaryEn: "English summary.",
         candidateFiles: [
           { path: ".env.production", reason: "contains config" },
-          { path: "src/index.ts", reason: "entry point" }
+          { path: "src/index.ts", reason: "entry point", reasonEn: "english entry point" }
         ],
         changeSuggestions: ["Rotate the secret if it was exposed."],
+        changeSuggestionsEn: ["Rotate the secret in English."],
         patchDraft: "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----",
         verificationSteps: ["Run tests."],
-        risks: []
+        verificationStepsEn: ["Run tests in English."],
+        risks: [],
+        risksEn: []
       }
     });
 
     expect(result.candidateFiles).toEqual([
-      { path: "src/index.ts", reason: "entry point" }
+      { path: "src/index.ts", reason: "entry point", reasonEn: "english entry point" }
     ]);
     expect(result.patchDraft).toContain("Omitted because it may contain sensitive content");
+    expect(result.changeSuggestionsEn).toEqual(["Rotate the secret in English."]);
   });
 });

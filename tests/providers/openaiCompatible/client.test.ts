@@ -83,7 +83,7 @@ describe("OpenAiCompatibleProvider", () => {
 
     const issue = createIssue();
 
-    await createProvider().generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
+    await createProvider().generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext(), "zh");
 
     const firstCall = fetchMock.mock.calls[0]?.[0];
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
@@ -131,7 +131,7 @@ describe("OpenAiCompatibleProvider", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const issue = createIssue();
-    const result = await createProvider().generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
+    const result = await createProvider().generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext(), "zh");
 
     expect(result.summary).toBe("fallback");
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.openai.com/v1/responses");
@@ -167,7 +167,7 @@ describe("OpenAiCompatibleProvider", () => {
     const result = await createProvider({
       baseUrl: "https://cliproxy.ddaodan.cc/",
       apiStyle: "responses"
-    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext(), "zh");
 
     expect(result.summary).toBe("versioned path");
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://cliproxy.ddaodan.cc/responses");
@@ -200,11 +200,46 @@ describe("OpenAiCompatibleProvider", () => {
     const issue = createIssue();
     const result = await createProvider({
       apiStyle: "chat_completions"
-    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext(), "zh");
 
     expect(result.summary).toBe("chat only");
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.openai.com/v1/chat/completions");
+  });
+
+  it("requests separated zh/en fields for bilingual AI help", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return {
+          output_text: JSON.stringify({
+            summaryZh: "中文总结",
+            summaryEn: "English summary",
+            possibleCausesZh: ["中文原因"],
+            possibleCausesEn: ["English cause"],
+            troubleshootingStepsZh: ["中文步骤"],
+            troubleshootingStepsEn: ["English step"],
+            missingInformationZh: ["中文补充"],
+            missingInformationEn: ["English missing info"]
+          })
+        };
+      }
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const issue = createIssue();
+    const result = await createProvider({
+      apiStyle: "responses"
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext(), "zh-en");
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const systemPrompt = String(body.input[0]?.content ?? "");
+    expect(body.text.format.name).toBe("issue_help_bilingual");
+    expect(systemPrompt).toContain("write Simplified Chinese into every *Zh field");
+    expect(result.summary).toBe("中文总结");
+    expect(result.summaryEn).toBe("English summary");
+    expect(result.possibleCausesEn).toEqual(["English cause"]);
   });
 
   it("includes extracted issue images in responses requests", async () => {
@@ -237,7 +272,7 @@ describe("OpenAiCompatibleProvider", () => {
 
     await createProvider({
       apiStyle: "responses"
-    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext(), "zh");
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     const content = body.input[1]?.content;
@@ -281,7 +316,7 @@ describe("OpenAiCompatibleProvider", () => {
 
     await createProvider({
       apiStyle: "responses"
-    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext(), "zh");
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     const content = body.input[1]?.content;
@@ -347,7 +382,7 @@ describe("OpenAiCompatibleProvider", () => {
 
     const result = await createProvider({
       apiStyle: "responses"
-    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext());
+    }).generateHelp(issue, parseIssueBody(issue.body), createRepositoryContext(), "zh");
 
     expect(result.summary).toBe("text fallback");
 
@@ -413,6 +448,57 @@ describe("OpenAiCompatibleProvider", () => {
     expect(systemPrompt).toContain("All human-readable JSON fields must be written in Simplified Chinese.");
     expect(payload.codeContext.files[0]?.path).toBe("src/index.ts");
     expect(payload.repositoryContext.fullName).toBe("octo/repo");
+  });
+
+  it("requests separated zh/en fields for bilingual fix suggestions", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return {
+          output_text: JSON.stringify({
+            summaryZh: "中文修复建议",
+            summaryEn: "English fix suggestion",
+            candidateFiles: [
+              {
+                path: "src/index.ts",
+                reasonZh: "中文原因",
+                reasonEn: "English reason"
+              }
+            ],
+            changeSuggestionsZh: ["中文修改建议"],
+            changeSuggestionsEn: ["English change suggestion"],
+            patchDraft: "@@\n- old\n+ new",
+            verificationStepsZh: ["中文验证"],
+            verificationStepsEn: ["English verification"],
+            risksZh: ["中文风险"],
+            risksEn: ["English risk"]
+          })
+        };
+      }
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const issue = createIssue();
+    const result = await createProvider({
+      apiStyle: "responses"
+    }).generateFixSuggestion(
+      issue,
+      parseIssueBody(issue.body),
+      createRepositoryContext(),
+      {
+        fallbackUsed: false,
+        files: []
+      },
+      "zh-en"
+    );
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.text.format.name).toBe("fix_suggestion_bilingual");
+    expect(result.summary).toBe("中文修复建议");
+    expect(result.summaryEn).toBe("English fix suggestion");
+    expect(result.candidateFiles[0]?.reasonEn).toBe("English reason");
+    expect(result.changeSuggestionsEn).toEqual(["English change suggestion"]);
   });
 
   it("includes available labels in issue label classification requests", async () => {
