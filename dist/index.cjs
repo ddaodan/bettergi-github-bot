@@ -40763,6 +40763,10 @@ async function loadRepoBotConfig(params) {
 // src/github/gateway.ts
 var core2 = __toESM(require_core(), 1);
 var import_github = __toESM(require_github(), 1);
+var MAX_GITHUB_SEARCH_QUERY_LENGTH = 256;
+var SEARCH_ISSUE_PLACEHOLDER_TERMS = /* @__PURE__ */ new Set([
+  "no response"
+]);
 function toIssueContext() {
   const issue2 = import_github.context.payload.issue;
   if (!issue2 || "pull_request" in issue2) {
@@ -41085,15 +41089,18 @@ var OctokitGitHubGateway = class {
     });
   }
   async searchIssues(params) {
-    const terms = params.terms.map((term) => normalizeSearchIssueTerm(term)).filter(Boolean);
-    const searchExpression = terms.length <= 1 ? terms[0] ?? "" : `(${terms.join(" OR ")})`;
-    const query = [
-      `repo:${params.owner}/${params.repo}`,
-      "is:issue",
-      searchExpression
-    ].filter(Boolean).join(" ");
+    const searchQuery = buildSearchIssueQuery({
+      owner: params.owner,
+      repo: params.repo,
+      terms: params.terms
+    });
+    if (searchQuery.skippedTerms.length > 0) {
+      core2.info(
+        `Trimmed duplicate search query from ${params.terms.length} to ${searchQuery.includedTerms.length} term(s) to satisfy the GitHub Search API limit.`
+      );
+    }
     const searchResponse = await this.octokit.rest.search.issuesAndPullRequests({
-      q: query,
+      q: searchQuery.query,
       per_page: Math.min(params.limit, 100),
       sort: "updated",
       order: "desc"
@@ -41144,9 +41151,40 @@ var OctokitGitHubGateway = class {
     return [...merged.values()];
   }
 };
+function buildSearchIssueQuery(params) {
+  const baseQuery = `repo:${params.owner}/${params.repo} is:issue`;
+  const normalizedTerms = [...new Set(params.terms.map((term) => normalizeSearchIssueTerm(term)).filter(Boolean))];
+  const includedTerms = [];
+  const skippedTerms = [];
+  const renderQuery = (terms) => {
+    if (terms.length === 0) {
+      return baseQuery;
+    }
+    if (terms.length === 1) {
+      return `${baseQuery} ${terms[0]}`;
+    }
+    return `${baseQuery} (${terms.join(" OR ")})`;
+  };
+  for (const term of normalizedTerms) {
+    const candidateTerms = [...includedTerms, term];
+    if (renderQuery(candidateTerms).length <= MAX_GITHUB_SEARCH_QUERY_LENGTH) {
+      includedTerms.push(term);
+      continue;
+    }
+    skippedTerms.push(term);
+  }
+  return {
+    query: renderQuery(includedTerms),
+    includedTerms,
+    skippedTerms
+  };
+}
 function normalizeSearchIssueTerm(value) {
   const normalized = value.trim().replace(/\s+/g, " ").replace(/"/g, "");
   if (!normalized) {
+    return "";
+  }
+  if (SEARCH_ISSUE_PLACEHOLDER_TERMS.has(normalized.toLowerCase())) {
     return "";
   }
   return `"${normalized}"`;

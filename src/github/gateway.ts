@@ -13,6 +13,11 @@ type IssueLabelValue = {
   name?: string | null;
 };
 
+const MAX_GITHUB_SEARCH_QUERY_LENGTH = 256;
+const SEARCH_ISSUE_PLACEHOLDER_TERMS = new Set([
+  "no response"
+]);
+
 export interface CommentRecord {
   id: number;
   body: string;
@@ -25,6 +30,12 @@ export interface SearchIssueParams {
   currentIssueNumber: number;
   terms: string[];
   limit: number;
+}
+
+export interface SearchIssueQuery {
+  query: string;
+  includedTerms: string[];
+  skippedTerms: string[];
 }
 
 export interface RepositoryLabelCatalogParams {
@@ -442,20 +453,19 @@ export class OctokitGitHubGateway implements GitHubGateway {
   }
 
   public async searchIssues(params: SearchIssueParams): Promise<DuplicateCandidate[]> {
-    const terms = params.terms
-      .map((term) => normalizeSearchIssueTerm(term))
-      .filter(Boolean);
-    const searchExpression = terms.length <= 1
-      ? terms[0] ?? ""
-      : `(${terms.join(" OR ")})`;
-    const query = [
-      `repo:${params.owner}/${params.repo}`,
-      "is:issue",
-      searchExpression
-    ].filter(Boolean).join(" ");
+    const searchQuery = buildSearchIssueQuery({
+      owner: params.owner,
+      repo: params.repo,
+      terms: params.terms
+    });
+    if (searchQuery.skippedTerms.length > 0) {
+      core.info(
+        `Trimmed duplicate search query from ${params.terms.length} to ${searchQuery.includedTerms.length} term(s) to satisfy the GitHub Search API limit.`
+      );
+    }
 
     const searchResponse = await this.octokit.rest.search.issuesAndPullRequests({
-      q: query,
+      q: searchQuery.query,
       per_page: Math.min(params.limit, 100),
       sort: "updated",
       order: "desc"
@@ -517,9 +527,54 @@ export class OctokitGitHubGateway implements GitHubGateway {
   }
 }
 
-function normalizeSearchIssueTerm(value: string): string {
+export function buildSearchIssueQuery(params: {
+  owner: string;
+  repo: string;
+  terms: string[];
+}): SearchIssueQuery {
+  const baseQuery = `repo:${params.owner}/${params.repo} is:issue`;
+  const normalizedTerms = [...new Set(params.terms
+    .map((term) => normalizeSearchIssueTerm(term))
+    .filter(Boolean))];
+  const includedTerms: string[] = [];
+  const skippedTerms: string[] = [];
+
+  const renderQuery = (terms: string[]): string => {
+    if (terms.length === 0) {
+      return baseQuery;
+    }
+
+    if (terms.length === 1) {
+      return `${baseQuery} ${terms[0]}`;
+    }
+
+    return `${baseQuery} (${terms.join(" OR ")})`;
+  };
+
+  for (const term of normalizedTerms) {
+    const candidateTerms = [...includedTerms, term];
+    if (renderQuery(candidateTerms).length <= MAX_GITHUB_SEARCH_QUERY_LENGTH) {
+      includedTerms.push(term);
+      continue;
+    }
+
+    skippedTerms.push(term);
+  }
+
+  return {
+    query: renderQuery(includedTerms),
+    includedTerms,
+    skippedTerms
+  };
+}
+
+export function normalizeSearchIssueTerm(value: string): string {
   const normalized = value.trim().replace(/\s+/g, " ").replace(/"/g, "");
   if (!normalized) {
+    return "";
+  }
+
+  if (SEARCH_ISSUE_PLACEHOLDER_TERMS.has(normalized.toLowerCase())) {
     return "";
   }
 
