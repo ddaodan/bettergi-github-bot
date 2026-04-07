@@ -41053,9 +41053,10 @@ var OctokitGitHubGateway = class {
       repo: import_github.context.repo.repo,
       per_page: 100
     });
-    const existingNames = new Set(existing.map((label) => label.name));
+    const existingNames = new Set(existing.map((label) => normalizeLabelName(label.name)));
     for (const name of labels) {
-      if (existingNames.has(name)) {
+      const normalizedName = normalizeLabelName(name);
+      if (existingNames.has(normalizedName)) {
         continue;
       }
       const definition = definitions[name];
@@ -41067,13 +41068,21 @@ var OctokitGitHubGateway = class {
         core2.info(`[dry-run] create label "${name}"`);
         continue;
       }
-      await this.octokit.rest.issues.createLabel({
-        owner: import_github.context.repo.owner,
-        repo: import_github.context.repo.repo,
-        name,
-        color: definition.color,
-        description: definition.description
-      });
+      try {
+        await this.octokit.rest.issues.createLabel({
+          owner: import_github.context.repo.owner,
+          repo: import_github.context.repo.repo,
+          name,
+          color: definition.color,
+          description: definition.description
+        });
+      } catch (error48) {
+        if (!isLabelAlreadyExistsError(error48)) {
+          throw error48;
+        }
+        core2.info(`Skip creating label "${name}" because it already exists.`);
+      }
+      existingNames.add(normalizedName);
     }
   }
   async closeIssue(issueNumber) {
@@ -41188,6 +41197,17 @@ function normalizeSearchIssueTerm(value) {
     return "";
   }
   return `"${normalized}"`;
+}
+function normalizeLabelName(value) {
+  return value?.trim().toLowerCase() ?? "";
+}
+function isLabelAlreadyExistsError(error48) {
+  if (!error48 || typeof error48 !== "object") {
+    return false;
+  }
+  const maybeStatus = "status" in error48 ? error48.status : void 0;
+  const maybeMessage = "message" in error48 ? error48.message : void 0;
+  return maybeStatus === 422 && typeof maybeMessage === "string" && maybeMessage.includes('"resource":"Label"') && maybeMessage.includes('"code":"already_exists"');
 }
 
 // src/providers/openaiCompatible/client.ts

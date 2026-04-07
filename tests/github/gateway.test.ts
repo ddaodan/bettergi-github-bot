@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildSearchIssueQuery,
+  normalizeLabelName,
   normalizeSearchIssueTerm
 } from "../../src/github/gateway.js";
 
@@ -47,5 +48,12 @@ describe("github gateway search query", () => {
 
     expect(result.includedTerms).toEqual([]);
     expect(result.query).toBe("repo:babalae/better-genshin-impact is:issue");
+  });
+
+  it("normalizes label names case-insensitively for existence checks", () => {
+    expect(normalizeLabelName("BUG")).toBe("bug");
+    expect(normalizeLabelName(" bug ")).toBe("bug");
+    expect(normalizeLabelName("功能建议")).toBe("功能建议");
+    expect(normalizeLabelName(undefined)).toBe("");
   });
 });

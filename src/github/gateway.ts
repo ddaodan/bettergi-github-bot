@@ -411,9 +411,10 @@ export class OctokitGitHubGateway implements GitHubGateway {
       per_page: 100
     });
 
-    const existingNames = new Set(existing.map((label) => label.name));
+    const existingNames = new Set(existing.map((label) => normalizeLabelName(label.name)));
     for (const name of labels) {
-      if (existingNames.has(name)) {
+      const normalizedName = normalizeLabelName(name);
+      if (existingNames.has(normalizedName)) {
         continue;
       }
 
@@ -428,13 +429,23 @@ export class OctokitGitHubGateway implements GitHubGateway {
         continue;
       }
 
-      await this.octokit.rest.issues.createLabel({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        name,
-        color: definition.color,
-        description: definition.description
-      });
+      try {
+        await this.octokit.rest.issues.createLabel({
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          name,
+          color: definition.color,
+          description: definition.description
+        });
+      } catch (error) {
+        if (!isLabelAlreadyExistsError(error)) {
+          throw error;
+        }
+
+        core.info(`Skip creating label "${name}" because it already exists.`);
+      }
+
+      existingNames.add(normalizedName);
     }
   }
 
@@ -579,4 +590,21 @@ export function normalizeSearchIssueTerm(value: string): string {
   }
 
   return `"${normalized}"`;
+}
+
+export function normalizeLabelName(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function isLabelAlreadyExistsError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const maybeStatus = "status" in error ? error.status : undefined;
+  const maybeMessage = "message" in error ? error.message : undefined;
+  return maybeStatus === 422
+    && typeof maybeMessage === "string"
+    && maybeMessage.includes("\"resource\":\"Label\"")
+    && maybeMessage.includes("\"code\":\"already_exists\"");
 }
