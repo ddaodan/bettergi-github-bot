@@ -40764,6 +40764,7 @@ async function loadRepoBotConfig(params) {
 var core2 = __toESM(require_core(), 1);
 var import_github = __toESM(require_github(), 1);
 var MAX_GITHUB_SEARCH_QUERY_LENGTH = 256;
+var MAX_GITHUB_SEARCH_BOOLEAN_OPERATORS = 5;
 var SEARCH_ISSUE_PLACEHOLDER_TERMS = /* @__PURE__ */ new Set([
   "no response"
 ]);
@@ -41105,25 +41106,30 @@ var OctokitGitHubGateway = class {
     });
     if (searchQuery.skippedTerms.length > 0) {
       core2.info(
-        `Trimmed duplicate search query from ${params.terms.length} to ${searchQuery.includedTerms.length} term(s) to satisfy the GitHub Search API limit.`
+        `Trimmed duplicate search query from ${params.terms.length} to ${searchQuery.includedTerms.length} term(s) to satisfy GitHub Search API limits.`
       );
     }
-    const searchResponse = await this.octokit.rest.search.issuesAndPullRequests({
-      q: searchQuery.query,
-      per_page: Math.min(params.limit, 100),
-      sort: "updated",
-      order: "desc"
-    });
-    const directMatches = searchResponse.data.items.filter((item) => !("pull_request" in item) && item.number !== params.currentIssueNumber).map((item) => ({
-      number: item.number,
-      title: item.title,
-      body: item.body ?? "",
-      labels: item.labels.map((label) => typeof label === "string" ? label : label.name ?? "").filter(Boolean),
-      state: item.state,
-      htmlUrl: item.html_url ?? "",
-      createdAt: item.created_at ?? "",
-      updatedAt: item.updated_at ?? ""
-    }));
+    let directMatches = [];
+    try {
+      const searchResponse = await this.octokit.rest.search.issuesAndPullRequests({
+        q: searchQuery.query,
+        per_page: Math.min(params.limit, 100),
+        sort: "updated",
+        order: "desc"
+      });
+      directMatches = searchResponse.data.items.filter((item) => !("pull_request" in item) && item.number !== params.currentIssueNumber).map((item) => ({
+        number: item.number,
+        title: item.title,
+        body: item.body ?? "",
+        labels: item.labels.map((label) => typeof label === "string" ? label : label.name ?? "").filter(Boolean),
+        state: item.state,
+        htmlUrl: item.html_url ?? "",
+        createdAt: item.created_at ?? "",
+        updatedAt: item.updated_at ?? ""
+      }));
+    } catch (error48) {
+      core2.warning(`GitHub issue search failed. Falling back to recent repository issues: ${String(error48)}`);
+    }
     if (directMatches.length >= params.limit) {
       return directMatches.slice(0, params.limit);
     }
@@ -41176,7 +41182,8 @@ function buildSearchIssueQuery(params) {
   };
   for (const term of normalizedTerms) {
     const candidateTerms = [...includedTerms, term];
-    if (renderQuery(candidateTerms).length <= MAX_GITHUB_SEARCH_QUERY_LENGTH) {
+    const booleanOperators = Math.max(0, candidateTerms.length - 1);
+    if (booleanOperators <= MAX_GITHUB_SEARCH_BOOLEAN_OPERATORS && renderQuery(candidateTerms).length <= MAX_GITHUB_SEARCH_QUERY_LENGTH) {
       includedTerms.push(term);
       continue;
     }
