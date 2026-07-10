@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { extractIssueImages, matchTemplate, parseIssueBody } from "../../../src/subjects/issue/parser.js";
+import {
+  extractIssueAttachments,
+  extractIssueImages,
+  matchTemplate,
+  parseIssueBody
+} from "../../../src/subjects/issue/parser.js";
 
 describe("issue parser", () => {
   it("extracts markdown and html issue images without duplicates", () => {
@@ -45,6 +50,26 @@ describe("issue parser", () => {
       {
         url: "https://github.com/user-attachments/assets/cccccccc-cccc-cccc-cccc-cccccccccccc",
         altText: "Broken UI"
+      }
+    ]);
+  });
+
+  it("extracts GitHub-hosted file attachments without treating images as files", () => {
+    const body = [
+      "[application.log](https://github.com/user-attachments/files/12345678/application.log)",
+      "https://github.com/user-attachments/files/87654321/config.json",
+      "![Screenshot](https://github.com/user-attachments/assets/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa)",
+      "[external.log](https://attacker.example/external.log)"
+    ].join("\n");
+
+    expect(extractIssueAttachments(body)).toEqual([
+      {
+        url: "https://github.com/user-attachments/files/12345678/application.log",
+        filename: "application.log"
+      },
+      {
+        url: "https://github.com/user-attachments/files/87654321/config.json",
+        filename: "config.json"
       }
     ]);
   });

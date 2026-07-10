@@ -1,4 +1,10 @@
-import type { IssueImageReference, IssueTemplateConfig, ParsedIssue, SectionRule } from "../../core/types.js";
+import type {
+  IssueAttachmentReference,
+  IssueImageReference,
+  IssueTemplateConfig,
+  ParsedIssue,
+  SectionRule
+} from "../../core/types.js";
 
 function normalizeHeading(value: string): string {
   return value.toLowerCase().replace(/[*_`:#]/g, "").trim();
@@ -81,6 +87,50 @@ export function extractIssueImages(body: string): IssueImageReference[] {
   return images;
 }
 
+function filenameFromAttachmentUrl(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.hostname.toLowerCase() !== "github.com") {
+      return undefined;
+    }
+    if (!/^\/user-attachments\/files\/\d+\//i.test(url.pathname)) {
+      return undefined;
+    }
+
+    const encodedFilename = url.pathname.split("/").at(-1) ?? "";
+    const filename = decodeURIComponent(encodedFilename).trim();
+    return filename || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function extractIssueAttachments(body: string): IssueAttachmentReference[] {
+  const attachments: IssueAttachmentReference[] = [];
+  const seen = new Set<string>();
+  const addAttachment = (url: string): void => {
+    const normalizedUrl = url.trim().replace(/[.,;!?]+$/g, "");
+    const filename = filenameFromAttachmentUrl(normalizedUrl);
+    if (!filename || seen.has(normalizedUrl)) {
+      return;
+    }
+
+    seen.add(normalizedUrl);
+    attachments.push({
+      url: normalizedUrl,
+      filename
+    });
+  };
+
+  const attachmentPattern = /https:\/\/github\.com\/user-attachments\/files\/\d+\/[^\s)<>'"]+/gi;
+  let match: RegExpExecArray | null;
+  while ((match = attachmentPattern.exec(body)) !== null) {
+    addAttachment(match[0] ?? "");
+  }
+
+  return attachments;
+}
+
 export function parseIssueBody(body: string): ParsedIssue {
   const sections: Record<string, string> = {};
   const headings: string[] = [];
@@ -111,7 +161,9 @@ export function parseIssueBody(body: string): ParsedIssue {
     marker: extractTemplateMarker(body),
     sections,
     headings,
-    images: extractIssueImages(body)
+    images: extractIssueImages(body),
+    attachments: extractIssueAttachments(body),
+    textAttachments: []
   };
 }
 

@@ -1,7 +1,9 @@
 import type {
   DuplicateCandidate,
+  IssueAttachmentReference,
   IssueCommentContext,
   IssueContext,
+  IssueTextAttachment,
   LabelDefinition,
   RepoBotConfig,
   RepositoryMetadata
@@ -33,6 +35,26 @@ export function createConfig(): RepoBotConfig {
     issues: {
       autoProcessing: {
         skipCreatedBefore: ""
+      },
+      titleGeneration: {
+        enabled: true,
+        maxLength: 100,
+        detectMismatch: true,
+        mismatchConfidence: 0.9,
+        placeholderTitles: [
+          "bug",
+          "feature",
+          "suggestion",
+          "question",
+          "feedback",
+          "issue",
+          "问题",
+          "反馈",
+          "建议",
+          "标题",
+          "请填写标题",
+          "请简要描述问题"
+        ]
       },
       validation: {
         enabled: true,
@@ -190,7 +212,13 @@ export function createIssueCommentContext(overrides: Partial<IssueCommentContext
 }
 
 export class FakeGateway implements GitHubGateway {
-  public readonly comments: Array<{ issueNumber: number; body: string; id: number }> = [];
+  public readonly comments: Array<{
+    issueNumber: number;
+    body: string;
+    id: number;
+    authorLogin?: string;
+    authorType?: string;
+  }> = [];
 
   public readonly createdLabels = new Set<string>();
 
@@ -205,6 +233,10 @@ export class FakeGateway implements GitHubGateway {
   public readonly commentReactions: Array<{ commentId: number; reaction: "eyes" | "rocket" | "confused" }> = [];
 
   public readonly repositoryVariables = new Map<string, string>();
+
+  public readonly updatedTitles: string[] = [];
+
+  public readonly textAttachments = new Map<string, IssueTextAttachment>();
 
   private commentId = 1;
 
@@ -252,6 +284,12 @@ export class FakeGateway implements GitHubGateway {
     const owner = params?.owner ?? this.issue.owner;
     const repo = params?.repo ?? this.issue.repo;
     return this.repositoryLabelsByRepo[`${owner}/${repo}`] ?? {};
+  }
+
+  public async getIssueTextAttachments(references: IssueAttachmentReference[]): Promise<IssueTextAttachment[]> {
+    return references
+      .map((reference) => this.textAttachments.get(reference.url))
+      .filter((attachment): attachment is IssueTextAttachment => Boolean(attachment));
   }
 
   public async listComments(issueNumber: number): Promise<CommentRecord[]> {
@@ -310,6 +348,14 @@ export class FakeGateway implements GitHubGateway {
         this.createdLabels.add(label);
       }
     }
+  }
+
+  public async updateIssueTitle(issueNumber: number, title: string): Promise<void> {
+    if (issueNumber !== this.issue.number) {
+      return;
+    }
+    this.issue.title = title;
+    this.updatedTitles.push(title);
   }
 
   public async closeIssue(issueNumber: number): Promise<void> {

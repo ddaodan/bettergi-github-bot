@@ -18,6 +18,7 @@ import { generateIssueAiHelp } from "./aiHelp.js";
 import { detectDuplicate } from "./duplicateDetection.js";
 import { computeManagedLabels } from "./labeling.js";
 import { resolveRepositoryAiContext } from "./projectContext.js";
+import { maybeUpdateIssueTitle } from "./titleGeneration.js";
 import { validateIssue } from "./validation.js";
 
 const AUTO_PROCESSING_CUTOFF_VARIABLE = "REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE";
@@ -31,8 +32,6 @@ export function resolveIssueWorkflowTrigger(action: string): IssueWorkflowTrigge
       return "issue_edited";
     case "reopened":
       return "issue_reopened";
-    case "labeled":
-      return "issue_labeled";
     default:
       return undefined;
   }
@@ -132,12 +131,16 @@ function shouldRunValidation(trigger: IssueWorkflowTrigger): boolean {
   return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
 
+function shouldRunTitleGeneration(trigger: IssueWorkflowTrigger): boolean {
+  return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
+}
+
 function shouldRunLabeling(trigger: IssueWorkflowTrigger): boolean {
-  return ["issue_opened", "issue_edited", "issue_reopened", "issue_labeled", "command_refresh"].includes(trigger);
+  return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
 
 function shouldRunAi(trigger: IssueWorkflowTrigger): boolean {
-  return ["issue_opened", "issue_edited", "issue_reopened", "issue_labeled", "command_refresh"].includes(trigger);
+  return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
 
 export async function runIssueWorkflow(params: {
@@ -188,6 +191,16 @@ export async function runIssueWorkflow(params: {
       gateway: params.gateway,
       issueNumber: params.issue.number,
       anchor: params.config.issues.aiHelp.commentAnchor
+    });
+  }
+
+  if (shouldRunTitleGeneration(params.trigger) && validation.valid) {
+    await maybeUpdateIssueTitle({
+      issue: params.issue,
+      validation,
+      config: params.config.issues.titleGeneration,
+      gateway: params.gateway,
+      provider: params.provider
     });
   }
 
@@ -345,6 +358,7 @@ export async function runIssueWorkflow(params: {
     commentMode,
     repositoryContext,
     relatedIssues: similarIssues,
+    gateway: params.gateway,
     provider: params.provider
   });
 

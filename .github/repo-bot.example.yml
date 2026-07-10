@@ -13,6 +13,24 @@ providers:
 issues:
   autoProcessing:
     skipCreatedBefore: auto
+  titleGeneration:
+    enabled: true
+    maxLength: 100
+    detectMismatch: true
+    mismatchConfidence: 0.9
+    placeholderTitles:
+      - bug
+      - feature
+      - suggestion
+      - question
+      - feedback
+      - issue
+      - 问题
+      - 反馈
+      - 建议
+      - 标题
+      - 请填写标题
+      - 请简要描述问题
   validation:
     enabled: true
     fallbackTemplateKey: bug

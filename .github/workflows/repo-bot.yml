@@ -36,6 +36,14 @@ on:
 
 jobs:
   run:
+    if: >-
+      github.event.sender.type != 'Bot' &&
+      (
+        github.event_name != 'issue_comment' ||
+        contains(github.event.comment.body, '/fix') ||
+        contains(github.event.comment.body, '/refresh')
+      )
+    name: "Repo Bot (${{ github.event_name }}/${{ github.event.action }})"
     runs-on: ubuntu-latest
     permissions:
       issues: write

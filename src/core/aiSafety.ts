@@ -85,6 +85,10 @@ function replaceSensitiveSegments(value: string): string {
   }, value);
 }
 
+export function sanitizeTextForAiContext(value: string): string {
+  return replaceSensitiveSegments(value);
+}
+
 function looksLikeContextDump(value: string): boolean {
   const normalized = normalizeForComparison(value);
   const matches = CONTEXT_DUMP_KEYS.filter((key) => normalized.includes(key));

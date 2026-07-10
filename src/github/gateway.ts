@@ -3,11 +3,14 @@ import { context, getOctokit } from "@actions/github";
 
 import type {
   DuplicateCandidate,
+  IssueAttachmentReference,
   IssueCommentContext,
   IssueContext,
+  IssueTextAttachment,
   LabelDefinition,
   RepositoryMetadata
 } from "../core/types.js";
+import { downloadGitHubTextAttachment, isSupportedTextAttachment } from "./attachments.js";
 
 type IssueLabelValue = {
   name?: string | null;
@@ -23,6 +26,7 @@ export interface CommentRecord {
   id: number;
   body: string;
   authorLogin?: string;
+  authorType?: string;
 }
 
 export interface SearchIssueParams {
@@ -52,6 +56,7 @@ export interface GitHubGateway {
   getRepositoryMetadata(): Promise<RepositoryMetadata>;
   getRepositoryReadme(): Promise<string | undefined>;
   getRepositoryLabels(params?: RepositoryLabelCatalogParams): Promise<Record<string, LabelDefinition>>;
+  getIssueTextAttachments(references: IssueAttachmentReference[]): Promise<IssueTextAttachment[]>;
   listComments(issueNumber: number): Promise<CommentRecord[]>;
   createComment(issueNumber: number, body: string): Promise<void>;
   updateComment(commentId: number, body: string): Promise<void>;
@@ -60,6 +65,7 @@ export interface GitHubGateway {
   addLabels(issueNumber: number, labels: string[]): Promise<void>;
   removeLabel(issueNumber: number, label: string): Promise<void>;
   ensureLabels(definitions: Record<string, LabelDefinition>, labels: string[]): Promise<void>;
+  updateIssueTitle(issueNumber: number, title: string): Promise<void>;
   closeIssue(issueNumber: number): Promise<void>;
   searchIssues(params: SearchIssueParams): Promise<DuplicateCandidate[]>;
 }
@@ -82,7 +88,9 @@ function toIssueContext(): IssueContext | undefined {
     htmlUrl: issue.html_url ?? "",
     createdAt: issue.created_at ?? "",
     updatedAt: issue.updated_at ?? "",
-    action: context.payload.action ?? ""
+    action: context.payload.action ?? "",
+    actorLogin: context.payload.sender?.login ?? "",
+    actorType: context.payload.sender?.type ?? ""
   };
 }
 
@@ -154,7 +162,7 @@ export class OctokitGitHubGateway implements GitHubGateway {
   private readonly octokit;
 
   public constructor(
-    token: string,
+    private readonly token: string,
     private readonly dryRun: boolean
   ) {
     this.octokit = getOctokit(token);
@@ -292,6 +300,32 @@ export class OctokitGitHubGateway implements GitHubGateway {
     }
   }
 
+  public async getIssueTextAttachments(references: IssueAttachmentReference[]): Promise<IssueTextAttachment[]> {
+    const attachments: IssueTextAttachment[] = [];
+    for (const reference of references) {
+      if (!isSupportedTextAttachment(reference)) {
+        core.info(`Skip unsupported issue attachment "${reference.filename}".`);
+        continue;
+      }
+
+      try {
+        const attachment = await downloadGitHubTextAttachment({
+          reference,
+          token: this.token
+        });
+        if (attachment) {
+          attachments.push(attachment);
+        } else {
+          core.info(`Skip non-text or empty issue attachment "${reference.filename}".`);
+        }
+      } catch (error) {
+        core.warning(`Skip issue attachment "${reference.filename}": ${String(error)}`);
+      }
+    }
+
+    return attachments;
+  }
+
   public async listComments(issueNumber: number): Promise<CommentRecord[]> {
     const response = await this.octokit.rest.issues.listComments({
       owner: context.repo.owner,
@@ -303,7 +337,8 @@ export class OctokitGitHubGateway implements GitHubGateway {
     return response.data.map((comment) => ({
       id: comment.id,
       body: comment.body ?? "",
-      authorLogin: comment.user?.login
+      authorLogin: comment.user?.login,
+      authorType: comment.user?.type
     }));
   }
 
@@ -448,6 +483,20 @@ export class OctokitGitHubGateway implements GitHubGateway {
 
       existingNames.add(normalizedName);
     }
+  }
+
+  public async updateIssueTitle(issueNumber: number, title: string): Promise<void> {
+    if (this.dryRun) {
+      core.info(`[dry-run] update title for issue #${issueNumber}: ${title}`);
+      return;
+    }
+
+    await this.octokit.rest.issues.update({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      issue_number: issueNumber,
+      title
+    });
   }
 
   public async closeIssue(issueNumber: number): Promise<void> {

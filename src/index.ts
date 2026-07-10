@@ -39,6 +39,11 @@ async function run(): Promise<void> {
     const issueComment = await gateway.getIssueCommentContext();
 
     if (issueComment) {
+      if (issueComment.commentAuthorType.toLowerCase() === "bot") {
+        core.info("Ignore an issue comment created or edited by a bot.");
+        return;
+      }
+
       const command = parseIssueCommentCommand({
         comment: issueComment,
         mentions: config.issues.commands.mentions
@@ -81,6 +86,11 @@ async function run(): Promise<void> {
 
     if (!issue) {
       core.info("Current event is not a plain issue event. Nothing to do.");
+      return;
+    }
+
+    if (issue.actorType?.toLowerCase() === "bot") {
+      core.info(`Ignore issue action "${issue.action}" created by a bot.`);
       return;
     }
 

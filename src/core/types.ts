@@ -132,6 +132,14 @@ export interface IssueAutoProcessingConfig {
   skipCreatedBefore: string;
 }
 
+export interface IssueTitleGenerationConfig {
+  enabled: boolean;
+  maxLength: number;
+  detectMismatch: boolean;
+  mismatchConfidence: number;
+  placeholderTitles: string[];
+}
+
 export interface ProviderConfig {
   enabled: boolean;
   baseUrl: string;
@@ -152,6 +160,7 @@ export interface RepoBotConfig {
   };
   issues: {
     autoProcessing: IssueAutoProcessingConfig;
+    titleGeneration: IssueTitleGenerationConfig;
     validation: ValidationConfig;
     labeling: LabelingConfig;
     aiHelp: AiHelpConfig;
@@ -183,6 +192,8 @@ export interface RepositorySubjectContext {
   createdAt: string;
   updatedAt: string;
   action: string;
+  actorLogin?: string;
+  actorType?: string;
 }
 
 export interface IssueContext extends RepositorySubjectContext {
@@ -193,7 +204,6 @@ export type IssueWorkflowTrigger =
   | "issue_opened"
   | "issue_edited"
   | "issue_reopened"
-  | "issue_labeled"
   | "command_refresh";
 
 export interface PullRequestContext extends RepositorySubjectContext {
@@ -238,11 +248,23 @@ export interface IssueImageReference {
   altText: string;
 }
 
+export interface IssueAttachmentReference {
+  url: string;
+  filename: string;
+}
+
+export interface IssueTextAttachment extends IssueAttachmentReference {
+  content: string;
+  truncated: boolean;
+}
+
 export interface ParsedIssue {
   marker?: string;
   sections: Record<string, string>;
   headings: string[];
   images: IssueImageReference[];
+  attachments: IssueAttachmentReference[];
+  textAttachments: IssueTextAttachment[];
 }
 
 export interface ValidationOutcome {
@@ -334,5 +356,12 @@ export interface DuplicateReviewResult {
 export interface LabelClassificationResult {
   name: string;
   confidence: number;
+  reason: string;
+}
+
+export interface IssueTitleSuggestion {
+  shouldReplace: boolean;
+  confidence: number;
+  title: string;
   reason: string;
 }

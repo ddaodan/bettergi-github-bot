@@ -1,4 +1,5 @@
 name: Repo Bot Consumer
+run-name: "Repo Bot #${{ github.event.issue.number }} - ${{ github.event_name }}/${{ github.event.action }} - @${{ github.actor }}"
 
 on:
   issues:
@@ -6,7 +7,6 @@ on:
       - opened
       - edited
       - reopened
-      - labeled
   issue_comment:
     types:
       - created
@@ -14,6 +14,13 @@ on:
 
 jobs:
   repo-bot:
+    if: >-
+      github.event.sender.type != 'Bot' &&
+      (
+        github.event_name != 'issue_comment' ||
+        contains(github.event.comment.body, '/fix') ||
+        contains(github.event.comment.body, '/refresh')
+      )
     uses: your-org/bettergi-github-bot/.github/workflows/repo-bot.yml@v1
     permissions:
       issues: write

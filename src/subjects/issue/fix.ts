@@ -7,6 +7,7 @@ import type { GitHubGateway } from "../../github/gateway.js";
 import { renderFixStatusComment, renderFixSuggestionComment } from "../../i18n/comments.js";
 import { detectCommentMode } from "../../i18n/language.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
+import { enrichIssueWithTextAttachments } from "./attachments.js";
 import { collectRepositoryCodeContext } from "./codeContext.js";
 import { resolveRepositoryAiContext } from "./projectContext.js";
 import { validateIssue } from "./validation.js";
@@ -125,11 +126,16 @@ export async function runIssueFixCommand(params: {
     parsed: validation.parsed,
     repositoryContext
   });
+  const parsed = await enrichIssueWithTextAttachments({
+    issueNumber: params.issue.number,
+    parsed: validation.parsed,
+    gateway: params.gateway
+  });
 
   try {
     const suggestion = await params.provider.generateFixSuggestion(
       params.issue,
-      validation.parsed,
+      parsed,
       repositoryContext,
       codeContext,
       commentMode
@@ -141,7 +147,8 @@ export async function runIssueFixCommand(params: {
         params.issue.body,
         repositoryContext.readmeExcerpt,
         JSON.stringify(repositoryContext),
-        JSON.stringify(codeContext)
+        JSON.stringify(codeContext),
+        ...parsed.textAttachments.map((attachment) => attachment.content)
       ]
     });
 

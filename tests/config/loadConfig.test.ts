@@ -59,6 +59,9 @@ describe("loadRepoBotConfig", () => {
     expect(config.issues.commands.mentions).toEqual(["@bot"]);
     expect(config.issues.commands.fix.commentAnchor).toBe("issue-bot:fix");
     expect(config.issues.autoProcessing.skipCreatedBefore).toBe("");
+    expect(config.issues.titleGeneration.enabled).toBe(true);
+    expect(config.issues.titleGeneration.detectMismatch).toBe(true);
+    expect(config.issues.titleGeneration.maxLength).toBe(100);
   });
 
   it("prefers secret baseUrl over YAML config", async () => {

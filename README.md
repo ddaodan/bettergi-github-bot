@@ -9,9 +9,10 @@
 ### Issue 自动流程
 
 - 模板检查：校验 Issue 是否符合模板或表单要求；失败时评论提醒，通过时只同步标签。
+- 自动标题：模板通过后，可为仅保留模板前缀的 Issue 生成标题，并高置信纠正与正文明显无关的标题。
 - 重复 Issue 检测：规则初筛 + 可选 AI 复判；高置信重复可自动关闭，近似重复会在 AI 评论顶部折叠展示。
 - 标签同步：仅管理配置中声明的托管标签，不删除维护者手工添加的非托管标签。
-- AI 帮助回复：基于仓库上下文、README 摘要和 Issue 内容生成分析建议。
+- AI 帮助回复：基于仓库上下文、README 摘要、Issue 内容和安全读取的文本附件生成分析建议。
 - 内容自动打标：可选启用 AI 从当前仓库或指定仓库的标签目录中挑选合适标签。
 
 ### 协作者指令
@@ -40,6 +41,7 @@
 
 ```yaml
 name: Repo Bot
+run-name: "Repo Bot #${{ github.event.issue.number }} - ${{ github.event_name }}/${{ github.event.action }} - @${{ github.actor }}"
 
 on:
   issues:
@@ -47,7 +49,6 @@ on:
       - opened
       - edited
       - reopened
-      - labeled
   issue_comment:
     types:
       - created
@@ -55,6 +56,13 @@ on:
 
 jobs:
   repo-bot:
+    if: >-
+      github.event.sender.type != 'Bot' &&
+      (
+        github.event_name != 'issue_comment' ||
+        contains(github.event.comment.body, '/fix') ||
+        contains(github.event.comment.body, '/refresh')
+      )
     uses: ddaodan/bettergi-github-bot/.github/workflows/repo-bot.yml@v1
     permissions:
       issues: write
@@ -91,6 +99,11 @@ providers:
 issues:
   autoProcessing:
     skipCreatedBefore: auto
+  titleGeneration:
+    enabled: true
+    maxLength: 100
+    detectMismatch: true
+    mismatchConfidence: 0.9
   validation:
     enabled: true
     fallbackTemplateKey: bug
@@ -133,17 +146,38 @@ issues:
 
 ### 自动流程
 
-- `opened` / `edited` / `reopened`：模板检查 -> 重复检测 -> 标签同步 -> AI 帮助。
-- `labeled`：标签同步 -> AI 帮助。
+- `opened` / `edited` / `reopened`：模板检查 -> 标题生成 -> 重复检测 -> 标签同步 -> AI 帮助。
+- `labeled`：不触发 Bot，维护者手动调整标签不会启动自动流程。
 - `issue_comment`：仅处理 plain issue 的 `created` / `edited`，且必须显式 mention。
+
+GitHub Actions 无法在事件产生前按评论作者过滤 `issue_comment`。示例 workflow 会在 job 启动前跳过 bot 评论和不含受支持指令的评论，并通过 `run-name` 标出 Issue 编号、事件和触发者；这些被过滤的记录会显示为 skipped，但不会 checkout 或运行 Bot。
 
 ### 自动忽略旧 Issue
 
 当 `issues.autoProcessing.skipCreatedBefore` 配置为 `auto` 时：
 
 - Bot 首次自动运行时会写入一个精确到秒的 UTC 时间到仓库变量 `REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE`。
-- 激活时间之前创建的旧 Issue 不再因 `edited`、`reopened`、`labeled` 等自动事件触发主流程。
+- 激活时间之前创建的旧 Issue 不再因 `edited`、`reopened` 等自动事件触发主流程。
 - `@bot /refresh` 和 `@bot /fix` 这类显式指令不受影响。
+
+### 自动标题
+
+`issues.titleGeneration` 默认开启，但只在模板检查通过后生效：
+
+- 当前标题仅为模板默认前缀（例如 `[bug]`）或命中 `placeholderTitles` 时，优先使用 AI 生成简洁标题；AI 不可用时从问题描述等正文段落本地提取。
+- 当前标题与正文的本地相关度极低时，才请求 AI 复核；只有 `shouldReplace: true` 且置信度达到 `mismatchConfidence` 才会修改。
+- 正常标题不会仅因措辞或风格被重写，生成后仍保留模板前缀。
+- 可通过 `enabled: false` 单独关闭，不影响模板检查、标签、重复检测或 AI 帮助。
+
+### 日志与文本附件
+
+AI 帮助和 `@bot /fix` 会读取 Issue 正文及人类评论中的 GitHub 托管文本附件：
+
+- 仅接受 `https://github.com/user-attachments/files/...`，外部地址不会下载。
+- 支持 `.log`、`.txt`、`.md`、`.json`、`.xml`、`.yaml`、`.yml`、`.csv`、`.trace`、`.out`。
+- 每次最多读取 3 个附件；每个附件最多下载末尾 256 KiB，最终最多向 AI 提供 24,000 个字符。
+- 私钥、token、密码和连接串等敏感片段会先在本地替换；附件内容被明确标记为不可信证据，不能覆盖系统指令。
+- ZIP、7z 等压缩包和疑似二进制文件会跳过，不会自动解压或执行。附件读取失败只记录 warning，不会让 workflow 失败。
 
 ## AI 上下文与接口
 

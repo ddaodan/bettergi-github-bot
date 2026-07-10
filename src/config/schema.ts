@@ -123,6 +123,27 @@ const issueAutoProcessingSchema = z.object({
     })
 });
 
+const issueTitleGenerationSchema = z.object({
+  enabled: z.boolean().default(true),
+  maxLength: z.number().int().min(20).max(200).default(100),
+  detectMismatch: z.boolean().default(true),
+  mismatchConfidence: z.number().min(0).max(1).default(0.9),
+  placeholderTitles: z.array(z.string().min(1)).default([
+    "bug",
+    "feature",
+    "suggestion",
+    "question",
+    "feedback",
+    "issue",
+    "问题",
+    "反馈",
+    "建议",
+    "标题",
+    "请填写标题",
+    "请简要描述问题"
+  ])
+});
+
 export const repoBotConfigSchema = z.object({
   runtime: z.object({
     languageMode: z.enum(["auto", "zh", "zh-en"]).default("auto"),
@@ -157,6 +178,26 @@ export const repoBotConfigSchema = z.object({
   issues: z.object({
     autoProcessing: issueAutoProcessingSchema.default(() => ({
       skipCreatedBefore: ""
+    })),
+    titleGeneration: issueTitleGenerationSchema.default(() => ({
+      enabled: true,
+      maxLength: 100,
+      detectMismatch: true,
+      mismatchConfidence: 0.9,
+      placeholderTitles: [
+        "bug",
+        "feature",
+        "suggestion",
+        "question",
+        "feedback",
+        "issue",
+        "问题",
+        "反馈",
+        "建议",
+        "标题",
+        "请填写标题",
+        "请简要描述问题"
+      ]
     })),
     validation: z.object({
       enabled: z.boolean().default(true),
@@ -294,6 +335,26 @@ export const repoBotConfigSchema = z.object({
   }).default(() => ({
     autoProcessing: {
       skipCreatedBefore: ""
+    },
+    titleGeneration: {
+      enabled: true,
+      maxLength: 100,
+      detectMismatch: true,
+      mismatchConfidence: 0.9,
+      placeholderTitles: [
+        "bug",
+        "feature",
+        "suggestion",
+        "question",
+        "feedback",
+        "issue",
+        "问题",
+        "反馈",
+        "建议",
+        "标题",
+        "请填写标题",
+        "请简要描述问题"
+      ]
     },
     validation: {
       enabled: true,

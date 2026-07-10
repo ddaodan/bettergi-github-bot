@@ -10,7 +10,9 @@ import type {
   SimilarIssueCandidate
 } from "../../core/types.js";
 import { renderAiHelpComment } from "../../i18n/comments.js";
+import type { GitHubGateway } from "../../github/gateway.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
+import { enrichIssueWithTextAttachments } from "./attachments.js";
 
 export async function generateIssueAiHelp(params: {
   issue: IssueContext;
@@ -19,6 +21,7 @@ export async function generateIssueAiHelp(params: {
   commentMode: CommentMode;
   repositoryContext: RepositoryAiContext;
   relatedIssues?: SimilarIssueCandidate[];
+  gateway: GitHubGateway;
   provider?: OpenAiCompatibleProvider;
 }): Promise<string | undefined> {
   if (!params.config.enabled) {
@@ -39,9 +42,14 @@ export async function generateIssueAiHelp(params: {
   }
 
   try {
+    const parsed = await enrichIssueWithTextAttachments({
+      issueNumber: params.issue.number,
+      parsed: params.parsed,
+      gateway: params.gateway
+    });
     const help = await params.provider.generateHelp(
       params.issue,
-      params.parsed,
+      parsed,
       params.repositoryContext,
       params.commentMode
     );
@@ -50,7 +58,8 @@ export async function generateIssueAiHelp(params: {
       mode: params.commentMode,
       blockedTexts: [
         params.issue.body,
-        JSON.stringify(params.repositoryContext)
+        JSON.stringify(params.repositoryContext),
+        ...parsed.textAttachments.map((attachment) => attachment.content)
       ]
     });
     return renderAiHelpComment({
