@@ -29,7 +29,7 @@ on:
         type: string
         default: ""
       ai-api-style:
-        description: AI provider API style: auto, responses, or chat_completions.
+        description: "AI provider API style: auto, responses, or chat_completions."
         required: false
         type: string
         default: ""
