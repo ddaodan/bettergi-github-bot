@@ -78,6 +78,7 @@ jobs:
       ai-model: ${{ vars.REPO_BOT_AI_MODEL }}
       ai-api-style: ${{ vars.REPO_BOT_AI_API_STYLE }}
       ai-timeout-ms: ${{ vars.REPO_BOT_AI_TIMEOUT_MS }}
+      action-ref: v1
       github-app-id: ${{ vars.REPO_BOT_GITHUB_APP_ID }}
 ```
 
