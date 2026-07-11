@@ -432,39 +432,102 @@ const issueTitleSuggestionSchema: StructuredOutputSchema = {
   }
 };
 
-function createIssueHelpSchema(mode: CommentMode): StructuredOutputSchema {
+function createIssueHelpSchema(mode: CommentMode, templateKey: string): StructuredOutputSchema {
+  const includeDirectAnswer = templateKey === "question";
   if (mode === "zh") {
+    const properties: Record<string, unknown> = {
+      possibleCauses: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      },
+      troubleshootingSteps: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      },
+      missingInformation: {
+        type: "array",
+        items: {
+          type: "string"
+        }
+      }
+    };
+    const required = ["possibleCauses", "troubleshootingSteps", "missingInformation"];
+    if (includeDirectAnswer) {
+      properties.summary = {
+        type: "string"
+      };
+      required.unshift("summary");
+    }
+
     return {
       name: "issue_help",
       schema: {
         type: "object",
         additionalProperties: false,
-        properties: {
-          summary: {
-            type: "string"
-          },
-          possibleCauses: {
-            type: "array",
-            items: {
-              type: "string"
-            }
-          },
-          troubleshootingSteps: {
-            type: "array",
-            items: {
-              type: "string"
-            }
-          },
-          missingInformation: {
-            type: "array",
-            items: {
-              type: "string"
-            }
-          }
-        },
-        required: ["summary", "possibleCauses", "troubleshootingSteps", "missingInformation"]
+        properties,
+        required
       }
     };
+  }
+
+  const properties: Record<string, unknown> = {
+    possibleCausesZh: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    },
+    possibleCausesEn: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    },
+    troubleshootingStepsZh: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    },
+    troubleshootingStepsEn: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    },
+    missingInformationZh: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    },
+    missingInformationEn: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    }
+  };
+  const required = [
+    "possibleCausesZh",
+    "possibleCausesEn",
+    "troubleshootingStepsZh",
+    "troubleshootingStepsEn",
+    "missingInformationZh",
+    "missingInformationEn"
+  ];
+  if (includeDirectAnswer) {
+    properties.summaryZh = {
+      type: "string"
+    };
+    properties.summaryEn = {
+      type: "string"
+    };
+    required.unshift("summaryZh", "summaryEn");
   }
 
   return {
@@ -472,60 +535,8 @@ function createIssueHelpSchema(mode: CommentMode): StructuredOutputSchema {
     schema: {
       type: "object",
       additionalProperties: false,
-      properties: {
-        summaryZh: {
-          type: "string"
-        },
-        summaryEn: {
-          type: "string"
-        },
-        possibleCausesZh: {
-          type: "array",
-          items: {
-            type: "string"
-          }
-        },
-        possibleCausesEn: {
-          type: "array",
-          items: {
-            type: "string"
-          }
-        },
-        troubleshootingStepsZh: {
-          type: "array",
-          items: {
-            type: "string"
-          }
-        },
-        troubleshootingStepsEn: {
-          type: "array",
-          items: {
-            type: "string"
-          }
-        },
-        missingInformationZh: {
-          type: "array",
-          items: {
-            type: "string"
-          }
-        },
-        missingInformationEn: {
-          type: "array",
-          items: {
-            type: "string"
-          }
-        }
-      },
-      required: [
-        "summaryZh",
-        "summaryEn",
-        "possibleCausesZh",
-        "possibleCausesEn",
-        "troubleshootingStepsZh",
-        "troubleshootingStepsEn",
-        "missingInformationZh",
-        "missingInformationEn"
-      ]
+      properties,
+      required
     }
   };
 }
@@ -704,14 +715,14 @@ const labelClassificationSchema: StructuredOutputSchema = {
 function createIssueHelpInstruction(templateKey: string): string {
   switch (templateKey) {
     case "bug":
-      return "The issue type is bug. Focus on likely root causes, concrete troubleshooting steps, and the truly missing debugging details.";
+      return "The issue type is bug. Do not produce a summary. Return only necessary content: at most 3 likely causes, 5 concrete troubleshooting steps, and 3 truly missing debugging details. Use one concise sentence per item and do not repeat the issue description.";
     case "question":
-      return "The issue type is question. Answer the user's question directly first. Use possibleCauses as key points or supporting evidence, troubleshootingSteps as suggested next steps or references, and keep missingInformation empty unless more technical context is genuinely required.";
+      return "The issue type is question. Use summary as a direct answer of at most 2 concise sentences. Return at most 3 supporting points, 5 suggested next steps or references, and 3 genuinely required missing details. Omit unnecessary items and do not repeat the question.";
     case "feature":
     case "suggestion":
-      return "The issue type is feature or suggestion. Treat it as a proposal rather than a fault report. Focus on feasibility, implementation directions, tradeoffs, and recommended next steps. Use possibleCauses as feasible approaches or considerations.";
+      return "The issue type is feature or suggestion. Do not produce a summary. Return only necessary content: at most 3 feasible approaches or tradeoffs, 5 implementation steps, and 3 details that still require confirmation. Use one concise sentence per item.";
     default:
-      return "The issue type is general feedback. Avoid pretending that every issue is a defect. Adapt the response to the issue intent while still filling the required JSON fields.";
+      return "The issue type is general feedback. Do not produce a summary. Return only necessary content: at most 3 analysis points, 5 next actions, and 3 missing details. Avoid repeating the issue and omit unnecessary items.";
   }
 }
 
@@ -742,7 +753,7 @@ function parseIssueHelpResult(content: string, mode: CommentMode): AiHelpResult 
 
   if (mode === "zh") {
     return {
-      summary: String(parsedResult.summary ?? "Unable to generate a summary."),
+      summary: String(parsedResult.summary ?? ""),
       possibleCauses: Array.isArray(parsedResult.possibleCauses) ? parsedResult.possibleCauses as string[] : [],
       troubleshootingSteps: Array.isArray(parsedResult.troubleshootingSteps)
         ? parsedResult.troubleshootingSteps as string[]
@@ -752,7 +763,7 @@ function parseIssueHelpResult(content: string, mode: CommentMode): AiHelpResult 
   }
 
   return {
-    summary: String(parsedResult.summaryZh ?? parsedResult.summary ?? "Unable to generate a summary."),
+    summary: String(parsedResult.summaryZh ?? parsedResult.summary ?? ""),
     summaryEn: String(parsedResult.summaryEn ?? ""),
     possibleCauses: Array.isArray(parsedResult.possibleCausesZh)
       ? parsedResult.possibleCausesZh as string[]
@@ -992,7 +1003,12 @@ export class OpenAiCompatibleProvider {
 
     let content: string;
     try {
-      content = await requestStructuredJson(this.config, this.apiKey, messages, createIssueHelpSchema(commentMode));
+      content = await requestStructuredJson(
+        this.config,
+        this.apiKey,
+        messages,
+        createIssueHelpSchema(commentMode, templateKey)
+      );
     } catch (error) {
       if (!hasImages(messages) || !shouldRetryWithoutImages(error)) {
         throw error;
@@ -1003,7 +1019,7 @@ export class OpenAiCompatibleProvider {
         this.config,
         this.apiKey,
         stripImages(messages),
-        createIssueHelpSchema(commentMode)
+        createIssueHelpSchema(commentMode, templateKey)
       );
     }
 

@@ -81,6 +81,24 @@ describe("aiSafety", () => {
     expect(result.troubleshootingSteps[0]).toBe("出于安全原因，无法公开转储内部上下文或敏感信息。");
   });
 
+  it("caps AI help item counts and individual text length", () => {
+    const result = sanitizeAiHelpResultForComment({
+      mode: "zh",
+      help: {
+        summary: "概述".repeat(200),
+        possibleCauses: ["原因 1", "原因 2", "原因 3", "原因 4"],
+        troubleshootingSteps: ["步骤 1", "步骤 2", "步骤 3", "步骤 4", "步骤 5", "步骤 6"],
+        missingInformation: ["信息 1", "信息 2", "信息 3", "信息 4"]
+      }
+    });
+
+    expect(Array.from(result.summary)).toHaveLength(240);
+    expect(result.summary.endsWith("…")).toBe(true);
+    expect(result.possibleCauses).toEqual(["原因 1", "原因 2", "原因 3"]);
+    expect(result.troubleshootingSteps).toEqual(["步骤 1", "步骤 2", "步骤 3", "步骤 4", "步骤 5"]);
+    expect(result.missingInformation).toEqual(["信息 1", "信息 2", "信息 3"]);
+  });
+
   it("omits sensitive patch drafts and filters sensitive candidate files", () => {
     const result = sanitizeFixSuggestionForComment({
       mode: "zh-en",

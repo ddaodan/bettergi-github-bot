@@ -28,6 +28,29 @@ describe("comment renderers", () => {
 
     expect(comment).toContain("> 注：以上内容由 AI 生成，仅供参考");
     expect(comment).not.toContain("免责声明");
+    expect(comment).not.toContain("### 问题概述");
+    expect(comment).not.toContain("Example summary.");
+    expect(comment).toContain("Example cause");
+  });
+
+  it("omits empty AI sections and enforces compact list limits", () => {
+    const comment = renderAiHelpComment({
+      mode: "zh",
+      templateKey: "bug",
+      help: {
+        summary: "This summary must not be rendered for bug issues.",
+        possibleCauses: [],
+        troubleshootingSteps: ["步骤 1", "步骤 2", "步骤 3", "步骤 4", "步骤 5", "步骤 6"],
+        missingInformation: []
+      }
+    });
+
+    expect(comment).not.toContain("### 问题概述");
+    expect(comment).not.toContain("### 可能原因");
+    expect(comment).not.toContain("### 仍需补充的信息");
+    expect(comment).not.toContain("暂无");
+    expect(comment).toContain("步骤 5");
+    expect(comment).not.toContain("步骤 6");
   });
 
   it("renders question issues with a question-oriented layout in bilingual mode", () => {
