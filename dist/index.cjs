@@ -40783,6 +40783,145 @@ var repoBotConfigSchema = external_exports.object({
 function isObject3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+function parseJsonOverrides(value, source) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return {};
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch (error48) {
+    throw new Error(`Invalid JSON in ${source}: ${String(error48)}`);
+  }
+}
+function environmentOverride(path3, kind, name) {
+  const generatedName = `REPO_BOT_${path3.map((segment) => segment.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toUpperCase()).join("_")}`;
+  return {
+    name: name ?? generatedName,
+    path: path3,
+    kind
+  };
+}
+var repoBotConfigEnvironmentVariables = [
+  environmentOverride(["runtime", "languageMode"], "string"),
+  environmentOverride(["runtime", "dryRun"], "boolean"),
+  environmentOverride(["providers", "openAiCompatible", "enabled"], "boolean", "REPO_BOT_AI_ENABLED"),
+  environmentOverride(["providers", "openAiCompatible", "baseUrl"], "string", "REPO_BOT_AI_BASE_URL"),
+  environmentOverride(["providers", "openAiCompatible", "model"], "string", "REPO_BOT_AI_MODEL"),
+  environmentOverride(["providers", "openAiCompatible", "apiStyle"], "string", "REPO_BOT_AI_API_STYLE"),
+  environmentOverride(["providers", "openAiCompatible", "timeoutMs"], "number", "REPO_BOT_AI_TIMEOUT_MS"),
+  environmentOverride(["issues", "autoProcessing", "skipCreatedBefore"], "string"),
+  environmentOverride(["issues", "titleGeneration", "enabled"], "boolean"),
+  environmentOverride(["issues", "titleGeneration", "maxLength"], "number"),
+  environmentOverride(["issues", "titleGeneration", "detectMismatch"], "boolean"),
+  environmentOverride(["issues", "titleGeneration", "mismatchConfidence"], "number"),
+  environmentOverride(["issues", "titleGeneration", "placeholderTitles"], "json"),
+  environmentOverride(["issues", "validation", "enabled"], "boolean"),
+  environmentOverride(["issues", "validation", "fallbackTemplateKey"], "string"),
+  environmentOverride(["issues", "validation", "commentAnchor"], "string"),
+  environmentOverride(["issues", "validation", "templates"], "json"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "enabled"], "boolean"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "bypassLabels"], "json"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "duplicateLabel"], "string"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "searchResultLimit"], "number"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "candidateLimit"], "number"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "aiReviewMaxCandidates"], "number"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "thresholds", "exact"], "number"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "thresholds", "highConfidence"], "number"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "thresholds", "reviewMin"], "number"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "similarityComment", "enabled"], "boolean"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "similarityComment", "commentAnchor"], "string"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "similarityComment", "minScore"], "number"),
+  environmentOverride(["issues", "validation", "duplicateDetection", "similarityComment", "maxCandidates"], "number"),
+  environmentOverride(["issues", "labeling", "enabled"], "boolean"),
+  environmentOverride(["issues", "labeling", "autoCreateMissing"], "boolean"),
+  environmentOverride(["issues", "labeling", "managed"], "json"),
+  environmentOverride(["issues", "labeling", "definitions"], "json"),
+  environmentOverride(["issues", "labeling", "keywordRules"], "json"),
+  environmentOverride(["issues", "labeling", "aiClassification", "enabled"], "boolean"),
+  environmentOverride(["issues", "labeling", "aiClassification", "maxLabels"], "number"),
+  environmentOverride(["issues", "labeling", "aiClassification", "minConfidence"], "number"),
+  environmentOverride(["issues", "labeling", "aiClassification", "include"], "json"),
+  environmentOverride(["issues", "labeling", "aiClassification", "exclude"], "json"),
+  environmentOverride(["issues", "labeling", "aiClassification", "prompt"], "string"),
+  environmentOverride(["issues", "labeling", "aiClassification", "sourceRepository", "owner"], "string"),
+  environmentOverride(["issues", "labeling", "aiClassification", "sourceRepository", "repo"], "string"),
+  environmentOverride(["issues", "aiHelp", "enabled"], "boolean"),
+  environmentOverride(["issues", "aiHelp", "triggerLabels"], "json"),
+  environmentOverride(["issues", "aiHelp", "commentAnchor"], "string"),
+  environmentOverride(["issues", "aiHelp", "projectContext", "enabled"], "boolean"),
+  environmentOverride(["issues", "aiHelp", "projectContext", "includeRepositoryMetadata"], "boolean"),
+  environmentOverride(["issues", "aiHelp", "projectContext", "includeReadme"], "boolean"),
+  environmentOverride(["issues", "aiHelp", "projectContext", "readmeMaxChars"], "number"),
+  environmentOverride(["issues", "aiHelp", "projectContext", "profile", "name"], "string"),
+  environmentOverride(["issues", "aiHelp", "projectContext", "profile", "aliases"], "json"),
+  environmentOverride(["issues", "aiHelp", "projectContext", "profile", "summary"], "string"),
+  environmentOverride(["issues", "aiHelp", "projectContext", "profile", "techStack"], "json"),
+  environmentOverride(["issues", "commands", "enabled"], "boolean"),
+  environmentOverride(["issues", "commands", "mentions"], "json"),
+  environmentOverride(["issues", "commands", "access"], "string"),
+  environmentOverride(["issues", "commands", "fix", "enabled"], "boolean"),
+  environmentOverride(["issues", "commands", "fix", "commentAnchor"], "string"),
+  environmentOverride(["issues", "commands", "refresh", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "review", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "labeling", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "summary", "enabled"], "boolean")
+];
+function parseEnvironmentValue(definition) {
+  const rawValue = process.env[definition.name];
+  const value = rawValue?.trim();
+  if (!value) {
+    return void 0;
+  }
+  switch (definition.kind) {
+    case "string":
+      return value === '""' ? "" : value;
+    case "boolean": {
+      const normalized = value.toLowerCase();
+      if (["true", "1", "yes", "on"].includes(normalized)) {
+        return true;
+      }
+      if (["false", "0", "no", "off"].includes(normalized)) {
+        return false;
+      }
+      throw new Error(`${definition.name} must be true or false.`);
+    }
+    case "number": {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        throw new Error(`${definition.name} must be a number.`);
+      }
+      return parsed;
+    }
+    case "json":
+      try {
+        return JSON.parse(value);
+      } catch (error48) {
+        throw new Error(`Invalid JSON in ${definition.name}: ${String(error48)}`);
+      }
+  }
+}
+function setNestedValue(target, pathSegments, value) {
+  let current = target;
+  for (const segment of pathSegments.slice(0, -1)) {
+    const existing = current[segment];
+    if (!isObject3(existing)) {
+      current[segment] = {};
+    }
+    current = current[segment];
+  }
+  current[pathSegments.at(-1)] = value;
+}
+function buildConfigEnvironmentOverrides() {
+  const overrides = {};
+  for (const definition of repoBotConfigEnvironmentVariables) {
+    const value = parseEnvironmentValue(definition);
+    if (value !== void 0) {
+      setNestedValue(overrides, definition.path, value);
+    }
+  }
+  return overrides;
+}
 function deepMerge(base, override) {
   if (Array.isArray(base)) {
     return Array.isArray(override) ? override : base;
@@ -40809,14 +40948,17 @@ async function loadRepoBotConfig(params) {
   const filePath = import_node_path.default.join(params.workspace, params.configPath);
   const rawYaml = await (0, import_promises.readFile)(filePath, "utf8");
   const parsedYaml = jsYaml.load(rawYaml) ?? {};
-  const overrides = params.overridesJson?.trim() ? JSON.parse(params.overridesJson) : {};
-  const merged = deepMerge(parsedYaml, overrides);
+  const inputOverrides = parseJsonOverrides(params.overridesJson, "config-overrides-json");
+  const environmentOverrides = parseJsonOverrides(
+    process.env.REPO_BOT_CONFIG_OVERRIDES_JSON,
+    "REPO_BOT_CONFIG_OVERRIDES_JSON"
+  );
+  const configEnvironmentOverrides = buildConfigEnvironmentOverrides();
+  const mergedInput = deepMerge(parsedYaml, inputOverrides);
+  const mergedEnvironment = deepMerge(mergedInput, environmentOverrides);
+  const merged = deepMerge(mergedEnvironment, configEnvironmentOverrides);
   const parsed = repoBotConfigSchema.parse(merged);
   parsed.runtime.dryRun = parsed.runtime.dryRun || params.dryRunInput;
-  const secretBaseUrl = process.env.REPO_BOT_AI_BASE_URL?.trim();
-  if (secretBaseUrl) {
-    parsed.providers.openAiCompatible.baseUrl = secretBaseUrl;
-  }
   return parsed;
 }
 
@@ -44255,22 +44397,6 @@ function composeTitle(params) {
   }
   return prefix ? `${prefix} ${core13}`.trim() : core13;
 }
-function buildLocalIssueTitle(params) {
-  const prefixes = params.validation.template?.detect.titlePrefixes ?? [];
-  const lines = cleanEvidence(collectTitleEvidence(params.validation));
-  if (lines.length === 0) {
-    return void 0;
-  }
-  const combined = lines.slice(0, 3).join(" ");
-  const sentence = combined.split(/(?<=[。！？!?])\s*/u)[0]?.trim() || combined;
-  const title = composeTitle({
-    currentTitle: params.currentTitle,
-    generatedCore: sentence,
-    prefixes,
-    maxLength: params.config.maxLength
-  });
-  return normalizeComparable(title) ? title : void 0;
-}
 function titleUnits(value) {
   const normalized = value.normalize("NFKC").toLowerCase();
   const units = /* @__PURE__ */ new Set();
@@ -44332,19 +44458,8 @@ async function maybeUpdateIssueTitle(params) {
         return false;
       }
     } catch (error48) {
-      core10.warning(`AI issue title suggestion failed. Falling back when possible: ${String(error48)}`);
+      core10.warning(`AI issue title suggestion failed. Keep the existing title: ${String(error48)}`);
     }
-  }
-  if (!generatedCore && placeholder) {
-    const localTitle = buildLocalIssueTitle({
-      currentTitle: params.issue.title,
-      validation: params.validation,
-      config: params.config
-    });
-    if (!localTitle) {
-      return false;
-    }
-    generatedCore = stripConfiguredTitlePrefix(localTitle, prefixes);
   }
   if (!generatedCore) {
     return false;

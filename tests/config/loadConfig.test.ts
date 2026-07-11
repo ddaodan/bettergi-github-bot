@@ -4,7 +4,10 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadRepoBotConfig } from "../../src/config/loadConfig.js";
+import {
+  loadRepoBotConfig,
+  repoBotConfigEnvironmentVariables
+} from "../../src/config/loadConfig.js";
 
 describe("loadRepoBotConfig", () => {
   it("merges YAML config with JSON overrides", async () => {
@@ -64,7 +67,7 @@ describe("loadRepoBotConfig", () => {
     expect(config.issues.titleGeneration.maxLength).toBe(100);
   });
 
-  it("prefers secret baseUrl over YAML config", async () => {
+  it("prefers AI environment variables over YAML and JSON overrides", async () => {
     const workspace = path.join(os.tmpdir(), `repo-bot-${Date.now()}-secret`);
     await mkdir(workspace, { recursive: true });
     const configDir = path.join(workspace, ".github");
@@ -74,28 +77,78 @@ describe("loadRepoBotConfig", () => {
       "  openAiCompatible:",
       "    enabled: true",
       "    baseUrl: https://public.example/v1",
-      "    model: gpt-5-mini"
+      "    model: yaml-model",
+      "    apiStyle: auto",
+      "    timeoutMs: 30000"
     ].join("\n"));
 
-    const previous = process.env.REPO_BOT_AI_BASE_URL;
-    process.env.REPO_BOT_AI_BASE_URL = "https://secret.example/v1";
+    const environmentOverrides = {
+      REPO_BOT_RUNTIME_LANGUAGE_MODE: "zh-en",
+      REPO_BOT_ISSUES_TITLE_GENERATION_MAX_LENGTH: "72",
+      REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_THRESHOLDS_REVIEW_MIN: "0.75",
+      REPO_BOT_ISSUES_LABELING_MANAGED: '["BUG","重复"]',
+      REPO_BOT_ISSUES_AI_HELP_PROJECT_CONTEXT_PROFILE_ALIASES: '["BGI"]',
+      REPO_BOT_ISSUES_COMMANDS_REFRESH_ENABLED: "true",
+      REPO_BOT_PULL_REQUESTS_REVIEW_ENABLED: "true",
+      REPO_BOT_AI_ENABLED: "false",
+      REPO_BOT_AI_BASE_URL: "https://environment.example/v1",
+      REPO_BOT_AI_MODEL: "gpt-5.5",
+      REPO_BOT_AI_API_STYLE: "responses",
+      REPO_BOT_AI_TIMEOUT_MS: "60000"
+    };
+    const environment = Object.fromEntries(
+      Object.keys(environmentOverrides).map((name) => [name, process.env[name]])
+    );
+    Object.assign(process.env, environmentOverrides);
 
     try {
       const config = await loadRepoBotConfig({
         workspace,
         configPath: ".github/repo-bot.yml",
-        overridesJson: "",
+        overridesJson: JSON.stringify({
+          providers: {
+            openAiCompatible: {
+              model: "input-model"
+            }
+          }
+        }),
         dryRunInput: false
       });
 
-      expect(config.providers.openAiCompatible.baseUrl).toBe("https://secret.example/v1");
+      expect(config.runtime.languageMode).toBe("zh-en");
+      expect(config.issues.titleGeneration.maxLength).toBe(72);
+      expect(config.issues.validation.duplicateDetection.thresholds.reviewMin).toBe(0.75);
+      expect(config.issues.labeling.managed).toEqual(["BUG", "重复"]);
+      expect(config.issues.aiHelp.projectContext.profile.aliases).toEqual(["BGI"]);
+      expect(config.issues.commands.refresh.enabled).toBe(true);
+      expect(config.pullRequests.review.enabled).toBe(true);
+      expect(config.providers.openAiCompatible).toEqual({
+        enabled: false,
+        baseUrl: "https://environment.example/v1",
+        model: "gpt-5.5",
+        apiStyle: "responses",
+        timeoutMs: 60000
+      });
     } finally {
-      if (previous === undefined) {
-        delete process.env.REPO_BOT_AI_BASE_URL;
-      } else {
-        process.env.REPO_BOT_AI_BASE_URL = previous;
+      for (const [name, value] of Object.entries(environment)) {
+        if (value === undefined) {
+          delete process.env[name];
+        } else {
+          process.env[name] = value;
+        }
       }
     }
+  });
+
+  it("defines a unique environment variable for every supported config path", () => {
+    const names = repoBotConfigEnvironmentVariables.map((definition) => definition.name);
+    const paths = repoBotConfigEnvironmentVariables.map((definition) => definition.path.join("."));
+
+    expect(new Set(names).size).toBe(names.length);
+    expect(new Set(paths).size).toBe(paths.length);
+    expect(names).toContain("REPO_BOT_AI_MODEL");
+    expect(names).toContain("REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_THRESHOLDS_REVIEW_MIN");
+    expect(names).toContain("REPO_BOT_PULL_REQUESTS_SUMMARY_ENABLED");
   });
 
   it("accepts auto skipCreatedBefore mode", async () => {

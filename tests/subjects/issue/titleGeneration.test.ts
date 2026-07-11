@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { OpenAiCompatibleProvider } from "../../../src/providers/openaiCompatible/client.js";
 import {
-  buildLocalIssueTitle,
   isPlaceholderIssueTitle,
   maybeUpdateIssueTitle,
   shouldReviewTitleMismatch
@@ -53,15 +52,42 @@ describe("issue title generation", () => {
     })).toBe(true);
   });
 
-  it("builds a local fallback title from the descriptive section", () => {
+  it("keeps a placeholder title when the AI provider is unavailable", async () => {
     const issue = createValidDescriptionIssue("[bug]");
     const { config, validation } = validate(issue);
+    const gateway = new FakeGateway(issue);
 
-    expect(buildLocalIssueTitle({
-      currentTitle: issue.title,
+    await maybeUpdateIssueTitle({
+      issue,
       validation,
-      config: config.issues.titleGeneration
-    })).toBe("[bug] 保存配置后程序立即崩溃，重新启动后配置也没有保留。");
+      config: config.issues.titleGeneration,
+      gateway
+    });
+
+    expect(issue.title).toBe("[bug]");
+    expect(gateway.updatedTitles).toHaveLength(0);
+  });
+
+  it("keeps a placeholder title when AI title generation fails", async () => {
+    const issue = createValidDescriptionIssue("[bug]");
+    const { config, validation } = validate(issue);
+    const gateway = new FakeGateway(issue);
+    const provider = {
+      async suggestIssueTitle() {
+        throw new Error("Bad gateway");
+      }
+    } as unknown as OpenAiCompatibleProvider;
+
+    await maybeUpdateIssueTitle({
+      issue,
+      validation,
+      config: config.issues.titleGeneration,
+      gateway,
+      provider
+    });
+
+    expect(issue.title).toBe("[bug]");
+    expect(gateway.updatedTitles).toHaveLength(0);
   });
 
   it("updates a placeholder title with an AI suggestion", async () => {

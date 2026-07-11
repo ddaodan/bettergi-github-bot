@@ -31,5 +31,9 @@ jobs:
     with:
       config-path: .github/repo-bot.yml
       config-overrides-json: ${{ vars.REPO_BOT_CONFIG_OVERRIDES_JSON }}
+      ai-enabled: ${{ vars.REPO_BOT_AI_ENABLED }}
       ai-base-url: ${{ vars.REPO_BOT_AI_BASE_URL }}
+      ai-model: ${{ vars.REPO_BOT_AI_MODEL }}
+      ai-api-style: ${{ vars.REPO_BOT_AI_API_STYLE }}
+      ai-timeout-ms: ${{ vars.REPO_BOT_AI_TIMEOUT_MS }}
       github-app-id: ${{ vars.REPO_BOT_GITHUB_APP_ID }}

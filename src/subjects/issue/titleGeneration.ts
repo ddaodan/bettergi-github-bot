@@ -138,28 +138,6 @@ function composeTitle(params: {
   return prefix ? `${prefix} ${core}`.trim() : core;
 }
 
-export function buildLocalIssueTitle(params: {
-  currentTitle: string;
-  validation: ValidationOutcome;
-  config: IssueTitleGenerationConfig;
-}): string | undefined {
-  const prefixes = params.validation.template?.detect.titlePrefixes ?? [];
-  const lines = cleanEvidence(collectTitleEvidence(params.validation));
-  if (lines.length === 0) {
-    return undefined;
-  }
-
-  const combined = lines.slice(0, 3).join(" ");
-  const sentence = combined.split(/(?<=[。！？!?])\s*/u)[0]?.trim() || combined;
-  const title = composeTitle({
-    currentTitle: params.currentTitle,
-    generatedCore: sentence,
-    prefixes,
-    maxLength: params.config.maxLength
-  });
-  return normalizeComparable(title) ? title : undefined;
-}
-
 function titleUnits(value: string): string[] {
   const normalized = value.normalize("NFKC").toLowerCase();
   const units = new Set<string>();
@@ -239,21 +217,10 @@ export async function maybeUpdateIssueTitle(params: {
         return false;
       }
     } catch (error) {
-      core.warning(`AI issue title suggestion failed. Falling back when possible: ${String(error)}`);
+      core.warning(`AI issue title suggestion failed. Keep the existing title: ${String(error)}`);
     }
   }
 
-  if (!generatedCore && placeholder) {
-    const localTitle = buildLocalIssueTitle({
-      currentTitle: params.issue.title,
-      validation: params.validation,
-      config: params.config
-    });
-    if (!localTitle) {
-      return false;
-    }
-    generatedCore = stripConfiguredTitlePrefix(localTitle, prefixes);
-  }
   if (!generatedCore) {
     return false;
   }
