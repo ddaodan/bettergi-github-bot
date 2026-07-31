@@ -116,6 +116,7 @@ export async function runIssueCommentCommand(params: {
   try {
     if (params.command.command === "refresh") {
       await runIssueWorkflow({
+        workspace: params.workspace,
         issue: params.command.issue,
         trigger: "command_refresh",
         config: params.config,

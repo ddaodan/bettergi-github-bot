@@ -101,6 +101,7 @@ async function run(): Promise<void> {
     }
 
     await runIssueWorkflow({
+      workspace,
       issue,
       trigger,
       config,

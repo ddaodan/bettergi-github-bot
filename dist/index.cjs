@@ -17598,12 +17598,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info10 = this._prepareRequest(verb, parsedUrl, headers);
+          let info11 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info10, data);
+            response = yield this.requestRaw(info11, data);
             if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
               let authenticationHandler;
               for (const handler2 of this.handlers) {
@@ -17613,7 +17613,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info10, data);
+                return authenticationHandler.handleAuthentication(this, info11, data);
               } else {
                 return response;
               }
@@ -17636,8 +17636,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info10 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info10, data);
+              info11 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info11, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -17666,7 +17666,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info10, data) {
+      requestRaw(info11, data) {
         return __awaiter(this, void 0, void 0, function* () {
           return new Promise((resolve, reject) => {
             function callbackForResult(err, res) {
@@ -17678,7 +17678,7 @@ var require_lib = __commonJS({
                 resolve(res);
               }
             }
-            this.requestRawWithCallback(info10, data, callbackForResult);
+            this.requestRawWithCallback(info11, data, callbackForResult);
           });
         });
       }
@@ -17688,12 +17688,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info10, data, onResult) {
+      requestRawWithCallback(info11, data, onResult) {
         if (typeof data === "string") {
-          if (!info10.options.headers) {
-            info10.options.headers = {};
+          if (!info11.options.headers) {
+            info11.options.headers = {};
           }
-          info10.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info11.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult(err, res) {
@@ -17702,7 +17702,7 @@ var require_lib = __commonJS({
             onResult(err, res);
           }
         }
-        const req = info10.httpModule.request(info10.options, (msg) => {
+        const req = info11.httpModule.request(info11.options, (msg) => {
           const res = new HttpClientResponse(msg);
           handleResult(void 0, res);
         });
@@ -17714,7 +17714,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error(`Request timeout: ${info10.options.path}`));
+          handleResult(new Error(`Request timeout: ${info11.options.path}`));
         });
         req.on("error", function(err) {
           handleResult(err);
@@ -17750,27 +17750,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info10 = {};
-        info10.parsedUrl = requestUrl;
-        const usingSsl = info10.parsedUrl.protocol === "https:";
-        info10.httpModule = usingSsl ? https : http;
+        const info11 = {};
+        info11.parsedUrl = requestUrl;
+        const usingSsl = info11.parsedUrl.protocol === "https:";
+        info11.httpModule = usingSsl ? https : http;
         const defaultPort = usingSsl ? 443 : 80;
-        info10.options = {};
-        info10.options.host = info10.parsedUrl.hostname;
-        info10.options.port = info10.parsedUrl.port ? parseInt(info10.parsedUrl.port) : defaultPort;
-        info10.options.path = (info10.parsedUrl.pathname || "") + (info10.parsedUrl.search || "");
-        info10.options.method = method;
-        info10.options.headers = this._mergeHeaders(headers);
+        info11.options = {};
+        info11.options.host = info11.parsedUrl.hostname;
+        info11.options.port = info11.parsedUrl.port ? parseInt(info11.parsedUrl.port) : defaultPort;
+        info11.options.path = (info11.parsedUrl.pathname || "") + (info11.parsedUrl.search || "");
+        info11.options.method = method;
+        info11.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info10.options.headers["user-agent"] = this.userAgent;
+          info11.options.headers["user-agent"] = this.userAgent;
         }
-        info10.options.agent = this._getAgent(info10.parsedUrl);
+        info11.options.agent = this._getAgent(info11.parsedUrl);
         if (this.handlers) {
           for (const handler2 of this.handlers) {
-            handler2.prepareRequest(info10.options);
+            handler2.prepareRequest(info11.options);
           }
         }
-        return info10;
+        return info11;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -19752,18 +19752,18 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("error", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.error = error48;
-    function warning10(message, properties = {}) {
+    function warning11(message, properties = {}) {
       (0, command_1.issueCommand)("warning", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
-    exports2.warning = warning10;
+    exports2.warning = warning11;
     function notice(message, properties = {}) {
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.notice = notice;
-    function info10(message) {
+    function info11(message) {
       process.stdout.write(message + os.EOL);
     }
-    exports2.info = info10;
+    exports2.info = info11;
     function startGroup(name) {
       (0, command_1.issue)("group", name);
     }
@@ -23936,7 +23936,7 @@ var require_github = __commonJS({
 });
 
 // src/index.ts
-var core12 = __toESM(require_core(), 1);
+var core13 = __toESM(require_core(), 1);
 
 // src/config/loadConfig.ts
 var import_promises = require("fs/promises");
@@ -40420,6 +40420,17 @@ var projectContextSchema = external_exports.object({
     techStack: []
   }))
 });
+var issueCodeContextSchema = external_exports.object({
+  source: external_exports.enum(["workspace", "github"]).default("workspace"),
+  includeInAiHelp: external_exports.boolean().default(false),
+  includeInFix: external_exports.boolean().default(true),
+  indexPath: external_exports.string().default(""),
+  indexRoot: external_exports.string().default(""),
+  categorySectionAliases: external_exports.array(external_exports.string().min(1)).default([]),
+  nameSectionAliases: external_exports.array(external_exports.string().min(1)).default([]),
+  pathSectionAliases: external_exports.array(external_exports.string().min(1)).default([]),
+  categoryRoots: external_exports.record(external_exports.string().min(1), external_exports.array(external_exports.string().min(1)).min(1)).default({})
+});
 var issueCommandsSchema = external_exports.object({
   enabled: external_exports.boolean().default(false),
   mentions: external_exports.array(external_exports.string().min(1)).min(1).default(["@bot"]),
@@ -40608,6 +40619,17 @@ var repoBotConfigSchema = external_exports.object({
         }
       }
     })),
+    codeContext: issueCodeContextSchema.default(() => ({
+      source: "workspace",
+      includeInAiHelp: false,
+      includeInFix: true,
+      indexPath: "",
+      indexRoot: "",
+      categorySectionAliases: [],
+      nameSectionAliases: [],
+      pathSectionAliases: [],
+      categoryRoots: {}
+    })),
     aiHelp: external_exports.object({
       enabled: external_exports.boolean().default(false),
       triggerLabels: external_exports.array(external_exports.string().min(1)).default([]),
@@ -40719,6 +40741,17 @@ var repoBotConfigSchema = external_exports.object({
           repo: ""
         }
       }
+    },
+    codeContext: {
+      source: "workspace",
+      includeInAiHelp: false,
+      includeInFix: true,
+      indexPath: "",
+      indexRoot: "",
+      categorySectionAliases: [],
+      nameSectionAliases: [],
+      pathSectionAliases: [],
+      categoryRoots: {}
     },
     aiHelp: {
       enabled: false,
@@ -40846,6 +40879,15 @@ var repoBotConfigEnvironmentVariables = [
   environmentOverride(["issues", "labeling", "aiClassification", "prompt"], "string"),
   environmentOverride(["issues", "labeling", "aiClassification", "sourceRepository", "owner"], "string"),
   environmentOverride(["issues", "labeling", "aiClassification", "sourceRepository", "repo"], "string"),
+  environmentOverride(["issues", "codeContext", "source"], "string"),
+  environmentOverride(["issues", "codeContext", "includeInAiHelp"], "boolean"),
+  environmentOverride(["issues", "codeContext", "includeInFix"], "boolean"),
+  environmentOverride(["issues", "codeContext", "indexPath"], "string"),
+  environmentOverride(["issues", "codeContext", "indexRoot"], "string"),
+  environmentOverride(["issues", "codeContext", "categorySectionAliases"], "json"),
+  environmentOverride(["issues", "codeContext", "nameSectionAliases"], "json"),
+  environmentOverride(["issues", "codeContext", "pathSectionAliases"], "json"),
+  environmentOverride(["issues", "codeContext", "categoryRoots"], "json"),
   environmentOverride(["issues", "aiHelp", "enabled"], "boolean"),
   environmentOverride(["issues", "aiHelp", "triggerLabels"], "json"),
   environmentOverride(["issues", "aiHelp", "commentAnchor"], "string"),
@@ -41490,6 +41532,54 @@ var OctokitGitHubGateway = class {
       }
       core2.info(`Skip repository README context: ${String(error48)}`);
       return void 0;
+    }
+  }
+  async getRepositoryDirectory(path3) {
+    try {
+      const response = await this.octokit.rest.repos.getContent({
+        owner: import_github.context.repo.owner,
+        repo: import_github.context.repo.repo,
+        path: path3
+      });
+      if (!Array.isArray(response.data)) {
+        return [];
+      }
+      return response.data.filter((entry) => entry.type === "file" || entry.type === "dir").map((entry) => ({
+        path: entry.path,
+        name: entry.name,
+        type: entry.type,
+        size: entry.size,
+        sha: entry.sha
+      }));
+    } catch (error48) {
+      const status = typeof error48 === "object" && error48 !== null && "status" in error48 ? error48.status : void 0;
+      if (status === 404) {
+        return [];
+      }
+      throw error48;
+    }
+  }
+  async getRepositoryTextFile(path3, maxBytes) {
+    try {
+      const response = await this.octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
+        owner: import_github.context.repo.owner,
+        repo: import_github.context.repo.repo,
+        path: path3,
+        headers: {
+          accept: "application/vnd.github.raw+json"
+        }
+      });
+      const content = typeof response.data === "string" ? response.data : Buffer.isBuffer(response.data) ? response.data.toString("utf8") : void 0;
+      if (content === void 0 || Buffer.byteLength(content, "utf8") > maxBytes) {
+        return void 0;
+      }
+      return content;
+    } catch (error48) {
+      const status = typeof error48 === "object" && error48 !== null && "status" in error48 ? error48.status : void 0;
+      if (status === 404) {
+        return void 0;
+      }
+      throw error48;
     }
   }
   async getRepositoryLabels(params) {
@@ -42544,7 +42634,7 @@ var OpenAiCompatibleProvider = class {
       reason: String(result.reason ?? "")
     };
   }
-  async generateHelp(issue2, parsed, repositoryContext, commentMode) {
+  async generateHelp(issue2, parsed, repositoryContext, commentMode, codeContext) {
     const templateKey = repositoryContext.templateKey ?? "unknown";
     const { allowed: allowedImages, skipped: skippedImages } = partitionIssueImagesForAi(parsed.images);
     const images = summarizeIssueImages(allowedImages);
@@ -42561,6 +42651,8 @@ var OpenAiCompatibleProvider = class {
         text: [
           "You are a GitHub issue assistant for the current repository.",
           "Treat the provided repository context as the ground truth for the current project.",
+          "When repository code context is provided, use it as supporting evidence and keep conclusions aligned with the listed target paths and excerpts.",
+          "If code resolution is ambiguous or unavailable, state the uncertainty and ask for an exact repository path instead of guessing.",
           "Assume the issue is about this repository unless the issue clearly points to an external dependency or upstream project.",
           "Do not ask the user to provide the current repository link, repository name, or project identity again.",
           "If issue images are attached, use them as supporting evidence for the current repository issue.",
@@ -42576,6 +42668,7 @@ var OpenAiCompatibleProvider = class {
         role: "user",
         text: JSON.stringify({
           repositoryContext,
+          codeContext,
           issueType: templateKey,
           issue: {
             title: issue2.title,
@@ -42701,7 +42794,7 @@ function tryCreateProvider(config2) {
 }
 
 // src/subjects/issue/fix.ts
-var core6 = __toESM(require_core(), 1);
+var core7 = __toESM(require_core(), 1);
 
 // src/github/comments.ts
 function createAnchor(anchor) {
@@ -43298,6 +43391,7 @@ async function enrichIssueWithTextAttachments(params) {
 }
 
 // src/subjects/issue/codeContext.ts
+var core5 = __toESM(require_core(), 1);
 var import_promises2 = require("fs/promises");
 var import_node_path2 = __toESM(require("path"), 1);
 var EXCLUDED_DIRECTORIES = /* @__PURE__ */ new Set([
@@ -43378,6 +43472,9 @@ var MAX_CONTEXT_FILES = 8;
 var MAX_EXCERPT_CHARS = 2e3;
 var MAX_KEYWORDS = 24;
 var MAX_FALLBACK_ENTRY_FILES = 3;
+var MAX_REMOTE_INDEX_BYTES = 8 * 1024 * 1024;
+var MAX_REMOTE_LISTED_ENTRIES = 400;
+var MAX_REMOTE_DIRECTORY_DEPTH = 4;
 function normalizePath(value) {
   return value.replace(/\\/g, "/");
 }
@@ -43548,7 +43645,7 @@ async function buildFallbackContext(params) {
     fallbackUsed: true
   };
 }
-async function collectRepositoryCodeContext(params) {
+async function collectWorkspaceCodeContext(params) {
   const keywords = buildKeywords(params);
   if (keywords.length === 0) {
     return buildFallbackContext({
@@ -43593,9 +43690,450 @@ async function collectRepositoryCodeContext(params) {
     fallbackUsed: false
   };
 }
+function normalizeHeadingKey(value) {
+  return value.toLowerCase().replace(/[*_\x60:#]/g, "").trim();
+}
+function getConfiguredSection(parsed, aliases) {
+  for (const alias of aliases) {
+    const value = parsed.sections[normalizeHeadingKey(alias)];
+    if (value?.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+function firstMeaningfulLine(value) {
+  return value.split(/\r?\n/).map((line) => line.trim()).find((line) => line && !/^_?no response_?$/i.test(line)) ?? "";
+}
+function normalizeComparable(value) {
+  return value.normalize("NFKC").toLowerCase().replace(/[^\p{Letter}\p{Number}]+/gu, "");
+}
+function splitNameAndVersion(value) {
+  const line = firstMeaningfulLine(value).replace(/^[\x60'"]+|[\x60'"]+$/g, "").trim();
+  const match = line.match(/^(.*?)(?:\s*[:：]\s*|\s+)(v?\d[\w.-]*)$/i);
+  if (!match?.[1] || !match[2]) {
+    return { name: line, version: "" };
+  }
+  return {
+    name: match[1].trim(),
+    version: match[2].replace(/^v/i, "").trim()
+  };
+}
+function normalizeRepositoryPath(value) {
+  let candidate = value.trim().replace(/\\/g, "/");
+  try {
+    candidate = decodeURIComponent(candidate);
+  } catch {
+    return void 0;
+  }
+  candidate = candidate.replace(/[?#].*$/, "").replace(/^\/+/, "").replace(/\/+/g, "/").replace(/\/$/, "");
+  if (!candidate || candidate.split("/").some((segment) => segment === ".." || segment === ".")) {
+    return void 0;
+  }
+  return candidate;
+}
+function extractExplicitRepositoryPath(params) {
+  const githubPattern = /https:\/\/github\.com\/([^/\s)]+)\/([^/\s)]+)\/(?:blob|tree)\/[^/\s)]+\/([^\s)]+)/i;
+  const match = params.value.match(githubPattern);
+  if (match?.[1] && match[2] && match[3]) {
+    if (match[1].toLowerCase() !== params.repositoryContext.owner.toLowerCase() || match[2].toLowerCase() !== params.repositoryContext.repo.toLowerCase()) {
+      return void 0;
+    }
+    return normalizeRepositoryPath(match[3]);
+  }
+  const line = firstMeaningfulLine(params.value).replace(/^\[[^\]]+\]\(([^)]+)\)$/, "$1").replace(/^[\x60'"]+|[\x60'"]+$/g, "");
+  return normalizeRepositoryPath(line);
+}
+function configuredRoots(config2) {
+  return [...new Set(Object.values(config2.categoryRoots).flat().map(normalizeRepositoryPath).filter((value) => Boolean(value)))];
+}
+function isWithinRoot(candidate, root) {
+  return candidate === root || candidate.startsWith(root + "/");
+}
+function isAllowedRepositoryPath(candidate, config2) {
+  const roots = configuredRoots(config2);
+  return roots.length === 0 || roots.some((root) => isWithinRoot(candidate, root));
+}
+function resolveCategoryRoots(params) {
+  const selected = normalizeComparable(firstMeaningfulLine(getConfiguredSection(
+    params.parsed,
+    params.config.categorySectionAliases
+  )));
+  if (!selected) {
+    return configuredRoots(params.config);
+  }
+  for (const [category, roots] of Object.entries(params.config.categoryRoots)) {
+    if (normalizeComparable(category) === selected) {
+      return roots.map(normalizeRepositoryPath).filter((value) => Boolean(value));
+    }
+  }
+  return configuredRoots(params.config);
+}
+function stringValue(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+function indexDisplayName(node) {
+  return stringValue(node.description).split("~|~")[0]?.trim() ?? "";
+}
+function collectIndexTargets(params) {
+  if (Array.isArray(params.value)) {
+    for (const child of params.value) {
+      collectIndexTargets({
+        value: child,
+        parentPath: params.parentPath,
+        results: params.results
+      });
+    }
+    return;
+  }
+  if (!params.value || typeof params.value !== "object") {
+    return;
+  }
+  const node = params.value;
+  const name = stringValue(node.name);
+  const nodePath = name ? normalizeRepositoryPath(params.parentPath ? params.parentPath + "/" + name : name) : params.parentPath;
+  if (name && nodePath) {
+    const rawType = stringValue(node.type).toLowerCase();
+    params.results.push({
+      target: {
+        path: nodePath,
+        name,
+        version: stringValue(node.version) || void 0,
+        author: stringValue(node.author) || stringValue(node.authors) || void 0,
+        description: indexDisplayName(node) || void 0
+      },
+      type: rawType === "file" ? "file" : "dir",
+      score: 0
+    });
+  }
+  if (Array.isArray(node.children)) {
+    collectIndexTargets({
+      value: node.children,
+      parentPath: nodePath ?? params.parentPath,
+      results: params.results
+    });
+  }
+}
+function parseIndexTargets(raw, config2) {
+  const parsed = JSON.parse(raw);
+  let roots = parsed;
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const record2 = parsed;
+    roots = Array.isArray(record2.indexes) ? record2.indexes : parsed;
+  }
+  const results = [];
+  collectIndexTargets({
+    value: roots,
+    parentPath: normalizeRepositoryPath(config2.indexRoot) ?? "",
+    results
+  });
+  return results;
+}
+function scoreRemoteTarget(params) {
+  if (params.categoryRoots.length > 0 && !params.categoryRoots.some((root) => isWithinRoot(params.candidate.target.path, root))) {
+    return 0;
+  }
+  const query = normalizeComparable(params.queryName);
+  if (!query) {
+    return 0;
+  }
+  const names = [
+    params.candidate.target.name,
+    params.candidate.target.description ?? ""
+  ].map(normalizeComparable).filter(Boolean);
+  let score = 0;
+  if (names.some((name) => name === query)) {
+    score = 100;
+  } else if (names.some((name) => name.includes(query) || query.includes(name))) {
+    score = 80;
+  } else {
+    const queryTokens = tokenize(params.queryName);
+    const candidateTokens = tokenize(names.join(" "));
+    const overlap = queryTokens.filter((token) => candidateTokens.includes(token)).length;
+    if (overlap > 0) {
+      score = 50 + Math.min(20, overlap * 5);
+    }
+  }
+  if (score > 0 && params.queryVersion && params.candidate.target.version && normalizeComparable(params.queryVersion) === normalizeComparable(params.candidate.target.version)) {
+    score += 5;
+  }
+  return score;
+}
+function remoteEntryPriority(entry, keywords) {
+  const lowerPath = normalizePath(entry.path).toLowerCase();
+  const lowerName = entry.name.toLowerCase();
+  const preferredNames = /* @__PURE__ */ new Map([
+    ["readme.md", 60],
+    ["manifest.json", 58],
+    ["main.js", 56],
+    ["main.ts", 56],
+    ["settings.json", 52],
+    ["package.json", 48],
+    ["index.js", 44],
+    ["index.ts", 44]
+  ]);
+  const preferred = preferredNames.get(lowerName) ?? 0;
+  const keywordHits = keywords.filter((keyword) => lowerPath.includes(keyword)).length;
+  return preferred + keywordHits * 10;
+}
+function isRemoteTextCandidate(entry) {
+  if (entry.type !== "file" || entry.size > MAX_FILE_BYTES || isSensitivePath(entry.path)) {
+    return false;
+  }
+  return !BINARY_EXTENSIONS.has(import_node_path2.default.extname(entry.name).toLowerCase());
+}
+async function listRemoteTargetFiles(params) {
+  if (params.target.type === "file") {
+    return [{
+      path: params.target.target.path,
+      name: import_node_path2.default.posix.basename(params.target.target.path),
+      type: "file",
+      size: 0,
+      sha: ""
+    }];
+  }
+  const queue = [{
+    path: params.target.target.path,
+    depth: 0
+  }];
+  const files = [];
+  let listed = 0;
+  while (queue.length > 0 && listed < MAX_REMOTE_LISTED_ENTRIES) {
+    const current = queue.shift();
+    const entries = await params.gateway.getRepositoryDirectory(current.path);
+    listed += entries.length;
+    for (const entry of entries) {
+      if (entry.type === "file") {
+        files.push(entry);
+        continue;
+      }
+      if (EXCLUDED_DIRECTORIES.has(entry.name)) {
+        continue;
+      }
+      if (current.depth < MAX_REMOTE_DIRECTORY_DEPTH) {
+        queue.push({
+          path: entry.path,
+          depth: current.depth + 1
+        });
+      }
+    }
+  }
+  return files;
+}
+async function readRemoteContextFiles(params) {
+  const entries = await listRemoteTargetFiles({
+    gateway: params.gateway,
+    target: params.target
+  });
+  const ranked = entries.filter(isRemoteTextCandidate).map((entry) => ({
+    entry,
+    score: remoteEntryPriority(entry, params.keywords)
+  })).sort((left, right) => right.score - left.score || left.entry.path.localeCompare(right.entry.path));
+  const files = [];
+  for (const { entry, score } of ranked) {
+    if (files.length >= MAX_CONTEXT_FILES) {
+      break;
+    }
+    try {
+      const content = await params.gateway.getRepositoryTextFile(entry.path, MAX_FILE_BYTES);
+      if (!content) {
+        continue;
+      }
+      const buffer = Buffer.from(content, "utf8");
+      if (!isLikelyText(buffer) || containsSensitiveText(content)) {
+        continue;
+      }
+      files.push({
+        path: normalizePath(entry.path),
+        reason: score > 0 ? "\u76EE\u6807\u811A\u672C\u4E2D\u7684\u5165\u53E3\u3001\u8BF4\u660E\u6216 Issue \u5173\u952E\u8BCD\u76F8\u5173\u6587\u4EF6\u3002" : "\u76EE\u6807\u811A\u672C\u4E2D\u7684\u6587\u672C\u6587\u4EF6\u3002",
+        excerpt: createExcerpt(content, params.keywords)
+      });
+    } catch (error48) {
+      core5.info('Skip repository code file "' + entry.path + '": ' + String(error48));
+    }
+  }
+  return files;
+}
+async function resolveRemoteTarget(params) {
+  const explicitValue = getConfiguredSection(params.parsed, params.config.pathSectionAliases);
+  const explicitPath = extractExplicitRepositoryPath({
+    value: explicitValue,
+    repositoryContext: params.repositoryContext
+  });
+  if (explicitPath) {
+    if (!isAllowedRepositoryPath(explicitPath, params.config) || isSensitivePath(explicitPath)) {
+      return {
+        status: "not_found",
+        query: explicitPath,
+        candidatePaths: []
+      };
+    }
+    const directoryEntries = await params.gateway.getRepositoryDirectory(explicitPath);
+    const type2 = directoryEntries.length > 0 ? "dir" : "file";
+    if (type2 === "file") {
+      const content = await params.gateway.getRepositoryTextFile(explicitPath, MAX_FILE_BYTES);
+      if (content === void 0) {
+        return {
+          status: "not_found",
+          query: explicitPath,
+          candidatePaths: []
+        };
+      }
+    }
+    return {
+      status: "resolved",
+      query: explicitPath,
+      candidatePaths: [explicitPath],
+      target: {
+        target: {
+          path: explicitPath,
+          name: import_node_path2.default.posix.basename(explicitPath)
+        },
+        type: type2,
+        score: 200
+      }
+    };
+  }
+  const rawName = getConfiguredSection(params.parsed, params.config.nameSectionAliases);
+  const query = splitNameAndVersion(rawName);
+  if (!query.name || !params.config.indexPath) {
+    return {
+      status: "not_found",
+      query: query.name,
+      candidatePaths: []
+    };
+  }
+  const rawIndex = await params.gateway.getRepositoryTextFile(
+    params.config.indexPath,
+    MAX_REMOTE_INDEX_BYTES
+  );
+  if (!rawIndex) {
+    return {
+      status: "not_found",
+      query: query.name,
+      candidatePaths: []
+    };
+  }
+  const categoryRoots = resolveCategoryRoots({
+    config: params.config,
+    parsed: params.parsed
+  });
+  const ranked = parseIndexTargets(rawIndex, params.config).map((candidate) => ({
+    ...candidate,
+    score: scoreRemoteTarget({
+      candidate,
+      queryName: query.name,
+      queryVersion: query.version,
+      categoryRoots
+    })
+  })).filter((candidate) => candidate.score >= 80).sort((left, right) => right.score - left.score || left.target.path.localeCompare(right.target.path));
+  const top = ranked[0];
+  if (!top) {
+    return {
+      status: "not_found",
+      query: query.name,
+      candidatePaths: []
+    };
+  }
+  const tied = ranked.filter((candidate) => candidate.score === top.score);
+  if (tied.length > 1) {
+    return {
+      status: "ambiguous",
+      query: query.name,
+      candidatePaths: tied.slice(0, 3).map((candidate) => candidate.target.path)
+    };
+  }
+  return {
+    status: "resolved",
+    query: query.name,
+    candidatePaths: [top.target.path],
+    target: top
+  };
+}
+async function collectGitHubCodeContext(params) {
+  try {
+    const resolved = await resolveRemoteTarget(params);
+    if (!resolved.target) {
+      return {
+        files: [],
+        fallbackUsed: true,
+        resolution: {
+          status: resolved.status,
+          query: resolved.query,
+          candidatePaths: resolved.candidatePaths
+        }
+      };
+    }
+    const keywords = buildKeywords(params);
+    const files = await readRemoteContextFiles({
+      gateway: params.gateway,
+      target: resolved.target,
+      keywords
+    });
+    return {
+      files,
+      fallbackUsed: files.length === 0,
+      targets: [resolved.target.target],
+      resolution: {
+        status: "resolved",
+        query: resolved.query,
+        candidatePaths: resolved.candidatePaths
+      }
+    };
+  } catch (error48) {
+    core5.warning("Unable to resolve repository code context through GitHub: " + String(error48));
+    return {
+      files: [],
+      fallbackUsed: true,
+      resolution: {
+        status: "unavailable",
+        query: firstMeaningfulLine(getConfiguredSection(
+          params.parsed,
+          params.config.nameSectionAliases
+        )),
+        candidatePaths: []
+      }
+    };
+  }
+}
+var DEFAULT_CODE_CONTEXT_CONFIG = {
+  source: "workspace",
+  includeInAiHelp: false,
+  includeInFix: true,
+  indexPath: "",
+  indexRoot: "",
+  categorySectionAliases: [],
+  nameSectionAliases: [],
+  pathSectionAliases: [],
+  categoryRoots: {}
+};
+async function collectRepositoryCodeContext(params) {
+  const config2 = params.config ?? DEFAULT_CODE_CONTEXT_CONFIG;
+  if (config2.source === "github") {
+    if (!params.gateway) {
+      return {
+        files: [],
+        fallbackUsed: true,
+        resolution: {
+          status: "unavailable",
+          query: "",
+          candidatePaths: []
+        }
+      };
+    }
+    return collectGitHubCodeContext({
+      issue: params.issue,
+      parsed: params.parsed,
+      repositoryContext: params.repositoryContext,
+      config: config2,
+      gateway: params.gateway
+    });
+  }
+  return collectWorkspaceCodeContext(params);
+}
 
 // src/subjects/issue/projectContext.ts
-var core5 = __toESM(require_core(), 1);
+var core6 = __toESM(require_core(), 1);
 function normalizeWhitespace2(value) {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -43654,7 +44192,7 @@ async function resolveRepositoryAiContext(params) {
     try {
       metadata = await params.gateway.getRepositoryMetadata();
     } catch (error48) {
-      core5.info(`Skip repository metadata context: ${String(error48)}`);
+      core6.info(`Skip repository metadata context: ${String(error48)}`);
     }
   }
   let readmeExcerpt = "";
@@ -43665,7 +44203,7 @@ async function resolveRepositoryAiContext(params) {
         readmeExcerpt = createReadmeExcerpt(readme, params.config.readmeMaxChars);
       }
     } catch (error48) {
-      core5.info(`Skip repository README context: ${String(error48)}`);
+      core6.info(`Skip repository README context: ${String(error48)}`);
     }
   }
   return {
@@ -43843,12 +44381,46 @@ async function runIssueFixCommand(params) {
     config: params.config.issues.aiHelp.projectContext,
     templateKey: validation.template?.key ?? validation.parsed.marker
   });
-  const codeContext = await collectRepositoryCodeContext({
+  const codeContext = params.config.issues.codeContext.includeInFix ? await collectRepositoryCodeContext({
     workspace: params.workspace,
     issue: params.issue,
     parsed: validation.parsed,
-    repositoryContext
-  });
+    repositoryContext,
+    config: params.config.issues.codeContext,
+    gateway: params.gateway
+  }) : {
+    files: [],
+    fallbackUsed: true
+  };
+  if (params.config.issues.codeContext.includeInFix && params.config.issues.codeContext.source === "github" && codeContext.resolution?.status !== "resolved") {
+    const candidates = codeContext.resolution?.candidatePaths ?? [];
+    const candidateTextZh = candidates.length > 0 ? " \u5019\u9009\u8DEF\u5F84\uFF1A" + candidates.map((candidate) => '"' + candidate + '"').join("\u3001") + "\u3002" : "";
+    const candidateTextEn = candidates.length > 0 ? " Candidate paths: " + candidates.map((candidate) => '"' + candidate + '"').join(", ") + "." : "";
+    await updateFixStatusComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      config: params.config,
+      mode: commentMode,
+      titleZh: "AI \u4FEE\u590D\u5EFA\u8BAE",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "\u65E0\u6CD5\u552F\u4E00\u5B9A\u4F4D\u9700\u8981\u5206\u6790\u7684\u811A\u672C\u6E90\u7801\u3002\u8BF7\u5728 Issue \u7684\u201C\u811A\u672C\u94FE\u63A5\u6216\u4ED3\u5E93\u8DEF\u5F84\u201D\u4E2D\u586B\u5199\u51C6\u786E\u8DEF\u5F84\u540E\u91CD\u8BD5\u3002" + candidateTextZh,
+      messageEn: "The target script source could not be resolved uniquely. Add the exact path to the issue's repository-path field, then retry." + candidateTextEn
+    });
+    return "rejected";
+  }
+  if (params.config.issues.codeContext.includeInFix && params.config.issues.codeContext.source === "github" && codeContext.files.length === 0) {
+    await updateFixStatusComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      config: params.config,
+      mode: commentMode,
+      titleZh: "AI \u4FEE\u590D\u5EFA\u8BAE",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "\u5DF2\u5B9A\u4F4D\u76F8\u5173\u4ED3\u5E93\u8DEF\u5F84\uFF0C\u4F46\u672A\u8BFB\u53D6\u5230\u53EF\u5B89\u5168\u5206\u6790\u7684\u6587\u672C\u6E90\u7801\u3002\u8BF7\u786E\u8BA4\u8DEF\u5F84\u6307\u5411\u811A\u672C\u76EE\u5F55\u6216\u6E90\u7801\u6587\u4EF6\u540E\u91CD\u8BD5\u3002",
+      messageEn: "The repository path was resolved, but no safe text source files could be read. Confirm that the path points to the script directory or a source file, then retry."
+    });
+    return "rejected";
+  }
   const parsed = await enrichIssueWithTextAttachments({
     issueNumber: params.issue.number,
     parsed: validation.parsed,
@@ -43884,7 +44456,7 @@ async function runIssueFixCommand(params) {
     });
     return "success";
   } catch (error48) {
-    core6.warning(`Skip /fix because provider request failed: ${String(error48)}`);
+    core7.warning(`Skip /fix because provider request failed: ${String(error48)}`);
     await updateFixStatusComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -43900,10 +44472,10 @@ async function runIssueFixCommand(params) {
 }
 
 // src/subjects/issue/run.ts
-var core11 = __toESM(require_core(), 1);
+var core12 = __toESM(require_core(), 1);
 
 // src/subjects/issue/aiClassification.ts
-var core7 = __toESM(require_core(), 1);
+var core8 = __toESM(require_core(), 1);
 function unique2(values) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -43912,7 +44484,7 @@ async function classifyIssueContentLabels(params) {
     return { labels: [], definitions: {} };
   }
   if (!params.provider) {
-    core7.info("Skip AI label classification because provider is unavailable.");
+    core8.info("Skip AI label classification because provider is unavailable.");
     return { labels: [], definitions: {} };
   }
   const owner = params.config.sourceRepository.owner.trim() || params.issue.owner;
@@ -43928,7 +44500,7 @@ async function classifyIssueContentLabels(params) {
     entries = entries.filter(([name]) => !exclude.has(name));
   }
   if (entries.length === 0) {
-    core7.info(`Skip AI label classification because no candidate labels are available from ${owner}/${repo}.`);
+    core8.info(`Skip AI label classification because no candidate labels are available from ${owner}/${repo}.`);
     return { labels: [], definitions: {} };
   }
   try {
@@ -43947,33 +44519,33 @@ async function classifyIssueContentLabels(params) {
     const selected = unique2(classified.filter((item) => item.confidence >= params.config.minConfidence).map((item) => item.name)).filter((name) => allowed.has(name)).slice(0, params.config.maxLabels);
     const definitions = Object.fromEntries(selected.map((name) => [name, allowed.get(name)]).filter((entry) => Boolean(entry[1])));
     if (selected.length > 0) {
-      core7.info(`AI label classification selected: ${selected.join(", ")}`);
+      core8.info(`AI label classification selected: ${selected.join(", ")}`);
     } else {
-      core7.info("AI label classification did not select any labels above the confidence threshold.");
+      core8.info("AI label classification did not select any labels above the confidence threshold.");
     }
     return {
       labels: selected,
       definitions
     };
   } catch (error48) {
-    core7.warning(`Skip AI label classification because provider request failed: ${String(error48)}`);
+    core8.warning(`Skip AI label classification because provider request failed: ${String(error48)}`);
     return { labels: [], definitions: {} };
   }
 }
 
 // src/subjects/issue/aiHelp.ts
-var core8 = __toESM(require_core(), 1);
+var core9 = __toESM(require_core(), 1);
 async function generateIssueAiHelp(params) {
   if (!params.config.enabled) {
     return void 0;
   }
   if (!params.provider) {
-    core8.info("Skip AI help because provider is unavailable.");
+    core9.info("Skip AI help because provider is unavailable.");
     return void 0;
   }
   const hasTriggerLabel = params.config.triggerLabels.length === 0 || params.config.triggerLabels.some((label) => params.issue.labels.includes(label));
   if (!hasTriggerLabel) {
-    core8.info("Skip AI help because trigger labels do not match.");
+    core9.info("Skip AI help because trigger labels do not match.");
     return void 0;
   }
   try {
@@ -43982,11 +44554,23 @@ async function generateIssueAiHelp(params) {
       parsed: params.parsed,
       gateway: params.gateway
     });
+    let codeContext;
+    if (params.codeContextConfig.includeInAiHelp) {
+      codeContext = await collectRepositoryCodeContext({
+        workspace: params.workspace,
+        issue: params.issue,
+        parsed,
+        repositoryContext: params.repositoryContext,
+        config: params.codeContextConfig,
+        gateway: params.gateway
+      });
+    }
     const help = await params.provider.generateHelp(
       params.issue,
       parsed,
       params.repositoryContext,
-      params.commentMode
+      params.commentMode,
+      codeContext
     );
     const sanitizedHelp = sanitizeAiHelpResultForComment({
       help,
@@ -43994,6 +44578,7 @@ async function generateIssueAiHelp(params) {
       blockedTexts: [
         params.issue.body,
         JSON.stringify(params.repositoryContext),
+        ...codeContext ? [JSON.stringify(codeContext)] : [],
         ...parsed.textAttachments.map((attachment) => attachment.content)
       ]
     });
@@ -44004,13 +44589,13 @@ async function generateIssueAiHelp(params) {
       relatedIssues: params.relatedIssues
     });
   } catch (error48) {
-    core8.warning(`Skip AI help because provider request failed: ${String(error48)}`);
+    core9.warning(`Skip AI help because provider request failed: ${String(error48)}`);
     return void 0;
   }
 }
 
 // src/subjects/issue/duplicateDetection.ts
-var core9 = __toESM(require_core(), 1);
+var core10 = __toESM(require_core(), 1);
 var MAX_DUPLICATE_SEARCH_TERMS = 8;
 var MAX_DUPLICATE_SEARCH_PHRASES = 4;
 var MAX_DUPLICATE_TITLE_TOKENS = 3;
@@ -44255,7 +44840,7 @@ async function detectDuplicate(params) {
         };
       }
     } catch (error48) {
-      core9.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
+      core10.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
     }
   }
   if (!bestReview) {
@@ -44323,10 +44908,10 @@ function computeManagedLabels(params) {
 }
 
 // src/subjects/issue/titleGeneration.ts
-var core10 = __toESM(require_core(), 1);
+var core11 = __toESM(require_core(), 1);
 var PREFERRED_SECTION_PATTERN = /(description|summary|problem|question|request|suggestion|content|描述|问题|建议|需求|内容|现象)/i;
 var LOW_SIGNAL_SECTION_PATTERN = /(checklist|environment|version|steps|expected|logs?|attachments?|提交确认|系统环境|版本|复现|期望|日志|附件)/i;
-function normalizeComparable(value) {
+function normalizeComparable2(value) {
   return value.normalize("NFKC").toLowerCase().replace(/[\[\]【】()（）<>《》"'`*_:#：\s-]+/g, "").trim();
 }
 function findConfiguredPrefix(title, prefixes) {
@@ -44339,16 +44924,16 @@ function stripConfiguredTitlePrefix(title, prefixes) {
 }
 function isPlaceholderIssueTitle(params) {
   const coreTitle = stripConfiguredTitlePrefix(params.title, params.prefixes);
-  const normalized = normalizeComparable(coreTitle);
+  const normalized = normalizeComparable2(coreTitle);
   if (!normalized) {
     return true;
   }
-  return params.placeholderTitles.some((placeholder) => normalizeComparable(placeholder) === normalized);
+  return params.placeholderTitles.some((placeholder) => normalizeComparable2(placeholder) === normalized);
 }
 function cleanEvidence(value) {
   const cleaned = value.replace(/<!--([\s\S]*?)-->/g, " ").replace(/```[\s\S]*?```/g, " ").replace(/!\[[^\]]*\]\([^)]*\)/g, " ").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/https?:\/\/\S+/g, " ").replace(/^\s*[-*+]\s*\[[ xX]\]\s*/gm, "").replace(/^\s{0,3}#{1,6}\s+/gm, "").replace(/^\s*>+\s?/gm, "").replace(/[\t ]+/g, " ");
   return cleaned.split(/\r?\n/).map((line) => line.trim()).filter((line) => {
-    const normalized = normalizeComparable(line);
+    const normalized = normalizeComparable2(line);
     return normalized.length >= 3 && !["noresponse", "none", "n/a", "\u65E0", "\u6682\u65E0", "\u6CA1\u6709"].includes(normalized) && !/^\[?\d{1,2}:\d{2}:\d{2}/.test(line) && !/^at\s+[A-Za-z0-9_.<>]+\(/.test(line) && !containsSensitiveText(line);
   });
 }
@@ -44391,11 +44976,11 @@ function composeTitle(params) {
   const existingPrefix = findConfiguredPrefix(params.currentTitle, params.prefixes);
   const prefix = existingPrefix || params.prefixes[0]?.trim() || "";
   const availableLength = Math.max(1, params.maxLength - Array.from(prefix).length - (prefix ? 1 : 0));
-  const core13 = takeUnicode(normalizeGeneratedCore(params.generatedCore, params.prefixes), availableLength);
-  if (!normalizeComparable(core13)) {
+  const core14 = takeUnicode(normalizeGeneratedCore(params.generatedCore, params.prefixes), availableLength);
+  if (!normalizeComparable2(core14)) {
     return "";
   }
-  return prefix ? `${prefix} ${core13}`.trim() : core13;
+  return prefix ? `${prefix} ${core14}`.trim() : core14;
 }
 function titleUnits(value) {
   const normalized = value.normalize("NFKC").toLowerCase();
@@ -44414,7 +44999,7 @@ function titleUnits(value) {
 function shouldReviewTitleMismatch(params) {
   const coreTitle = stripConfiguredTitlePrefix(params.title, params.prefixes);
   const units = titleUnits(coreTitle);
-  if (units.length < 2 || normalizeComparable(params.evidence).length < 12) {
+  if (units.length < 2 || normalizeComparable2(params.evidence).length < 12) {
     return false;
   }
   const evidenceUnits = new Set(titleUnits(params.evidence));
@@ -44454,11 +45039,11 @@ async function maybeUpdateIssueTitle(params) {
           generatedCore = sanitizedTitle;
         }
       } else if (mismatchReview) {
-        core10.info(`Keep issue #${params.issue.number} title after AI mismatch review (${suggestion.confidence.toFixed(2)}).`);
+        core11.info(`Keep issue #${params.issue.number} title after AI mismatch review (${suggestion.confidence.toFixed(2)}).`);
         return false;
       }
     } catch (error48) {
-      core10.warning(`AI issue title suggestion failed. Keep the existing title: ${String(error48)}`);
+      core11.warning(`AI issue title suggestion failed. Keep the existing title: ${String(error48)}`);
     }
   }
   if (!generatedCore) {
@@ -44470,12 +45055,12 @@ async function maybeUpdateIssueTitle(params) {
     prefixes,
     maxLength: params.config.maxLength
   });
-  if (!title || normalizeComparable(title) === normalizeComparable(params.issue.title)) {
+  if (!title || normalizeComparable2(title) === normalizeComparable2(params.issue.title)) {
     return false;
   }
   await params.gateway.updateIssueTitle(params.issue.number, title);
   params.issue.title = title;
-  core10.info(`Updated issue #${params.issue.number} title to "${title}".`);
+  core11.info(`Updated issue #${params.issue.number} title to "${title}".`);
   return true;
 }
 
@@ -44512,7 +45097,7 @@ async function resolveIssueAutoProcessingCutoff(params) {
     const stored = (await params.gateway.getRepositoryVariable(AUTO_PROCESSING_CUTOFF_VARIABLE))?.trim();
     if (stored) {
       if (Number.isNaN(Date.parse(stored))) {
-        core11.warning(
+        core12.warning(
           `Repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE} contains an invalid date string: ${stored}. Ignore automatic cutoff.`
         );
         return void 0;
@@ -44520,7 +45105,7 @@ async function resolveIssueAutoProcessingCutoff(params) {
       return stored;
     }
   } catch (error48) {
-    core11.warning(
+    core12.warning(
       `Unable to read repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}. Ignore automatic cutoff: ${String(error48)}`
     );
     return void 0;
@@ -44528,11 +45113,11 @@ async function resolveIssueAutoProcessingCutoff(params) {
   const activationTimestamp = params.trigger === "issue_opened" ? params.issue.createdAt : (/* @__PURE__ */ new Date()).toISOString();
   try {
     await params.gateway.upsertRepositoryVariable(AUTO_PROCESSING_CUTOFF_VARIABLE, activationTimestamp);
-    core11.info(
+    core12.info(
       `Initialized automatic issue cutoff at ${activationTimestamp} in repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}.`
     );
   } catch (error48) {
-    core11.warning(
+    core12.warning(
       `Unable to initialize repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}. Ignore automatic cutoff: ${String(error48)}`
     );
     return void 0;
@@ -44577,7 +45162,7 @@ async function runIssueWorkflow(params) {
     config: params.config,
     gateway: params.gateway
   })) {
-    core11.info(
+    core12.info(
       `Skip automatic processing for issue #${params.issue.number}: created at ${params.issue.createdAt} is earlier than the automatic cutoff or the hardcoded legacy cutoff ${LEGACY_ISSUE_HARDCODED_CUTOFF}.`
     );
     return;
@@ -44600,7 +45185,7 @@ ${params.issue.body}`, params.config.runtime);
     });
   }
   if (shouldRunValidation(params.trigger) && validation.executed && !validation.valid) {
-    core11.info("Issue failed template validation. Skip duplicate detection and AI help.");
+    core12.info("Issue failed template validation. Skip duplicate detection and AI help.");
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -44751,12 +45336,14 @@ ${params.issue.body}`, params.config.runtime);
     templateKey: validation.template?.key ?? validation.parsed.marker
   });
   const aiBody = await generateIssueAiHelp({
+    workspace: params.workspace ?? process.env.GITHUB_WORKSPACE ?? process.cwd(),
     issue: {
       ...params.issue,
       labels: [...effectiveLabels]
     },
     parsed: validation.parsed,
     config: params.config.issues.aiHelp,
+    codeContextConfig: params.config.issues.codeContext,
     commentMode,
     repositoryContext,
     relatedIssues: similarIssues,
@@ -44867,6 +45454,7 @@ async function runIssueCommentCommand(params) {
   try {
     if (params.command.command === "refresh") {
       await runIssueWorkflow({
+        workspace: params.workspace,
         issue: params.command.issue,
         trigger: "command_refresh",
         config: params.config,
@@ -44897,9 +45485,9 @@ async function runIssueCommentCommand(params) {
 async function run() {
   try {
     const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
-    const configPath = core12.getInput("config-path") || ".github/repo-bot.yml";
-    const overridesJson = core12.getInput("config-overrides-json");
-    const dryRun = core12.getBooleanInput("dry-run", { required: false });
+    const configPath = core13.getInput("config-path") || ".github/repo-bot.yml";
+    const overridesJson = core13.getInput("config-overrides-json");
+    const dryRun = core13.getBooleanInput("dry-run", { required: false });
     const config2 = await loadRepoBotConfig({
       workspace,
       configPath,
@@ -44911,14 +45499,14 @@ async function run() {
       throw new Error("Missing REPO_BOT_GITHUB_TOKEN or GITHUB_TOKEN.");
     }
     if (process.env.REPO_BOT_GITHUB_TOKEN?.trim()) {
-      core12.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
+      core13.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
     }
     const gateway = new OctokitGitHubGateway(token, config2.runtime.dryRun);
     const provider = tryCreateProvider(config2.providers.openAiCompatible);
     const issueComment = await gateway.getIssueCommentContext();
     if (issueComment) {
       if (issueComment.commentAuthorType.toLowerCase() === "bot") {
-        core12.info("Ignore an issue comment created or edited by a bot.");
+        core13.info("Ignore an issue comment created or edited by a bot.");
         return;
       }
       const command = parseIssueCommentCommand({
@@ -44926,21 +45514,21 @@ async function run() {
         mentions: config2.issues.commands.mentions
       });
       if (!command) {
-        core12.info("Current issue comment does not contain a supported bot command.");
+        core13.info("Current issue comment does not contain a supported bot command.");
         return;
       }
       if (!isIssueCommentCommandEnabled({
         command,
         config: config2.issues.commands
       })) {
-        core12.info(`Issue command /${command.command} is disabled or unsupported.`);
+        core13.info(`Issue command /${command.command} is disabled or unsupported.`);
         return;
       }
       if (!canExecuteIssueCommentCommand({
         command,
         config: config2.issues.commands
       })) {
-        core12.info(`Ignore issue command /${command.command} due to access restrictions.`);
+        core13.info(`Ignore issue command /${command.command} due to access restrictions.`);
         return;
       }
       await runIssueCommentCommand({
@@ -44950,33 +45538,34 @@ async function run() {
         gateway,
         provider
       });
-      core12.info(`Repo Bot completed command /${command.command} for issue #${command.issue.number}.`);
+      core13.info(`Repo Bot completed command /${command.command} for issue #${command.issue.number}.`);
       return;
     }
     const issue2 = await gateway.getIssueContext();
     if (!issue2) {
-      core12.info("Current event is not a plain issue event. Nothing to do.");
+      core13.info("Current event is not a plain issue event. Nothing to do.");
       return;
     }
     if (issue2.actorType?.toLowerCase() === "bot") {
-      core12.info(`Ignore issue action "${issue2.action}" created by a bot.`);
+      core13.info(`Ignore issue action "${issue2.action}" created by a bot.`);
       return;
     }
     const trigger = resolveIssueWorkflowTrigger(issue2.action);
     if (!trigger) {
-      core12.info(`Current issue action "${issue2.action}" is not handled.`);
+      core13.info(`Current issue action "${issue2.action}" is not handled.`);
       return;
     }
     await runIssueWorkflow({
+      workspace,
       issue: issue2,
       trigger,
       config: config2,
       gateway,
       provider
     });
-    core12.info(`Repo Bot completed for issue #${issue2.number}.`);
+    core13.info(`Repo Bot completed for issue #${issue2.number}.`);
   } catch (error48) {
-    core12.setFailed(error48 instanceof Error ? error48.message : String(error48));
+    core13.setFailed(error48 instanceof Error ? error48.message : String(error48));
   }
 }
 void run();

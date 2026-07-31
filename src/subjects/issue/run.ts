@@ -144,6 +144,7 @@ function shouldRunAi(trigger: IssueWorkflowTrigger): boolean {
 }
 
 export async function runIssueWorkflow(params: {
+  workspace?: string;
   issue: IssueContext;
   trigger: IssueWorkflowTrigger;
   config: RepoBotConfig;
@@ -349,12 +350,14 @@ export async function runIssueWorkflow(params: {
   });
 
   const aiBody = await generateIssueAiHelp({
+    workspace: params.workspace ?? process.env.GITHUB_WORKSPACE ?? process.cwd(),
     issue: {
       ...params.issue,
       labels: [...effectiveLabels]
     },
     parsed: validation.parsed,
     config: params.config.issues.aiHelp,
+    codeContextConfig: params.config.issues.codeContext,
     commentMode,
     repositoryContext,
     relatedIssues: similarIssues,

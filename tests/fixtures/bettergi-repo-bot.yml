@@ -1,39 +1,23 @@
+# Snapshot of babalae/better-genshin-impact@b550fee177f172b0d0a404aa5114a0d5b867b294
+# .github/repo-bot.yml, used to protect existing @v1 consumers from schema regressions.
 runtime:
   languageMode: auto
   dryRun: false
 
 providers:
   openAiCompatible:
-    enabled: false
+    enabled: true
     baseUrl: https://api.openai.com/v1
     model: gpt-5.4
-    apiStyle: auto
+    apiStyle: responses
     timeoutMs: 30000
 
 issues:
   autoProcessing:
     skipCreatedBefore: auto
-  titleGeneration:
-    enabled: true
-    maxLength: 100
-    detectMismatch: true
-    mismatchConfidence: 0.9
-    placeholderTitles:
-      - bug
-      - feature
-      - suggestion
-      - question
-      - feedback
-      - issue
-      - 问题
-      - 反馈
-      - 建议
-      - 标题
-      - 请填写标题
-      - 请简要描述问题
   validation:
     enabled: true
-    fallbackTemplateKey: bug
+    fallbackTemplateKey: normal
     commentAnchor: issue-bot:validation
     templates:
       - key: bug
@@ -45,13 +29,20 @@ issues:
         requiredSections:
           - id: environment
             aliases:
-              - Environment
+              - 系统环境
+              - System Environment
+          - id: version
+            aliases:
+              - BetterGI 版本号
+              - BetterGI Version
+          - id: description
+            aliases:
+              - 问题描述
+              - Description of the issue
           - id: steps
             aliases:
-              - Steps to Reproduce
-          - id: expected
-            aliases:
-              - Expected Behavior
+              - 复现步骤
+              - Reproduction steps
         labels:
           whenValid:
             - BUG
@@ -64,12 +55,34 @@ issues:
           titlePrefixes:
             - "[feature]"
         requiredSections:
-          - id: summary
+          - id: request
             aliases:
-              - Summary
-          - id: motivation
+              - 功能请求
+              - Feature Request
+          - id: scenario
             aliases:
-              - Motivation
+              - 使用场景
+              - Use Case
+        labels:
+          whenValid:
+            - 功能建议
+          whenInvalid:
+            - 需要更多信息
+      - key: suggestion
+        detect:
+          markers:
+            - suggestion
+          titlePrefixes:
+            - "[suggestion]"
+        requiredSections:
+          - id: suggestion
+            aliases:
+              - 建议内容
+              - Suggestion
+          - id: benefit
+            aliases:
+              - 预期收益
+              - Expected Benefit
         labels:
           whenValid:
             - 功能建议
@@ -82,12 +95,33 @@ issues:
           titlePrefixes:
             - "[question]"
         requiredSections:
-          - id: summary
+          - id: question
             aliases:
-              - Question
+              - 问题描述
+              - Problem Description
+          - id: tried
+            aliases:
+              - 已尝试内容
+              - What I Tried
         labels:
           whenValid:
             - 问题咨询
+          whenInvalid:
+            - 需要更多信息
+      - key: normal
+        detect:
+          markers:
+            - normal
+          titlePrefixes:
+            - "[feedback]"
+            - "[normal]"
+        requiredSections:
+          - id: description
+            aliases:
+              - 描述
+              - Description
+        labels:
+          whenValid: []
           whenInvalid:
             - 需要更多信息
     duplicateDetection:
@@ -103,7 +137,7 @@ issues:
         highConfidence: 0.93
         reviewMin: 0.82
       similarityComment:
-        enabled: true
+        enabled: false
         commentAnchor: issue-bot:similar-issues
         minScore: 0.3
         maxCandidates: 3
@@ -116,60 +150,47 @@ issues:
       - 问题咨询
       - 需要更多信息
       - 重复
-      - 需要 AI 分析
     definitions:
       BUG:
         color: d73a4a
-        description: 缺陷反馈。
+        description: 程序存在缺陷或异常行为。
       功能建议:
         color: a2eeef
-        description: 功能建议或改进请求。
+        description: 新功能建议或现有功能改进。
       问题咨询:
-        color: 7057ff
-        description: 使用问题或咨询。
-      需要更多信息:
-        color: fbca04
-        description: Issue 缺少必要信息。
+        color: d876e3
+        description: 使用问题、求助或咨询。
       重复:
         color: cfd3d7
         description: 已存在相同或高度相似的问题。
-      需要 AI 分析:
-        color: 0e8a16
-        description: 已满足 AI 辅助分析条件。
-    keywordRules:
-      - keywords:
-          - crash
-        labels:
-          - 需要 AI 分析
-        fields:
-          - title
-          - body
-        caseSensitive: false
+    keywordRules: []
     aiClassification:
       enabled: false
       maxLabels: 3
       minConfidence: 0.65
       include: []
       exclude:
+        - BUG
+        - 功能请求
         - 重复
-      prompt: 优先选择和具体功能模块、子系统或使用场景直接相关的标签，避免只选择流程状态标签。
+        - 不会修复
+        - 使用问题
+        - 需要帮助
+        - 已完成
+        - 未解决
+        - 待确认
+        - P0
+        - P1
+        - 需要文档
+        - 优化点
+        - 急急急
+      prompt: 优先给 BetterGI Issue 选择能反映具体功能模块、子系统或使用场景的标签，例如一条龙、调度器、脚本、设置项、地图追踪；避免只选择宽泛的流程或状态标签。
       sourceRepository:
         owner: babalae
         repo: better-genshin-impact
-  codeContext:
-    source: workspace
-    includeInAiHelp: false
-    includeInFix: true
-    indexPath: ""
-    indexRoot: ""
-    categorySectionAliases: []
-    nameSectionAliases: []
-    pathSectionAliases: []
-    categoryRoots: {}
   aiHelp:
-    enabled: false
-    triggerLabels:
-      - 需要 AI 分析
+    enabled: true
+    triggerLabels: []
     commentAnchor: issue-bot:ai
     projectContext:
       enabled: true
@@ -181,21 +202,22 @@ issues:
         aliases:
           - BGI
           - Better Genshin Impact
-        summary: Desktop automation assistant for Genshin Impact.
+        summary: BetterGI is a desktop automation assistant for Genshin Impact.
         techStack:
           - C#
           - WPF
           - .NET
   commands:
-    enabled: false
+    enabled: true
     mentions:
       - "@bot"
+      - "@bettergi-repo-bot"
     access: collaborators
     fix:
-      enabled: false
+      enabled: true
       commentAnchor: issue-bot:fix
     refresh:
-      enabled: false
+      enabled: true
 
 pullRequests:
   review:

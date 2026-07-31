@@ -75,6 +75,20 @@
 | `issues.labeling.aiClassification.sourceRepository.owner` | `REPO_BOT_ISSUES_LABELING_AI_CLASSIFICATION_SOURCE_REPOSITORY_OWNER` | 字符串 |
 | `issues.labeling.aiClassification.sourceRepository.repo` | `REPO_BOT_ISSUES_LABELING_AI_CLASSIFICATION_SOURCE_REPOSITORY_REPO` | 字符串 |
 
+## Code Context
+
+| 配置字段 | 环境变量 | 类型 |
+| --- | --- | --- |
+| `issues.codeContext.source` | `REPO_BOT_ISSUES_CODE_CONTEXT_SOURCE` | 字符串 |
+| `issues.codeContext.includeInAiHelp` | `REPO_BOT_ISSUES_CODE_CONTEXT_INCLUDE_IN_AI_HELP` | 布尔值 |
+| `issues.codeContext.includeInFix` | `REPO_BOT_ISSUES_CODE_CONTEXT_INCLUDE_IN_FIX` | 布尔值 |
+| `issues.codeContext.indexPath` | `REPO_BOT_ISSUES_CODE_CONTEXT_INDEX_PATH` | 字符串 |
+| `issues.codeContext.indexRoot` | `REPO_BOT_ISSUES_CODE_CONTEXT_INDEX_ROOT` | 字符串 |
+| `issues.codeContext.categorySectionAliases` | `REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_SECTION_ALIASES` | JSON 数组 |
+| `issues.codeContext.nameSectionAliases` | `REPO_BOT_ISSUES_CODE_CONTEXT_NAME_SECTION_ALIASES` | JSON 数组 |
+| `issues.codeContext.pathSectionAliases` | `REPO_BOT_ISSUES_CODE_CONTEXT_PATH_SECTION_ALIASES` | JSON 数组 |
+| `issues.codeContext.categoryRoots` | `REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_ROOTS` | JSON 对象 |
+
 ## AI Help
 
 | 配置字段 | 环境变量 | 类型 |
