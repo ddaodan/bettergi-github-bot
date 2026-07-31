@@ -72,6 +72,7 @@ jobs:
       REPO_BOT_GITHUB_APP_PRIVATE_KEY: ${{ secrets.REPO_BOT_GITHUB_APP_PRIVATE_KEY }}
     with:
       config-path: .github/repo-bot.yml
+      checkout-mode: full
       config-overrides-json: ${{ vars.REPO_BOT_CONFIG_OVERRIDES_JSON }}
       ai-enabled: ${{ vars.REPO_BOT_AI_ENABLED }}
       ai-base-url: ${{ vars.REPO_BOT_AI_BASE_URL }}
@@ -123,6 +124,10 @@ issues:
     definitions: {}
     aiClassification:
       enabled: false
+  codeContext:
+    source: workspace
+    includeInAiHelp: false
+    includeInFix: true
   aiHelp:
     enabled: false
     triggerLabels: []
@@ -149,6 +154,8 @@ issues:
 - `REPO_BOT_GITHUB_APP_PRIVATE_KEY`：GitHub App 私钥。
 
 配置覆盖优先级为：YAML < `config-overrides-json` 输入 < `REPO_BOT_CONFIG_OVERRIDES_JSON` 兼容变量 < 独立 `REPO_BOT_*` 配置变量 < `dry-run` 输入。
+
+可复用工作流的 `checkout-mode` 默认为 `full`，因此现有 `@v1` 使用方无需修改。只依赖 `.github/repo-bot.yml` 且将 `issues.codeContext.source` 设为 `github` 的大型仓库，可以改为 `config-only`，此时 caller checkout 只拉取配置文件。
 
 ## 行为说明
 
@@ -225,6 +232,38 @@ issues:
           - C#
           - WPF
           - .NET
+```
+
+### 按需读取源码上下文
+
+`issues.codeContext` 控制 AI 帮助和 `@bot /fix` 如何获取相关源码：
+
+- `source: workspace` 保持原有行为，从 caller checkout 中查找相关文本文件。
+- `source: github` 使用当前仓库的 GitHub API 按需读取。Bot 优先采用 Issue 中的显式仓库路径；未填写时，可从 `indexPath` 指向的 JSON 索引按脚本目录名、展示名、版本和分类定位。
+- 唯一定位后最多读取 8 个相关文本文件；自动 AI 在无法定位时会降级继续，`@bot /fix` 会列出歧义候选并要求补充准确路径。
+- 路径必须位于 `categoryRoots` 允许的根目录下，越界路径、疑似二进制文件、敏感路径及包含密钥等敏感内容的文件都会被跳过。
+
+脚本索引仓库示例：
+
+```yml
+issues:
+  codeContext:
+    source: github
+    includeInAiHelp: true
+    includeInFix: true
+    indexPath: repo.json
+    indexRoot: repo
+    categorySectionAliases:
+      - 涉及范围
+    nameSectionAliases:
+      - 相关脚本名称与版本
+    pathSectionAliases:
+      - 脚本链接或仓库路径
+    categoryRoots:
+      JS 脚本:
+        - repo/js
+      地图追踪:
+        - repo/pathing
 ```
 
 ### OpenAI-compatible Provider

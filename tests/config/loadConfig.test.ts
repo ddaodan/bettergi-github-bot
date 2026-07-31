@@ -62,6 +62,17 @@ describe("loadRepoBotConfig", () => {
     expect(config.issues.commands.mentions).toEqual(["@bot"]);
     expect(config.issues.commands.fix.commentAnchor).toBe("issue-bot:fix");
     expect(config.issues.autoProcessing.skipCreatedBefore).toBe("");
+    expect(config.issues.codeContext).toEqual({
+      source: "workspace",
+      includeInAiHelp: false,
+      includeInFix: true,
+      indexPath: "",
+      indexRoot: "",
+      categorySectionAliases: [],
+      nameSectionAliases: [],
+      pathSectionAliases: [],
+      categoryRoots: {}
+    });
     expect(config.issues.titleGeneration.enabled).toBe(true);
     expect(config.issues.titleGeneration.detectMismatch).toBe(true);
     expect(config.issues.titleGeneration.maxLength).toBe(100);
@@ -87,6 +98,10 @@ describe("loadRepoBotConfig", () => {
       REPO_BOT_ISSUES_TITLE_GENERATION_MAX_LENGTH: "72",
       REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_THRESHOLDS_REVIEW_MIN: "0.75",
       REPO_BOT_ISSUES_LABELING_MANAGED: '["BUG","重复"]',
+      REPO_BOT_ISSUES_CODE_CONTEXT_SOURCE: "github",
+      REPO_BOT_ISSUES_CODE_CONTEXT_INCLUDE_IN_AI_HELP: "true",
+      REPO_BOT_ISSUES_CODE_CONTEXT_NAME_SECTION_ALIASES: '["相关脚本名称与版本"]',
+      REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_ROOTS: '{"JS 脚本":["repo/js"]}',
       REPO_BOT_ISSUES_AI_HELP_PROJECT_CONTEXT_PROFILE_ALIASES: '["BGI"]',
       REPO_BOT_ISSUES_COMMANDS_REFRESH_ENABLED: "true",
       REPO_BOT_PULL_REQUESTS_REVIEW_ENABLED: "true",
@@ -119,6 +134,10 @@ describe("loadRepoBotConfig", () => {
       expect(config.issues.titleGeneration.maxLength).toBe(72);
       expect(config.issues.validation.duplicateDetection.thresholds.reviewMin).toBe(0.75);
       expect(config.issues.labeling.managed).toEqual(["BUG", "重复"]);
+      expect(config.issues.codeContext.source).toBe("github");
+      expect(config.issues.codeContext.includeInAiHelp).toBe(true);
+      expect(config.issues.codeContext.nameSectionAliases).toEqual(["相关脚本名称与版本"]);
+      expect(config.issues.codeContext.categoryRoots).toEqual({ "JS 脚本": ["repo/js"] });
       expect(config.issues.aiHelp.projectContext.profile.aliases).toEqual(["BGI"]);
       expect(config.issues.commands.refresh.enabled).toBe(true);
       expect(config.pullRequests.review.enabled).toBe(true);
@@ -147,8 +166,33 @@ describe("loadRepoBotConfig", () => {
     expect(new Set(names).size).toBe(names.length);
     expect(new Set(paths).size).toBe(paths.length);
     expect(names).toContain("REPO_BOT_AI_MODEL");
+    expect(names).toContain("REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_ROOTS");
     expect(names).toContain("REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_THRESHOLDS_REVIEW_MIN");
     expect(names).toContain("REPO_BOT_PULL_REQUESTS_SUMMARY_ENABLED");
+  });
+
+  it("keeps the current BetterGI @v1 configuration backward compatible", async () => {
+    const config = await loadRepoBotConfig({
+      workspace: process.cwd(),
+      configPath: "tests/fixtures/bettergi-repo-bot.yml",
+      overridesJson: "",
+      dryRunInput: false
+    });
+
+    expect(config.issues.validation.templates).toHaveLength(5);
+    expect(config.issues.aiHelp.enabled).toBe(true);
+    expect(config.issues.commands.fix.enabled).toBe(true);
+    expect(config.issues.codeContext).toEqual({
+      source: "workspace",
+      includeInAiHelp: false,
+      includeInFix: true,
+      indexPath: "",
+      indexRoot: "",
+      categorySectionAliases: [],
+      nameSectionAliases: [],
+      pathSectionAliases: [],
+      categoryRoots: {}
+    });
   });
 
   it("accepts auto skipCreatedBefore mode", async () => {

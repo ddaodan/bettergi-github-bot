@@ -951,7 +951,8 @@ export class OpenAiCompatibleProvider {
     issue: IssueContext,
     parsed: ParsedIssue,
     repositoryContext: RepositoryAiContext,
-    commentMode: CommentMode
+    commentMode: CommentMode,
+    codeContext?: RepositoryCodeContext
   ): Promise<AiHelpResult> {
     const templateKey = repositoryContext.templateKey ?? "unknown";
     const { allowed: allowedImages, skipped: skippedImages } = partitionIssueImagesForAi(parsed.images);
@@ -970,6 +971,8 @@ export class OpenAiCompatibleProvider {
         text: [
           "You are a GitHub issue assistant for the current repository.",
           "Treat the provided repository context as the ground truth for the current project.",
+          "When repository code context is provided, use it as supporting evidence and keep conclusions aligned with the listed target paths and excerpts.",
+          "If code resolution is ambiguous or unavailable, state the uncertainty and ask for an exact repository path instead of guessing.",
           "Assume the issue is about this repository unless the issue clearly points to an external dependency or upstream project.",
           "Do not ask the user to provide the current repository link, repository name, or project identity again.",
           "If issue images are attached, use them as supporting evidence for the current repository issue.",
@@ -985,6 +988,7 @@ export class OpenAiCompatibleProvider {
         role: "user",
         text: JSON.stringify({
           repositoryContext,
+          codeContext,
           issueType: templateKey,
           issue: {
             title: issue.title,

@@ -93,6 +93,18 @@ const projectContextSchema = z.object({
   }))
 });
 
+const issueCodeContextSchema = z.object({
+  source: z.enum(["workspace", "github"]).default("workspace"),
+  includeInAiHelp: z.boolean().default(false),
+  includeInFix: z.boolean().default(true),
+  indexPath: z.string().default(""),
+  indexRoot: z.string().default(""),
+  categorySectionAliases: z.array(z.string().min(1)).default([]),
+  nameSectionAliases: z.array(z.string().min(1)).default([]),
+  pathSectionAliases: z.array(z.string().min(1)).default([]),
+  categoryRoots: z.record(z.string().min(1), z.array(z.string().min(1)).min(1)).default({})
+});
+
 const issueCommandsSchema = z.object({
   enabled: z.boolean().default(false),
   mentions: z.array(z.string().min(1)).min(1).default(["@bot"]),
@@ -287,6 +299,17 @@ export const repoBotConfigSchema = z.object({
         }
       }
     })),
+    codeContext: issueCodeContextSchema.default(() => ({
+      source: "workspace" as const,
+      includeInAiHelp: false,
+      includeInFix: true,
+      indexPath: "",
+      indexRoot: "",
+      categorySectionAliases: [],
+      nameSectionAliases: [],
+      pathSectionAliases: [],
+      categoryRoots: {}
+    })),
     aiHelp: z.object({
       enabled: z.boolean().default(false),
       triggerLabels: z.array(z.string().min(1)).default([]),
@@ -398,6 +421,17 @@ export const repoBotConfigSchema = z.object({
           repo: ""
         }
       }
+    },
+    codeContext: {
+      source: "workspace" as const,
+      includeInAiHelp: false,
+      includeInFix: true,
+      indexPath: "",
+      indexRoot: "",
+      categorySectionAliases: [],
+      nameSectionAliases: [],
+      pathSectionAliases: [],
+      categoryRoots: {}
     },
     aiHelp: {
       enabled: false,

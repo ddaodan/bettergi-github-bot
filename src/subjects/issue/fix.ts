@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 
 import { sanitizeFixSuggestionForComment } from "../../core/aiSafety.js";
-import type { CommentMode, IssueContext, RepoBotConfig } from "../../core/types.js";
+import type { CommentMode, IssueContext, RepoBotConfig, RepositoryCodeContext } from "../../core/types.js";
 import { upsertAnchoredComment } from "../../github/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
 import { renderFixStatusComment, renderFixSuggestionComment } from "../../i18n/comments.js";
@@ -120,12 +120,61 @@ export async function runIssueFixCommand(params: {
     config: params.config.issues.aiHelp.projectContext,
     templateKey: validation.template?.key ?? validation.parsed.marker
   });
-  const codeContext = await collectRepositoryCodeContext({
-    workspace: params.workspace,
-    issue: params.issue,
-    parsed: validation.parsed,
-    repositoryContext
-  });
+  const codeContext: RepositoryCodeContext = params.config.issues.codeContext.includeInFix
+    ? await collectRepositoryCodeContext({
+      workspace: params.workspace,
+      issue: params.issue,
+      parsed: validation.parsed,
+      repositoryContext,
+      config: params.config.issues.codeContext,
+      gateway: params.gateway
+    })
+    : {
+      files: [],
+      fallbackUsed: true
+    };
+
+  if (
+    params.config.issues.codeContext.includeInFix
+    && params.config.issues.codeContext.source === "github"
+    && codeContext.resolution?.status !== "resolved"
+  ) {
+    const candidates = codeContext.resolution?.candidatePaths ?? [];
+    const candidateTextZh = candidates.length > 0
+      ? " 候选路径：" + candidates.map((candidate) => '"' + candidate + '"').join("、") + "。"
+      : "";
+    const candidateTextEn = candidates.length > 0
+      ? " Candidate paths: " + candidates.map((candidate) => '"' + candidate + '"').join(", ") + "."
+      : "";
+    await updateFixStatusComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      config: params.config,
+      mode: commentMode,
+      titleZh: "AI 修复建议",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "无法唯一定位需要分析的脚本源码。请在 Issue 的“脚本链接或仓库路径”中填写准确路径后重试。" + candidateTextZh,
+      messageEn: "The target script source could not be resolved uniquely. Add the exact path to the issue's repository-path field, then retry." + candidateTextEn
+    });
+    return "rejected";
+  }
+  if (
+    params.config.issues.codeContext.includeInFix
+    && params.config.issues.codeContext.source === "github"
+    && codeContext.files.length === 0
+  ) {
+    await updateFixStatusComment({
+      gateway: params.gateway,
+      issueNumber: params.issue.number,
+      config: params.config,
+      mode: commentMode,
+      titleZh: "AI 修复建议",
+      titleEn: "AI Fix Suggestion",
+      messageZh: "已定位相关仓库路径，但未读取到可安全分析的文本源码。请确认路径指向脚本目录或源码文件后重试。",
+      messageEn: "The repository path was resolved, but no safe text source files could be read. Confirm that the path points to the script directory or a source file, then retry."
+    });
+    return "rejected";
+  }
   const parsed = await enrichIssueWithTextAttachments({
     issueNumber: params.issue.number,
     parsed: validation.parsed,

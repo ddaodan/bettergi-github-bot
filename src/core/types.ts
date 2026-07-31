@@ -104,6 +104,18 @@ export interface ProjectContextConfig {
   profile: ProjectProfile;
 }
 
+export interface IssueCodeContextConfig {
+  source: "workspace" | "github";
+  includeInAiHelp: boolean;
+  includeInFix: boolean;
+  indexPath: string;
+  indexRoot: string;
+  categorySectionAliases: string[];
+  nameSectionAliases: string[];
+  pathSectionAliases: string[];
+  categoryRoots: Record<string, string[]>;
+}
+
 export interface AiHelpConfig {
   enabled: boolean;
   triggerLabels: string[];
@@ -163,6 +175,7 @@ export interface RepoBotConfig {
     titleGeneration: IssueTitleGenerationConfig;
     validation: ValidationConfig;
     labeling: LabelingConfig;
+    codeContext: IssueCodeContextConfig;
     aiHelp: AiHelpConfig;
     commands: IssueCommandsConfig;
   };
@@ -329,9 +342,31 @@ export interface RepositoryCodeContextFile {
   excerpt: string;
 }
 
+export interface RepositoryCodeContextTarget {
+  path: string;
+  name: string;
+  version?: string;
+  author?: string;
+  description?: string;
+}
+
+export type RepositoryCodeContextResolutionStatus =
+  | "resolved"
+  | "ambiguous"
+  | "not_found"
+  | "unavailable";
+
+export interface RepositoryCodeContextResolution {
+  status: RepositoryCodeContextResolutionStatus;
+  query: string;
+  candidatePaths: string[];
+}
+
 export interface RepositoryCodeContext {
   files: RepositoryCodeContextFile[];
   fallbackUsed: boolean;
+  targets?: RepositoryCodeContextTarget[];
+  resolution?: RepositoryCodeContextResolution;
 }
 
 export interface FixSuggestionResult {

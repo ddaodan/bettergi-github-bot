@@ -3,9 +3,11 @@ import * as core from "@actions/core";
 import { sanitizeAiHelpResultForComment } from "../../core/aiSafety.js";
 import type {
   CommentMode,
+  IssueCodeContextConfig,
   IssueContext,
   ParsedIssue,
   RepoBotConfig,
+  RepositoryCodeContext,
   RepositoryAiContext,
   SimilarIssueCandidate
 } from "../../core/types.js";
@@ -13,11 +15,14 @@ import { renderAiHelpComment } from "../../i18n/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
 import { enrichIssueWithTextAttachments } from "./attachments.js";
+import { collectRepositoryCodeContext } from "./codeContext.js";
 
 export async function generateIssueAiHelp(params: {
+  workspace: string;
   issue: IssueContext;
   parsed: ParsedIssue;
   config: RepoBotConfig["issues"]["aiHelp"];
+  codeContextConfig: IssueCodeContextConfig;
   commentMode: CommentMode;
   repositoryContext: RepositoryAiContext;
   relatedIssues?: SimilarIssueCandidate[];
@@ -47,11 +52,23 @@ export async function generateIssueAiHelp(params: {
       parsed: params.parsed,
       gateway: params.gateway
     });
+    let codeContext: RepositoryCodeContext | undefined;
+    if (params.codeContextConfig.includeInAiHelp) {
+      codeContext = await collectRepositoryCodeContext({
+        workspace: params.workspace,
+        issue: params.issue,
+        parsed,
+        repositoryContext: params.repositoryContext,
+        config: params.codeContextConfig,
+        gateway: params.gateway
+      });
+    }
     const help = await params.provider.generateHelp(
       params.issue,
       parsed,
       params.repositoryContext,
-      params.commentMode
+      params.commentMode,
+      codeContext
     );
     const sanitizedHelp = sanitizeAiHelpResultForComment({
       help,
@@ -59,6 +76,7 @@ export async function generateIssueAiHelp(params: {
       blockedTexts: [
         params.issue.body,
         JSON.stringify(params.repositoryContext),
+        ...(codeContext ? [JSON.stringify(codeContext)] : []),
         ...parsed.textAttachments.map((attachment) => attachment.content)
       ]
     });

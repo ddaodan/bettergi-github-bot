@@ -293,6 +293,105 @@ describe("runIssueWorkflow", () => {
     expect(gateway.comments.some((comment) => comment.body.includes("issue-bot:similar-issues"))).toBe(false);
   });
 
+  it("passes GitHub-hosted script source context to automatic AI help", async () => {
+    const config = createConfig();
+    config.issues.aiHelp.enabled = true;
+    config.issues.aiHelp.triggerLabels = [];
+    config.issues.codeContext = {
+      source: "github",
+      includeInAiHelp: true,
+      includeInFix: true,
+      indexPath: "repo.json",
+      indexRoot: "repo",
+      categorySectionAliases: ["涉及范围"],
+      nameSectionAliases: ["相关脚本名称与版本"],
+      pathSectionAliases: ["脚本链接或仓库路径"],
+      categoryRoots: {
+        "JS 脚本": ["repo/js"]
+      }
+    };
+    const issue = createIssue({
+      owner: "babalae",
+      repo: "bettergi-scripts-list",
+      title: "[bug] 莉奈娅挖矿脚本运行异常",
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "运行莉奈娅挖矿脚本",
+        "",
+        "## Expected Behavior",
+        "脚本正常结束",
+        "",
+        "## 涉及范围",
+        "JS 脚本",
+        "",
+        "## 相关脚本名称与版本",
+        "莉奈娅挖矿一条龙 0.2.5"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+    gateway.repositoryTextFiles.set("repo.json", JSON.stringify({
+      indexes: [{
+        name: "js",
+        type: "directory",
+        children: [{
+          name: "LinneaMining",
+          type: "directory",
+          version: "0.2.5",
+          description: "莉奈娅挖矿一条龙~|~不分矿种，稳定刷新即挖"
+        }]
+      }]
+    }));
+    gateway.repositoryDirectories.set("repo/js/LinneaMining", [
+      { path: "repo/js/LinneaMining/main.js", name: "main.js", type: "file", size: 40, sha: "1" }
+    ]);
+    gateway.repositoryTextFiles.set(
+      "repo/js/LinneaMining/main.js",
+      "export function runMiningRoute() { return true; }"
+    );
+    let capturedCodeContext: unknown;
+    const provider = {
+      async generateHelp(
+        _issue: unknown,
+        _parsed: unknown,
+        _repositoryContext: unknown,
+        _commentMode: unknown,
+        codeContext: unknown
+      ) {
+        capturedCodeContext = codeContext;
+        return {
+          summary: "脚本运行异常。",
+          possibleCauses: ["脚本入口逻辑异常"],
+          troubleshootingSteps: ["检查脚本入口"],
+          missingInformation: []
+        };
+      },
+      async reviewDuplicate() {
+        return { duplicate: false, confidence: 0.2, reason: "" };
+      }
+    } as unknown as OpenAiCompatibleProvider;
+
+    await runIssueWorkflow({
+      workspace: "",
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway,
+      provider
+    });
+
+    expect(capturedCodeContext).toMatchObject({
+      resolution: { status: "resolved" },
+      targets: [{ path: "repo/js/LinneaMining" }],
+      files: [{ path: "repo/js/LinneaMining/main.js" }]
+    });
+    expect(gateway.comments[0]?.body).toContain("issue-bot:ai");
+  });
+
   it("adds AI-classified labels from an external repository catalog", async () => {
     const config = createConfig();
     config.issues.labeling.aiClassification.enabled = true;

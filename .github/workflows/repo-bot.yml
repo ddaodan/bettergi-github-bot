@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: .github/repo-bot.yml
+      checkout-mode:
+        description: "Caller checkout mode: full or config-only."
+        required: false
+        type: string
+        default: full
       config-overrides-json:
         description: JSON string used to override the YAML configuration.
         required: false
@@ -92,7 +97,14 @@ jobs:
             echo "use_app=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Checkout caller repository
+        if: ${{ inputs.checkout-mode != 'config-only' }}
         uses: actions/checkout@v4
+      - name: Checkout caller configuration only
+        if: ${{ inputs.checkout-mode == 'config-only' }}
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: ${{ inputs.config-path }}
+          sparse-checkout-cone-mode: false
       - name: Checkout repo bot repository
         uses: actions/checkout@v4
         with:
@@ -156,6 +168,15 @@ jobs:
           REPO_BOT_ISSUES_LABELING_AI_CLASSIFICATION_PROMPT: ${{ vars.REPO_BOT_ISSUES_LABELING_AI_CLASSIFICATION_PROMPT }}
           REPO_BOT_ISSUES_LABELING_AI_CLASSIFICATION_SOURCE_REPOSITORY_OWNER: ${{ vars.REPO_BOT_ISSUES_LABELING_AI_CLASSIFICATION_SOURCE_REPOSITORY_OWNER }}
           REPO_BOT_ISSUES_LABELING_AI_CLASSIFICATION_SOURCE_REPOSITORY_REPO: ${{ vars.REPO_BOT_ISSUES_LABELING_AI_CLASSIFICATION_SOURCE_REPOSITORY_REPO }}
+          REPO_BOT_ISSUES_CODE_CONTEXT_SOURCE: ${{ vars.REPO_BOT_ISSUES_CODE_CONTEXT_SOURCE }}
+          REPO_BOT_ISSUES_CODE_CONTEXT_INCLUDE_IN_AI_HELP: ${{ vars.REPO_BOT_ISSUES_CODE_CONTEXT_INCLUDE_IN_AI_HELP }}
+          REPO_BOT_ISSUES_CODE_CONTEXT_INCLUDE_IN_FIX: ${{ vars.REPO_BOT_ISSUES_CODE_CONTEXT_INCLUDE_IN_FIX }}
+          REPO_BOT_ISSUES_CODE_CONTEXT_INDEX_PATH: ${{ vars.REPO_BOT_ISSUES_CODE_CONTEXT_INDEX_PATH }}
+          REPO_BOT_ISSUES_CODE_CONTEXT_INDEX_ROOT: ${{ vars.REPO_BOT_ISSUES_CODE_CONTEXT_INDEX_ROOT }}
+          REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_SECTION_ALIASES: ${{ vars.REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_SECTION_ALIASES }}
+          REPO_BOT_ISSUES_CODE_CONTEXT_NAME_SECTION_ALIASES: ${{ vars.REPO_BOT_ISSUES_CODE_CONTEXT_NAME_SECTION_ALIASES }}
+          REPO_BOT_ISSUES_CODE_CONTEXT_PATH_SECTION_ALIASES: ${{ vars.REPO_BOT_ISSUES_CODE_CONTEXT_PATH_SECTION_ALIASES }}
+          REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_ROOTS: ${{ vars.REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_ROOTS }}
           REPO_BOT_ISSUES_AI_HELP_ENABLED: ${{ vars.REPO_BOT_ISSUES_AI_HELP_ENABLED }}
           REPO_BOT_ISSUES_AI_HELP_TRIGGER_LABELS: ${{ vars.REPO_BOT_ISSUES_AI_HELP_TRIGGER_LABELS }}
           REPO_BOT_ISSUES_AI_HELP_COMMENT_ANCHOR: ${{ vars.REPO_BOT_ISSUES_AI_HELP_COMMENT_ANCHOR }}

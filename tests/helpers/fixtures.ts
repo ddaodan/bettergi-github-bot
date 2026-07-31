@@ -8,7 +8,12 @@ import type {
   RepoBotConfig,
   RepositoryMetadata
 } from "../../src/core/types.js";
-import type { CommentRecord, GitHubGateway, SearchIssueParams } from "../../src/github/gateway.js";
+import type {
+  CommentRecord,
+  GitHubGateway,
+  RepositoryContentEntry,
+  SearchIssueParams
+} from "../../src/github/gateway.js";
 
 export function createConfig(): RepoBotConfig {
   const definitions: Record<string, LabelDefinition> = {
@@ -124,6 +129,17 @@ export function createConfig(): RepoBotConfig {
           }
         }
       },
+      codeContext: {
+        source: "workspace",
+        includeInAiHelp: false,
+        includeInFix: true,
+        indexPath: "",
+        indexRoot: "",
+        categorySectionAliases: [],
+        nameSectionAliases: [],
+        pathSectionAliases: [],
+        categoryRoots: {}
+      },
       aiHelp: {
         enabled: false,
         triggerLabels: ["需要 AI 分析"],
@@ -238,6 +254,10 @@ export class FakeGateway implements GitHubGateway {
 
   public readonly textAttachments = new Map<string, IssueTextAttachment>();
 
+  public readonly repositoryDirectories = new Map<string, RepositoryContentEntry[]>();
+
+  public readonly repositoryTextFiles = new Map<string, string>();
+
   private commentId = 1;
 
   public constructor(
@@ -278,6 +298,18 @@ export class FakeGateway implements GitHubGateway {
 
   public async getRepositoryReadme(): Promise<string | undefined> {
     return this.repositoryReadme;
+  }
+
+  public async getRepositoryDirectory(path: string): Promise<RepositoryContentEntry[]> {
+    return this.repositoryDirectories.get(path) ?? [];
+  }
+
+  public async getRepositoryTextFile(path: string, maxBytes: number): Promise<string | undefined> {
+    const content = this.repositoryTextFiles.get(path);
+    if (content === undefined || Buffer.byteLength(content, "utf8") > maxBytes) {
+      return undefined;
+    }
+    return content;
   }
 
   public async getRepositoryLabels(params?: { owner?: string; repo?: string }): Promise<Record<string, LabelDefinition>> {

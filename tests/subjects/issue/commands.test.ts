@@ -329,6 +329,159 @@ describe("issue comment commands", () => {
     expect(unavailableGateway.commentReactions.at(-1)?.reaction).toBe("confused");
   });
 
+  it("requires an exact script path for ambiguous GitHub code context in /fix", async () => {
+    const config = createConfig();
+    config.issues.commands.enabled = true;
+    config.issues.commands.fix.enabled = true;
+    config.issues.codeContext = {
+      source: "github",
+      includeInAiHelp: true,
+      includeInFix: true,
+      indexPath: "repo.json",
+      indexRoot: "repo",
+      categorySectionAliases: ["涉及范围"],
+      nameSectionAliases: ["相关脚本名称与版本"],
+      pathSectionAliases: ["脚本链接或仓库路径"],
+      categoryRoots: { "JS 脚本": ["repo/js"] }
+    };
+    const issue = createIssue({
+      owner: "babalae",
+      repo: "bettergi-scripts-list",
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "运行同名脚本后失败",
+        "",
+        "## Expected Behavior",
+        "脚本正常结束",
+        "",
+        "## 涉及范围",
+        "JS 脚本",
+        "",
+        "## 相关脚本名称与版本",
+        "同名脚本"
+      ].join("\n")
+    });
+    const comment = createIssueCommentContext({ issue, commentBody: "@bot /fix" });
+    const gateway = new FakeGateway(issue, [], undefined, undefined, comment);
+    gateway.repositoryTextFiles.set("repo.json", JSON.stringify({
+      indexes: [{
+        name: "js",
+        type: "directory",
+        children: [
+          { name: "First", type: "directory", description: "同名脚本~|~一" },
+          { name: "Second", type: "directory", description: "同名脚本~|~二" }
+        ]
+      }]
+    }));
+    const provider = {
+      async generateFixSuggestion() {
+        throw new Error("must not be called");
+      }
+    } as unknown as OpenAiCompatibleProvider;
+
+    await runIssueCommentCommand({
+      workspace: "",
+      command: parseIssueCommentCommand({
+        comment,
+        mentions: config.issues.commands.mentions
+      })!,
+      config,
+      gateway,
+      provider
+    });
+
+    expect(gateway.comments[0]?.body).toContain("无法唯一定位");
+    expect(gateway.comments[0]?.body).toContain("repo/js/First");
+    expect(gateway.comments[0]?.body).toContain("repo/js/Second");
+    expect(gateway.commentReactions.at(-1)?.reaction).toBe("confused");
+  });
+
+  it("passes resolved GitHub script files to /fix", async () => {
+    const config = createConfig();
+    config.issues.commands.enabled = true;
+    config.issues.commands.fix.enabled = true;
+    config.issues.codeContext = {
+      source: "github",
+      includeInAiHelp: true,
+      includeInFix: true,
+      indexPath: "repo.json",
+      indexRoot: "repo",
+      categorySectionAliases: ["涉及范围"],
+      nameSectionAliases: ["相关脚本名称与版本"],
+      pathSectionAliases: ["脚本链接或仓库路径"],
+      categoryRoots: { "JS 脚本": ["repo/js"] }
+    };
+    const issue = createIssue({
+      owner: "babalae",
+      repo: "bettergi-scripts-list",
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "运行脚本后失败",
+        "",
+        "## Expected Behavior",
+        "脚本正常结束",
+        "",
+        "## 脚本链接或仓库路径",
+        "repo/js/LinneaMining"
+      ].join("\n")
+    });
+    const comment = createIssueCommentContext({ issue, commentBody: "@bot /fix" });
+    const gateway = new FakeGateway(issue, [], undefined, undefined, comment);
+    gateway.repositoryDirectories.set("repo/js/LinneaMining", [
+      { path: "repo/js/LinneaMining/main.js", name: "main.js", type: "file", size: 40, sha: "1" }
+    ]);
+    gateway.repositoryTextFiles.set(
+      "repo/js/LinneaMining/main.js",
+      "export function runMiningRoute() { return true; }"
+    );
+    let capturedCodeContext: unknown;
+    const provider = {
+      async generateFixSuggestion(
+        _issue: unknown,
+        _parsed: unknown,
+        _repositoryContext: unknown,
+        codeContext: unknown
+      ) {
+        capturedCodeContext = codeContext;
+        return {
+          summary: "修复脚本入口。",
+          candidateFiles: [],
+          changeSuggestions: ["调整入口逻辑。"],
+          patchDraft: "@@\n- old\n+ new",
+          verificationSteps: ["重新运行脚本。"],
+          risks: []
+        };
+      }
+    } as unknown as OpenAiCompatibleProvider;
+
+    await runIssueCommentCommand({
+      workspace: "",
+      command: parseIssueCommentCommand({
+        comment,
+        mentions: config.issues.commands.mentions
+      })!,
+      config,
+      gateway,
+      provider
+    });
+
+    expect(capturedCodeContext).toMatchObject({
+      resolution: { status: "resolved" },
+      files: [{ path: "repo/js/LinneaMining/main.js" }]
+    });
+    expect(gateway.commentReactions.at(-1)?.reaction).toBe("rocket");
+  });
+
   it("renders bilingual /fix comments for english issues", async () => {
     const config = createConfig();
     config.issues.commands.enabled = true;

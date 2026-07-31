@@ -48,6 +48,14 @@ export interface RepositoryLabelCatalogParams {
   repo?: string;
 }
 
+export interface RepositoryContentEntry {
+  path: string;
+  name: string;
+  type: "file" | "dir";
+  size: number;
+  sha: string;
+}
+
 export interface GitHubGateway {
   getIssueContext(): Promise<IssueContext | undefined>;
   getIssueCommentContext(): Promise<IssueCommentContext | undefined>;
@@ -55,6 +63,8 @@ export interface GitHubGateway {
   upsertRepositoryVariable(name: string, value: string): Promise<void>;
   getRepositoryMetadata(): Promise<RepositoryMetadata>;
   getRepositoryReadme(): Promise<string | undefined>;
+  getRepositoryDirectory(path: string): Promise<RepositoryContentEntry[]>;
+  getRepositoryTextFile(path: string, maxBytes: number): Promise<string | undefined>;
   getRepositoryLabels(params?: RepositoryLabelCatalogParams): Promise<Record<string, LabelDefinition>>;
   getIssueTextAttachments(references: IssueAttachmentReference[]): Promise<IssueTextAttachment[]>;
   listComments(issueNumber: number): Promise<CommentRecord[]>;
@@ -262,6 +272,73 @@ export class OctokitGitHubGateway implements GitHubGateway {
       }
       core.info(`Skip repository README context: ${String(error)}`);
       return undefined;
+    }
+  }
+
+  public async getRepositoryDirectory(path: string): Promise<RepositoryContentEntry[]> {
+    try {
+      const response = await this.octokit.rest.repos.getContent({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        path
+      });
+
+      if (!Array.isArray(response.data)) {
+        return [];
+      }
+
+      return response.data
+        .filter((entry): entry is typeof entry & { type: "file" | "dir" } => (
+          entry.type === "file" || entry.type === "dir"
+        ))
+        .map((entry) => ({
+          path: entry.path,
+          name: entry.name,
+          type: entry.type,
+          size: entry.size,
+          sha: entry.sha
+        }));
+    } catch (error) {
+      const status = typeof error === "object" && error !== null && "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
+      if (status === 404) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  public async getRepositoryTextFile(path: string, maxBytes: number): Promise<string | undefined> {
+    try {
+      const response = await this.octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        path,
+        headers: {
+          accept: "application/vnd.github.raw+json"
+        }
+      });
+
+      const content = typeof response.data === "string"
+        ? response.data
+        : Buffer.isBuffer(response.data)
+          ? response.data.toString("utf8")
+          : undefined;
+
+      if (content === undefined || Buffer.byteLength(content, "utf8") > maxBytes) {
+        return undefined;
+      }
+
+      return content;
+    } catch (error) {
+      const status = typeof error === "object" && error !== null && "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
+      if (status === 404) {
+        return undefined;
+      }
+      throw error;
     }
   }
 
