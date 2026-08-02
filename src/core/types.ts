@@ -221,6 +221,7 @@ export interface RepositorySubjectContext {
 export interface IssueContext extends RepositorySubjectContext {
   kind: "issue";
   isSubIssue?: boolean;
+  parentRelation?: "sub_issue" | "comment_derived";
   parentIssueUrl?: string | null;
   parentIssue?: IssueParentContext;
 }

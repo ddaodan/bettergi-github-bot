@@ -12,10 +12,27 @@ import type {
   RepositoryMetadata
 } from "../core/types.js";
 import { downloadGitHubTextAttachment, isSupportedTextAttachment } from "./attachments.js";
-import { createIssueBodyExcerpt, isSameRepository, parseGitHubIssueUrl } from "./issueRelations.js";
+import {
+  createIssueBodyExcerpt,
+  isSameRepository,
+  matchesCommentDerivedIssueBody,
+  parseCommentDerivedIssueBody,
+  parseGitHubIssueUrl
+} from "./issueRelations.js";
 
 type IssueLabelValue = {
   name?: string | null;
+};
+
+type GitHubIssueValue = {
+  number?: number;
+  title?: string | null;
+  body?: string | null;
+  state?: string;
+  labels?: Array<string | IssueLabelValue>;
+  html_url?: string | null;
+  url?: string | null;
+  pull_request?: unknown;
 };
 
 const MAX_GITHUB_SEARCH_QUERY_LENGTH = 256;
@@ -181,6 +198,35 @@ async function fetchPublicRepositoryLabels(owner: string, repo: string): Promise
   return definitions;
 }
 
+function createParentIssueContext(
+  parent: GitHubIssueValue,
+  coordinates: NonNullable<ReturnType<typeof parseGitHubIssueUrl>>,
+  maxBodyChars: number
+): IssueParentContext {
+  return {
+    owner: coordinates.owner,
+    repo: coordinates.repo,
+    number: parent.number ?? coordinates.number,
+    title: parent.title ?? "",
+    bodyExcerpt: createIssueBodyExcerpt(parent.body ?? "", maxBodyChars),
+    state: parent.state === "closed" ? "closed" : "open",
+    labels: (parent.labels ?? [])
+      .map((label) => typeof label === "string" ? label : label.name ?? "")
+      .filter(Boolean),
+    htmlUrl: parent.html_url ?? coordinates.htmlUrl
+  };
+}
+
+function clearParentRelation(issue: IssueContext): IssueContext {
+  return {
+    ...issue,
+    isSubIssue: false,
+    parentRelation: undefined,
+    parentIssueUrl: undefined,
+    parentIssue: undefined
+  };
+}
+
 export class OctokitGitHubGateway implements GitHubGateway {
   private readonly octokit;
 
@@ -199,20 +245,113 @@ export class OctokitGitHubGateway implements GitHubGateway {
     return toIssueCommentContext();
   }
 
+  private async resolveCommentDerivedIssue(
+    issue: IssueContext,
+    options: IssueParentLookupOptions
+  ): Promise<IssueContext | undefined> {
+    const reference = parseCommentDerivedIssueBody(issue.body);
+    if (!reference) {
+      return undefined;
+    }
+    if (!isSameRepository(reference, issue.owner, issue.repo)) {
+      core.info(
+        `Ignore cross-repository comment source ${reference.owner}/${reference.repo}#${reference.number}.`
+      );
+      return undefined;
+    }
+
+    try {
+      const commentResponse = await this.octokit.request(
+        "GET /repos/{owner}/{repo}/issues/comments/{comment_id}",
+        {
+          owner: issue.owner,
+          repo: issue.repo,
+          comment_id: reference.commentId,
+          headers: {
+            "X-GitHub-Api-Version": "2026-03-10"
+          }
+        }
+      );
+      const comment = commentResponse.data as unknown as {
+        id?: number;
+        body?: string | null;
+        issue_url?: string | null;
+        html_url?: string | null;
+        user?: { login?: string | null } | null;
+      };
+      const commentIssue = parseGitHubIssueUrl(comment.issue_url);
+      const commentPermalink = comment.html_url?.trim().toLowerCase();
+      if (
+        comment.id !== reference.commentId
+        || !commentIssue
+        || !isSameRepository(commentIssue, issue.owner, issue.repo)
+        || commentIssue.number !== reference.number
+        || comment.user?.login?.toLowerCase() !== reference.authorLogin.toLowerCase()
+        || commentPermalink !== reference.commentUrl.toLowerCase()
+        || !matchesCommentDerivedIssueBody(reference, comment.body ?? "")
+      ) {
+        core.info(`Ignore unverified comment-derived marker in issue #${issue.number}.`);
+        return undefined;
+      }
+
+      const sourceResponse = await this.octokit.request(
+        "GET /repos/{owner}/{repo}/issues/{issue_number}",
+        {
+          owner: issue.owner,
+          repo: issue.repo,
+          issue_number: reference.number,
+          headers: {
+            "X-GitHub-Api-Version": "2026-03-10"
+          }
+        }
+      );
+      const source = sourceResponse.data as unknown as GitHubIssueValue;
+      const coordinates = parseGitHubIssueUrl(source.url)
+        ?? parseGitHubIssueUrl(source.html_url)
+        ?? reference;
+      if (
+        source.pull_request
+        || (source.number !== undefined && source.number !== reference.number)
+        || coordinates.number !== reference.number
+        || !isSameRepository(coordinates, issue.owner, issue.repo)
+      ) {
+        core.info(`Ignore invalid comment source issue for #${issue.number}.`);
+        return undefined;
+      }
+
+      core.info(
+        `Recognized issue #${issue.number} as comment-derived from #${coordinates.number}.`
+      );
+      return {
+        ...issue,
+        isSubIssue: true,
+        parentRelation: "comment_derived",
+        parentIssueUrl: coordinates.apiUrl,
+        parentIssue: options.includeContext
+          ? createParentIssueContext(source, coordinates, options.maxBodyChars)
+          : undefined
+      };
+    } catch (error) {
+      core.warning(
+        `Unable to verify comment-derived issue #${issue.number}. Treat it as a normal issue: ${String(error)}`
+      );
+      return undefined;
+    }
+  }
+
   public async resolveIssueParent(
     issue: IssueContext,
     options: IssueParentLookupOptions
   ): Promise<IssueContext> {
+    const resolveDerivedOrNormal = async (): Promise<IssueContext> => {
+      return await this.resolveCommentDerivedIssue(issue, options) ?? clearParentRelation(issue);
+    };
     const hintedParent = parseGitHubIssueUrl(issue.parentIssueUrl);
     if (hintedParent && !isSameRepository(hintedParent, issue.owner, issue.repo)) {
       core.info(
         `Ignore cross-repository parent issue ${hintedParent.owner}/${hintedParent.repo}#${hintedParent.number}.`
       );
-      return {
-        ...issue,
-        isSubIssue: false,
-        parentIssue: undefined
-      };
+      return resolveDerivedOrNormal();
     }
 
     try {
@@ -227,15 +366,7 @@ export class OctokitGitHubGateway implements GitHubGateway {
           }
         }
       );
-      const parent = response.data as unknown as {
-        number?: number;
-        title?: string | null;
-        body?: string | null;
-        state?: string;
-        labels?: Array<string | IssueLabelValue>;
-        html_url?: string | null;
-        url?: string | null;
-      };
+      const parent = response.data as unknown as GitHubIssueValue;
       const coordinates = parseGitHubIssueUrl(parent.url)
         ?? parseGitHubIssueUrl(parent.html_url)
         ?? hintedParent;
@@ -248,34 +379,17 @@ export class OctokitGitHubGateway implements GitHubGateway {
         } else {
           core.warning(`Unable to parse the parent issue URL for issue #${issue.number}.`);
         }
-        return {
-          ...issue,
-          isSubIssue: false,
-          parentIssue: undefined
-        };
-      }
-
-      let parentIssue: IssueParentContext | undefined;
-      if (options.includeContext) {
-        parentIssue = {
-          owner: coordinates.owner,
-          repo: coordinates.repo,
-          number: parent.number ?? coordinates.number,
-          title: parent.title ?? "",
-          bodyExcerpt: createIssueBodyExcerpt(parent.body ?? "", options.maxBodyChars),
-          state: parent.state === "closed" ? "closed" : "open",
-          labels: (parent.labels ?? [])
-            .map((label) => typeof label === "string" ? label : label.name ?? "")
-            .filter(Boolean),
-          htmlUrl: parent.html_url ?? coordinates.htmlUrl
-        };
+        return resolveDerivedOrNormal();
       }
 
       return {
         ...issue,
         isSubIssue: true,
+        parentRelation: "sub_issue",
         parentIssueUrl: coordinates.apiUrl,
-        parentIssue
+        parentIssue: options.includeContext
+          ? createParentIssueContext(parent, coordinates, options.maxBodyChars)
+          : undefined
       };
     } catch (error) {
       const status = typeof error === "object" && error !== null && "status" in error
@@ -283,16 +397,13 @@ export class OctokitGitHubGateway implements GitHubGateway {
         : undefined;
       if (status === 404 || status === 410) {
         if (!hintedParent) {
-          return {
-            ...issue,
-            isSubIssue: false,
-            parentIssue: undefined
-          };
+          return resolveDerivedOrNormal();
         }
 
         return {
           ...issue,
           isSubIssue: true,
+          parentRelation: "sub_issue",
           parentIssueUrl: hintedParent.apiUrl,
           parentIssue: undefined
         };
@@ -303,14 +414,11 @@ export class OctokitGitHubGateway implements GitHubGateway {
         ? {
           ...issue,
           isSubIssue: true,
+          parentRelation: "sub_issue",
           parentIssueUrl: hintedParent.apiUrl,
           parentIssue: undefined
         }
-        : {
-          ...issue,
-          isSubIssue: false,
-          parentIssue: undefined
-        };
+        : resolveDerivedOrNormal();
     }
   }
 

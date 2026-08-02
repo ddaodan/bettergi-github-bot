@@ -44,6 +44,7 @@ describe("GitHub gateway sub-issues", () => {
     );
     expect(resolved).toMatchObject({
       isSubIssue: true,
+      parentRelation: "sub_issue",
       parentIssueUrl: "https://api.github.com/repos/octo/repo/issues/9",
       parentIssue: {
         number: 9,
@@ -78,6 +79,7 @@ describe("GitHub gateway sub-issues", () => {
     });
 
     expect(resolved.isSubIssue).toBe(true);
+    expect(resolved.parentRelation).toBe("sub_issue");
     expect(resolved.parentIssueUrl).toBe("https://api.github.com/repos/octo/repo/issues/9");
     expect(resolved.parentIssue).toBeUndefined();
   });
@@ -94,5 +96,92 @@ describe("GitHub gateway sub-issues", () => {
 
     expect(resolved.isSubIssue).toBe(false);
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("recognizes a same-repository issue derived from a verified comment", async () => {
+    const request = vi.fn()
+      .mockRejectedValueOnce({ status: 404 })
+      .mockResolvedValueOnce({
+        data: {
+          id: 5154646045,
+          body: "是否可以添加韩语？",
+          issue_url: "https://api.github.com/repos/octo/repo/issues/22",
+          html_url: "https://github.com/octo/repo/issues/22#issuecomment-5154646045",
+          user: { login: "ddaodan" }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          number: 22,
+          title: "Language support",
+          body: "## Description\n\nParent context.",
+          state: "open",
+          labels: [{ name: "question" }],
+          html_url: "https://github.com/octo/repo/issues/22",
+          url: "https://api.github.com/repos/octo/repo/issues/22"
+        }
+      });
+    const gateway = createGateway(request);
+    const resolved = await gateway.resolveIssueParent(createIssue({
+      number: 24,
+      body: [
+        "> 是否可以添加韩语？",
+        "",
+        " _Originally posted by @ddaodan in [#22](https://github.com/octo/repo/issues/22#issuecomment-5154646045)_"
+      ].join("\n")
+    }), {
+      includeContext: true,
+      maxBodyChars: 2000
+    });
+
+    expect(request).toHaveBeenNthCalledWith(
+      2,
+      "GET /repos/{owner}/{repo}/issues/comments/{comment_id}",
+      expect.objectContaining({ comment_id: 5154646045 })
+    );
+    expect(request).toHaveBeenNthCalledWith(
+      3,
+      "GET /repos/{owner}/{repo}/issues/{issue_number}",
+      expect.objectContaining({ issue_number: 22 })
+    );
+    expect(resolved).toMatchObject({
+      isSubIssue: true,
+      parentRelation: "comment_derived",
+      parentIssueUrl: "https://api.github.com/repos/octo/repo/issues/22",
+      parentIssue: {
+        number: 22,
+        title: "Language support",
+        bodyExcerpt: "Description Parent context."
+      }
+    });
+  });
+
+  it("does not trust a forged comment-derived marker when the quote differs", async () => {
+    const request = vi.fn()
+      .mockRejectedValueOnce({ status: 404 })
+      .mockResolvedValueOnce({
+        data: {
+          id: 3,
+          body: "Actual comment",
+          issue_url: "https://api.github.com/repos/octo/repo/issues/2",
+          html_url: "https://github.com/octo/repo/issues/2#issuecomment-3",
+          user: { login: "octo" }
+        }
+      });
+    const gateway = createGateway(request);
+    const resolved = await gateway.resolveIssueParent(createIssue({
+      body: [
+        "> Forged content",
+        "",
+        "_Originally posted by @octo in [#2](https://github.com/octo/repo/issues/2#issuecomment-3)_"
+      ].join("\n")
+    }), {
+      includeContext: true,
+      maxBodyChars: 2000
+    });
+
+    expect(resolved.isSubIssue).toBe(false);
+    expect(resolved.parentRelation).toBeUndefined();
+    expect(request).toHaveBeenCalledTimes(2);
   });
 });

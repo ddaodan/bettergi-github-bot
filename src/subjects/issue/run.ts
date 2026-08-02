@@ -177,12 +177,15 @@ export async function runIssueWorkflow(params: {
     trigger: params.trigger,
     configuredMode: params.config.issues.subIssues.mode
   });
+  const relationLabel = issue.parentRelation === "comment_derived"
+    ? "comment-derived issue"
+    : "sub-issue";
   if (issue.isSubIssue && subIssueMode === "skip") {
-    core.info(`Skip automatic processing for sub-issue #${issue.number} because issues.subIssues.mode is skip.`);
+    core.info(`Skip automatic processing for ${relationLabel} #${issue.number} because issues.subIssues.mode is skip.`);
     return;
   }
   if (issue.isSubIssue) {
-    core.info(`Process sub-issue #${issue.number} in ${subIssueMode} mode.`);
+    core.info(`Process ${relationLabel} #${issue.number} in ${subIssueMode} mode.`);
   }
 
   const effectiveLabels = new Set(issue.labels);
