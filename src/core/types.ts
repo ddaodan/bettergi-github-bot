@@ -144,6 +144,14 @@ export interface IssueAutoProcessingConfig {
   skipCreatedBefore: string;
 }
 
+export type SubIssueProcessingMode = "relaxed" | "skip" | "normal";
+
+export interface SubIssueConfig {
+  mode: SubIssueProcessingMode;
+  includeParentContext: boolean;
+  parentBodyMaxChars: number;
+}
+
 export interface IssueTitleGenerationConfig {
   enabled: boolean;
   maxLength: number;
@@ -172,6 +180,7 @@ export interface RepoBotConfig {
   };
   issues: {
     autoProcessing: IssueAutoProcessingConfig;
+    subIssues: SubIssueConfig;
     titleGeneration: IssueTitleGenerationConfig;
     validation: ValidationConfig;
     labeling: LabelingConfig;
@@ -211,6 +220,20 @@ export interface RepositorySubjectContext {
 
 export interface IssueContext extends RepositorySubjectContext {
   kind: "issue";
+  isSubIssue?: boolean;
+  parentIssueUrl?: string | null;
+  parentIssue?: IssueParentContext;
+}
+
+export interface IssueParentContext {
+  owner: string;
+  repo: string;
+  number: number;
+  title: string;
+  bodyExcerpt: string;
+  state: IssueState;
+  labels: string[];
+  htmlUrl: string;
 }
 
 export type IssueWorkflowTrigger =
@@ -303,6 +326,7 @@ export interface DuplicateCandidate {
   htmlUrl: string;
   createdAt: string;
   updatedAt: string;
+  parentIssueUrl?: string | null;
 }
 
 export interface SimilarIssueCandidate {

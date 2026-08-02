@@ -11,6 +11,7 @@ import type {
 import type {
   CommentRecord,
   GitHubGateway,
+  IssueParentLookupOptions,
   RepositoryContentEntry,
   SearchIssueParams
 } from "../../src/github/gateway.js";
@@ -40,6 +41,11 @@ export function createConfig(): RepoBotConfig {
     issues: {
       autoProcessing: {
         skipCreatedBefore: ""
+      },
+      subIssues: {
+        mode: "relaxed",
+        includeParentContext: true,
+        parentBodyMaxChars: 2000
       },
       titleGeneration: {
         enabled: true,
@@ -252,6 +258,8 @@ export class FakeGateway implements GitHubGateway {
 
   public readonly updatedTitles: string[] = [];
 
+  public readonly parentLookupOptions: IssueParentLookupOptions[] = [];
+
   public readonly textAttachments = new Map<string, IssueTextAttachment>();
 
   public readonly repositoryDirectories = new Map<string, RepositoryContentEntry[]>();
@@ -282,6 +290,14 @@ export class FakeGateway implements GitHubGateway {
 
   public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {
     return this.issueComment;
+  }
+
+  public async resolveIssueParent(
+    issue: IssueContext,
+    options: IssueParentLookupOptions
+  ): Promise<IssueContext> {
+    this.parentLookupOptions.push(options);
+    return issue;
   }
 
   public async getRepositoryVariable(name: string): Promise<string | undefined> {

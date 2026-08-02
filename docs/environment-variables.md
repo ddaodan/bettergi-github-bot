@@ -29,6 +29,9 @@
 | 配置字段 | 环境变量 | 类型 |
 | --- | --- | --- |
 | `issues.autoProcessing.skipCreatedBefore` | `REPO_BOT_ISSUES_AUTO_PROCESSING_SKIP_CREATED_BEFORE` | 字符串 |
+| `issues.subIssues.mode` | `REPO_BOT_ISSUES_SUB_ISSUES_MODE` | 字符串 |
+| `issues.subIssues.includeParentContext` | `REPO_BOT_ISSUES_SUB_ISSUES_INCLUDE_PARENT_CONTEXT` | 布尔值 |
+| `issues.subIssues.parentBodyMaxChars` | `REPO_BOT_ISSUES_SUB_ISSUES_PARENT_BODY_MAX_CHARS` | 数字 |
 | `issues.titleGeneration.enabled` | `REPO_BOT_ISSUES_TITLE_GENERATION_ENABLED` | 布尔值 |
 | `issues.titleGeneration.maxLength` | `REPO_BOT_ISSUES_TITLE_GENERATION_MAX_LENGTH` | 数字 |
 | `issues.titleGeneration.detectMismatch` | `REPO_BOT_ISSUES_TITLE_GENERATION_DETECT_MISMATCH` | 布尔值 |

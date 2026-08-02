@@ -75,6 +75,7 @@ export async function generateIssueAiHelp(params: {
       mode: params.commentMode,
       blockedTexts: [
         params.issue.body,
+        params.issue.parentIssue?.bodyExcerpt ?? "",
         JSON.stringify(params.repositoryContext),
         ...(codeContext ? [JSON.stringify(codeContext)] : []),
         ...parsed.textAttachments.map((attachment) => attachment.content)

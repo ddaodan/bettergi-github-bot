@@ -539,4 +539,35 @@ describe("issue comment commands", () => {
     expect(gateway.comments[0]?.body).toContain("Adjust the save path handling.");
     expect(gateway.comments[0]?.body).toContain("Normalize the config path before persisting.");
   });
+
+  it("keeps template validation as a prerequisite for sub-issue /fix", async () => {
+    const config = createConfig();
+    config.issues.commands.enabled = true;
+    config.issues.commands.fix.enabled = true;
+    const issue = createIssue({
+      isSubIssue: true,
+      title: "Short child task",
+      body: "Implement the child task without an issue form."
+    });
+    const comment = createIssueCommentContext({
+      issue,
+      commentBody: "@bot /fix"
+    });
+    const gateway = new FakeGateway(issue, [], undefined, undefined, comment);
+
+    await runIssueCommentCommand({
+      workspace: "",
+      command: parseIssueCommentCommand({
+        comment,
+        mentions: config.issues.commands.mentions
+      })!,
+      config,
+      gateway,
+      provider: {} as OpenAiCompatibleProvider
+    });
+
+    expect(gateway.comments[0]?.body).toContain("还未通过模板检查");
+    expect(gateway.parentLookupOptions).toHaveLength(0);
+    expect(gateway.commentReactions.at(-1)?.reaction).toBe("confused");
+  });
 });

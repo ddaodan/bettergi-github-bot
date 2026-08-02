@@ -1,6 +1,6 @@
 # Repo Bot
 
-一个可复用的 GitHub Repo Bot，用于在多个仓库中统一处理 Issue 模板检查、重复 Issue 检测、标签同步、AI 帮助回复和协作者指令。
+一个可复用的 GitHub Repo Bot，用于在多个仓库中统一处理 Issue 模板检查、Sub-issue、重复 Issue 检测、标签同步、AI 帮助回复和协作者指令。
 
 项目以 `JavaScript Action + 可复用 Workflow` 的形式交付。业务仓库通过 `uses: owner/repo/.github/workflows/repo-bot.yml@v1` 接入，中央仓库负责版本发布、配置约定和能力演进。
 
@@ -14,6 +14,7 @@
 - 标签同步：仅管理配置中声明的托管标签，不删除维护者手工添加的非托管标签。
 - AI 帮助回复：基于仓库上下文、README 摘要、Issue 内容和安全读取的文本附件生成精简建议。
 - 内容自动打标：可选启用 AI 从当前仓库或指定仓库的标签目录中挑选合适标签。
+- Sub-issue：识别同仓库父 Issue，默认跳过严格模板、自动标题和重复关闭，同时保留标签与 AI 分析。
 
 ### 协作者指令
 
@@ -105,6 +106,10 @@ providers:
 issues:
   autoProcessing:
     skipCreatedBefore: auto
+  subIssues:
+    mode: relaxed
+    includeParentContext: true
+    parentBodyMaxChars: 2000
   titleGeneration:
     enabled: true
     maxLength: 100
@@ -174,6 +179,18 @@ GitHub Actions 无法在事件产生前按评论作者过滤 `issue_comment`。�
 - Bot 首次自动运行时会写入一个精确到秒的 UTC 时间到仓库变量 `REPO_BOT_AUTO_PROCESSING_SKIP_CREATED_BEFORE`。
 - 激活时间之前创建的旧 Issue 不再因 `edited`、`reopened` 等自动事件触发主流程。
 - `@bot /refresh` 和 `@bot /fix` 这类显式指令不受影响。
+
+### Sub-issue
+
+`issues.subIssues` 默认使用 `relaxed`：
+
+- `relaxed`：不检查必填段落、不自动改标题、不执行重复检测或自动关闭；仍解析正文、同步标签并按现有触发条件生成 AI 帮助。
+- `skip`：忽略 `opened`、`edited`、`reopened` 自动流程；协作者显式执行 `@bot /refresh` 时按 `relaxed` 处理。
+- `normal`：与普通 Issue 执行相同完整流程，但重复检测会排除直接父 Issue 和直接子 Issue。
+- `includeParentContext: true` 时，AI 帮助、AI 标签分类和 `@bot /fix` 可读取父 Issue 的编号、标题、状态、标签及正文摘要；摘要长度由 `parentBodyMaxChars` 控制。
+- `@bot /fix` 始终保留现有模板前置校验，不会因 Sub-issue 身份自动放宽。
+
+当前版本只支持同仓库父 Issue。跨仓库父项会被忽略，不申请额外仓库权限。建立或解除父子关系本身不会立即启动当前纯 Actions 流程；后续编辑、重新打开或执行 `@bot /refresh` 时会重新识别。
 
 ### 自动标题
 
@@ -279,7 +296,7 @@ issues:
 ## 安全说明
 
 - Bot 不会把 GitHub Actions secrets、GitHub App 私钥或 AI API Key 直接注入到 AI prompt 中。
-- AI 帮助、重复检测 AI 复判、AI 标签分类和 `/fix` 都带有统一的 prompt injection 防护指令。
+- AI 帮助、重复检测 AI 复判、AI 标签分类和 `/fix` 都带有统一的 prompt injection 防护指令；父 Issue 摘要同样被视为不可信输入。
 - AI 生成评论在渲染前会做本地净化，默认拒绝转储系统提示词、原始仓库上下文、原始代码上下文和明显敏感内容。
 - `/fix` 会跳过常见敏感路径和敏感文本，例如 `.env`、`*.pem`、`appsettings*.json`、连接串、Token、私钥块等。
 - 非 GitHub 托管的外部图片不会再作为多模态输入发送给 AI provider。

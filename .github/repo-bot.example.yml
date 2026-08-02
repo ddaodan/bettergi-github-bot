@@ -13,6 +13,10 @@ providers:
 issues:
   autoProcessing:
     skipCreatedBefore: auto
+  subIssues:
+    mode: relaxed
+    includeParentContext: true
+    parentBodyMaxChars: 2000
   titleGeneration:
     enabled: true
     maxLength: 100

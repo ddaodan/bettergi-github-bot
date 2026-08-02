@@ -135,6 +135,12 @@ const issueAutoProcessingSchema = z.object({
     })
 });
 
+const subIssueSchema = z.object({
+  mode: z.enum(["relaxed", "skip", "normal"]).default("relaxed"),
+  includeParentContext: z.boolean().default(true),
+  parentBodyMaxChars: z.number().int().positive().max(20000).default(2000)
+});
+
 const issueTitleGenerationSchema = z.object({
   enabled: z.boolean().default(true),
   maxLength: z.number().int().min(20).max(200).default(100),
@@ -190,6 +196,11 @@ export const repoBotConfigSchema = z.object({
   issues: z.object({
     autoProcessing: issueAutoProcessingSchema.default(() => ({
       skipCreatedBefore: ""
+    })),
+    subIssues: subIssueSchema.default(() => ({
+      mode: "relaxed" as const,
+      includeParentContext: true,
+      parentBodyMaxChars: 2000
     })),
     titleGeneration: issueTitleGenerationSchema.default(() => ({
       enabled: true,
@@ -358,6 +369,11 @@ export const repoBotConfigSchema = z.object({
   }).default(() => ({
     autoProcessing: {
       skipCreatedBefore: ""
+    },
+    subIssues: {
+      mode: "relaxed" as const,
+      includeParentContext: true,
+      parentBodyMaxChars: 2000
     },
     titleGeneration: {
       enabled: true,

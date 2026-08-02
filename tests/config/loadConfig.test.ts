@@ -62,6 +62,11 @@ describe("loadRepoBotConfig", () => {
     expect(config.issues.commands.mentions).toEqual(["@bot"]);
     expect(config.issues.commands.fix.commentAnchor).toBe("issue-bot:fix");
     expect(config.issues.autoProcessing.skipCreatedBefore).toBe("");
+    expect(config.issues.subIssues).toEqual({
+      mode: "relaxed",
+      includeParentContext: true,
+      parentBodyMaxChars: 2000
+    });
     expect(config.issues.codeContext).toEqual({
       source: "workspace",
       includeInAiHelp: false,
@@ -95,6 +100,9 @@ describe("loadRepoBotConfig", () => {
 
     const environmentOverrides = {
       REPO_BOT_RUNTIME_LANGUAGE_MODE: "zh-en",
+      REPO_BOT_ISSUES_SUB_ISSUES_MODE: "normal",
+      REPO_BOT_ISSUES_SUB_ISSUES_INCLUDE_PARENT_CONTEXT: "false",
+      REPO_BOT_ISSUES_SUB_ISSUES_PARENT_BODY_MAX_CHARS: "1200",
       REPO_BOT_ISSUES_TITLE_GENERATION_MAX_LENGTH: "72",
       REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_THRESHOLDS_REVIEW_MIN: "0.75",
       REPO_BOT_ISSUES_LABELING_MANAGED: '["BUG","重复"]',
@@ -131,6 +139,11 @@ describe("loadRepoBotConfig", () => {
       });
 
       expect(config.runtime.languageMode).toBe("zh-en");
+      expect(config.issues.subIssues).toEqual({
+        mode: "normal",
+        includeParentContext: false,
+        parentBodyMaxChars: 1200
+      });
       expect(config.issues.titleGeneration.maxLength).toBe(72);
       expect(config.issues.validation.duplicateDetection.thresholds.reviewMin).toBe(0.75);
       expect(config.issues.labeling.managed).toEqual(["BUG", "重复"]);
@@ -166,6 +179,7 @@ describe("loadRepoBotConfig", () => {
     expect(new Set(names).size).toBe(names.length);
     expect(new Set(paths).size).toBe(paths.length);
     expect(names).toContain("REPO_BOT_AI_MODEL");
+    expect(names).toContain("REPO_BOT_ISSUES_SUB_ISSUES_MODE");
     expect(names).toContain("REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_ROOTS");
     expect(names).toContain("REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_THRESHOLDS_REVIEW_MIN");
     expect(names).toContain("REPO_BOT_PULL_REQUESTS_SUMMARY_ENABLED");
@@ -182,6 +196,7 @@ describe("loadRepoBotConfig", () => {
     expect(config.issues.validation.templates).toHaveLength(5);
     expect(config.issues.aiHelp.enabled).toBe(true);
     expect(config.issues.commands.fix.enabled).toBe(true);
+    expect(config.issues.subIssues.mode).toBe("relaxed");
     expect(config.issues.codeContext).toEqual({
       source: "workspace",
       includeInAiHelp: false,

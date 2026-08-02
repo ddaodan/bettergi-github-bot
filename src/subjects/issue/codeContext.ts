@@ -167,6 +167,8 @@ function buildKeywords(params: {
   const raw = [
     params.issue.title,
     params.issue.body,
+    params.issue.parentIssue?.title ?? "",
+    params.issue.parentIssue?.bodyExcerpt ?? "",
     ...Object.values(params.parsed.sections),
     params.repositoryContext.projectProfile.name,
     ...params.repositoryContext.projectProfile.aliases

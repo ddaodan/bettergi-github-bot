@@ -114,8 +114,12 @@ export async function runIssueFixCommand(params: {
     return "rejected";
   }
 
+  const issue = await params.gateway.resolveIssueParent(params.issue, {
+    includeContext: params.config.issues.subIssues.includeParentContext,
+    maxBodyChars: params.config.issues.subIssues.parentBodyMaxChars
+  });
   const repositoryContext = await resolveRepositoryAiContext({
-    issue: params.issue,
+    issue,
     gateway: params.gateway,
     config: params.config.issues.aiHelp.projectContext,
     templateKey: validation.template?.key ?? validation.parsed.marker
@@ -123,7 +127,7 @@ export async function runIssueFixCommand(params: {
   const codeContext: RepositoryCodeContext = params.config.issues.codeContext.includeInFix
     ? await collectRepositoryCodeContext({
       workspace: params.workspace,
-      issue: params.issue,
+      issue,
       parsed: validation.parsed,
       repositoryContext,
       config: params.config.issues.codeContext,
@@ -176,14 +180,14 @@ export async function runIssueFixCommand(params: {
     return "rejected";
   }
   const parsed = await enrichIssueWithTextAttachments({
-    issueNumber: params.issue.number,
+    issueNumber: issue.number,
     parsed: validation.parsed,
     gateway: params.gateway
   });
 
   try {
     const suggestion = await params.provider.generateFixSuggestion(
-      params.issue,
+      issue,
       parsed,
       repositoryContext,
       codeContext,
@@ -194,6 +198,7 @@ export async function runIssueFixCommand(params: {
       mode: commentMode,
       blockedTexts: [
         params.issue.body,
+        issue.parentIssue?.bodyExcerpt ?? "",
         repositoryContext.readmeExcerpt,
         JSON.stringify(repositoryContext),
         JSON.stringify(codeContext),

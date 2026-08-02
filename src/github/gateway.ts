@@ -6,11 +6,13 @@ import type {
   IssueAttachmentReference,
   IssueCommentContext,
   IssueContext,
+  IssueParentContext,
   IssueTextAttachment,
   LabelDefinition,
   RepositoryMetadata
 } from "../core/types.js";
 import { downloadGitHubTextAttachment, isSupportedTextAttachment } from "./attachments.js";
+import { createIssueBodyExcerpt, isSameRepository, parseGitHubIssueUrl } from "./issueRelations.js";
 
 type IssueLabelValue = {
   name?: string | null;
@@ -48,6 +50,11 @@ export interface RepositoryLabelCatalogParams {
   repo?: string;
 }
 
+export interface IssueParentLookupOptions {
+  includeContext: boolean;
+  maxBodyChars: number;
+}
+
 export interface RepositoryContentEntry {
   path: string;
   name: string;
@@ -59,6 +66,7 @@ export interface RepositoryContentEntry {
 export interface GitHubGateway {
   getIssueContext(): Promise<IssueContext | undefined>;
   getIssueCommentContext(): Promise<IssueCommentContext | undefined>;
+  resolveIssueParent(issue: IssueContext, options: IssueParentLookupOptions): Promise<IssueContext>;
   getRepositoryVariable(name: string): Promise<string | undefined>;
   upsertRepositoryVariable(name: string, value: string): Promise<void>;
   getRepositoryMetadata(): Promise<RepositoryMetadata>;
@@ -86,6 +94,10 @@ function toIssueContext(): IssueContext | undefined {
     return undefined;
   }
 
+  const parentIssueUrl = (issue as typeof issue & {
+    parent_issue_url?: string | null;
+  }).parent_issue_url;
+
   return {
     kind: "issue",
     owner: context.repo.owner,
@@ -100,7 +112,8 @@ function toIssueContext(): IssueContext | undefined {
     updatedAt: issue.updated_at ?? "",
     action: context.payload.action ?? "",
     actorLogin: context.payload.sender?.login ?? "",
-    actorType: context.payload.sender?.type ?? ""
+    actorType: context.payload.sender?.type ?? "",
+    parentIssueUrl
   };
 }
 
@@ -184,6 +197,121 @@ export class OctokitGitHubGateway implements GitHubGateway {
 
   public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {
     return toIssueCommentContext();
+  }
+
+  public async resolveIssueParent(
+    issue: IssueContext,
+    options: IssueParentLookupOptions
+  ): Promise<IssueContext> {
+    const hintedParent = parseGitHubIssueUrl(issue.parentIssueUrl);
+    if (hintedParent && !isSameRepository(hintedParent, issue.owner, issue.repo)) {
+      core.info(
+        `Ignore cross-repository parent issue ${hintedParent.owner}/${hintedParent.repo}#${hintedParent.number}.`
+      );
+      return {
+        ...issue,
+        isSubIssue: false,
+        parentIssue: undefined
+      };
+    }
+
+    try {
+      const response = await this.octokit.request(
+        "GET /repos/{owner}/{repo}/issues/{issue_number}/parent",
+        {
+          owner: issue.owner,
+          repo: issue.repo,
+          issue_number: issue.number,
+          headers: {
+            "X-GitHub-Api-Version": "2026-03-10"
+          }
+        }
+      );
+      const parent = response.data as unknown as {
+        number?: number;
+        title?: string | null;
+        body?: string | null;
+        state?: string;
+        labels?: Array<string | IssueLabelValue>;
+        html_url?: string | null;
+        url?: string | null;
+      };
+      const coordinates = parseGitHubIssueUrl(parent.url)
+        ?? parseGitHubIssueUrl(parent.html_url)
+        ?? hintedParent;
+
+      if (!coordinates || !isSameRepository(coordinates, issue.owner, issue.repo)) {
+        if (coordinates) {
+          core.info(
+            `Ignore cross-repository parent issue ${coordinates.owner}/${coordinates.repo}#${coordinates.number}.`
+          );
+        } else {
+          core.warning(`Unable to parse the parent issue URL for issue #${issue.number}.`);
+        }
+        return {
+          ...issue,
+          isSubIssue: false,
+          parentIssue: undefined
+        };
+      }
+
+      let parentIssue: IssueParentContext | undefined;
+      if (options.includeContext) {
+        parentIssue = {
+          owner: coordinates.owner,
+          repo: coordinates.repo,
+          number: parent.number ?? coordinates.number,
+          title: parent.title ?? "",
+          bodyExcerpt: createIssueBodyExcerpt(parent.body ?? "", options.maxBodyChars),
+          state: parent.state === "closed" ? "closed" : "open",
+          labels: (parent.labels ?? [])
+            .map((label) => typeof label === "string" ? label : label.name ?? "")
+            .filter(Boolean),
+          htmlUrl: parent.html_url ?? coordinates.htmlUrl
+        };
+      }
+
+      return {
+        ...issue,
+        isSubIssue: true,
+        parentIssueUrl: coordinates.apiUrl,
+        parentIssue
+      };
+    } catch (error) {
+      const status = typeof error === "object" && error !== null && "status" in error
+        ? (error as { status?: number }).status
+        : undefined;
+      if (status === 404 || status === 410) {
+        if (!hintedParent) {
+          return {
+            ...issue,
+            isSubIssue: false,
+            parentIssue: undefined
+          };
+        }
+
+        return {
+          ...issue,
+          isSubIssue: true,
+          parentIssueUrl: hintedParent.apiUrl,
+          parentIssue: undefined
+        };
+      }
+
+      core.warning(`Unable to resolve parent issue for #${issue.number}: ${String(error)}`);
+      return hintedParent
+        ? {
+          ...issue,
+          isSubIssue: true,
+          parentIssueUrl: hintedParent.apiUrl,
+          parentIssue: undefined
+        }
+        : {
+          ...issue,
+          isSubIssue: false,
+          parentIssue: undefined
+        };
+    }
   }
 
   public async getRepositoryVariable(name: string): Promise<string | undefined> {
@@ -621,7 +749,10 @@ export class OctokitGitHubGateway implements GitHubGateway {
           state: item.state as "open" | "closed",
           htmlUrl: item.html_url ?? "",
           createdAt: item.created_at ?? "",
-          updatedAt: item.updated_at ?? ""
+          updatedAt: item.updated_at ?? "",
+          parentIssueUrl: (item as typeof item & {
+            parent_issue_url?: string | null;
+          }).parent_issue_url
         }));
     } catch (error) {
       core.warning(`GitHub issue search failed. Falling back to recent repository issues: ${String(error)}`);
@@ -658,7 +789,10 @@ export class OctokitGitHubGateway implements GitHubGateway {
         state: issue.state as "open" | "closed",
         htmlUrl: issue.html_url ?? "",
         createdAt: issue.created_at ?? "",
-        updatedAt: issue.updated_at ?? ""
+        updatedAt: issue.updated_at ?? "",
+        parentIssueUrl: (issue as typeof issue & {
+          parent_issue_url?: string | null;
+        }).parent_issue_url
       });
 
       if (merged.size >= params.limit) {

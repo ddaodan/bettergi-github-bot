@@ -187,10 +187,9 @@ function scoreTemplateBySections(parsed: ParsedIssue, template: IssueTemplateCon
   return matched / template.requiredSections.length + matched / 1000;
 }
 
-export function matchTemplate(
+export function detectTemplate(
   parsed: ParsedIssue,
   templates: IssueTemplateConfig[],
-  fallbackTemplateKey?: string,
   title?: string
 ): IssueTemplateConfig | undefined {
   if (parsed.marker) {
@@ -219,6 +218,20 @@ export function matchTemplate(
 
   if (rankedTemplates.length > 0) {
     return rankedTemplates[0]?.template;
+  }
+
+  return undefined;
+}
+
+export function matchTemplate(
+  parsed: ParsedIssue,
+  templates: IssueTemplateConfig[],
+  fallbackTemplateKey?: string,
+  title?: string
+): IssueTemplateConfig | undefined {
+  const detected = detectTemplate(parsed, templates, title);
+  if (detected) {
+    return detected;
   }
 
   if (fallbackTemplateKey) {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { OpenAiCompatibleProvider } from "../../../src/providers/openaiCompatible/client.js";
 import { resolveIssueWorkflowTrigger, runIssueWorkflow } from "../../../src/subjects/issue/run.js";
@@ -708,5 +708,162 @@ describe("runIssueWorkflow", () => {
 
     expect(issue.labels).toContain("需要 AI 分析");
     expect(gateway.comments.some((comment) => comment.body.includes("AI Guidance"))).toBe(false);
+  });
+
+  it("processes sub-issues in relaxed mode without validation, title generation, or duplicate detection", async () => {
+    const config = createConfig();
+    const issue = createIssue({
+      isSubIssue: true,
+      parentIssueUrl: "https://api.github.com/repos/octo/repo/issues/9",
+      title: "[bug]",
+      body: "<!-- issue-template: bug -->\n\nShort child task.",
+      labels: ["重复"]
+    });
+    const gateway = new FakeGateway(issue, [
+      {
+        number: 9,
+        title: "Parent issue",
+        body: "Short child task.",
+        labels: [],
+        state: "open",
+        htmlUrl: "https://github.com/octo/repo/issues/9",
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z"
+      }
+    ]);
+    await gateway.createComment(issue.number, "<!-- issue-bot:validation -->\nOld validation failure.");
+    await gateway.createComment(issue.number, "<!-- issue-bot:similar-issues -->\nOld related issues.");
+    const suggestIssueTitle = vi.fn();
+    const provider = {
+      suggestIssueTitle
+    } as unknown as OpenAiCompatibleProvider;
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway,
+      provider
+    });
+
+    expect(issue.labels).toContain("BUG");
+    expect(issue.labels).toContain("重复");
+    expect(issue.labels).not.toContain("需要更多信息");
+    expect(gateway.searchRequests).toHaveLength(0);
+    expect(gateway.closedIssues).toHaveLength(0);
+    expect(gateway.comments).toHaveLength(0);
+    expect(gateway.deletedCommentIds).toHaveLength(2);
+    expect(suggestIssueTitle).not.toHaveBeenCalled();
+  });
+
+  it("skips automatic sub-issue processing but lets command refresh use relaxed mode", async () => {
+    const config = createConfig();
+    config.issues.subIssues.mode = "skip";
+    const issue = createIssue({
+      isSubIssue: true,
+      title: "[bug] Child task",
+      body: "<!-- issue-template: bug -->\n\nShort child task."
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+    expect(issue.labels).toEqual([]);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "command_refresh",
+      config,
+      gateway
+    });
+    expect(issue.labels).toContain("BUG");
+    expect(gateway.searchRequests).toHaveLength(0);
+  });
+
+  it("filters the direct parent from duplicate candidates in normal mode", async () => {
+    const config = createConfig();
+    config.issues.subIssues.mode = "normal";
+    const issue = createIssue({
+      isSubIssue: true,
+      parentIssueUrl: "https://api.github.com/repos/octo/repo/issues/9"
+    });
+    const gateway = new FakeGateway(issue, [
+      {
+        number: 9,
+        title: issue.title,
+        body: issue.body,
+        labels: [],
+        state: "open",
+        htmlUrl: "https://github.com/octo/repo/issues/9",
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z"
+      }
+    ]);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+
+    expect(gateway.searchRequests).toHaveLength(1);
+    expect(gateway.closedIssues).toHaveLength(0);
+    expect(issue.labels).toContain("BUG");
+  });
+
+  it("passes same-repository parent context to relaxed AI help", async () => {
+    const config = createConfig();
+    config.issues.aiHelp.enabled = true;
+    config.issues.aiHelp.triggerLabels = [];
+    const issue = createIssue({
+      isSubIssue: true,
+      title: "Implement the child task",
+      body: "Update the settings behavior.",
+      parentIssue: {
+        owner: "octo",
+        repo: "repo",
+        number: 9,
+        title: "Settings redesign",
+        bodyExcerpt: "The parent describes the complete settings redesign.",
+        state: "open",
+        labels: ["feature"],
+        htmlUrl: "https://github.com/octo/repo/issues/9"
+      }
+    });
+    const gateway = new FakeGateway(issue);
+    let capturedIssue: unknown;
+    const provider = {
+      async generateHelp(providerIssue: unknown) {
+        capturedIssue = providerIssue;
+        return {
+          summary: "",
+          possibleCauses: ["Use the parent scope as background."],
+          troubleshootingSteps: ["Implement only the child task."],
+          missingInformation: []
+        };
+      }
+    } as unknown as OpenAiCompatibleProvider;
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway,
+      provider
+    });
+
+    expect(capturedIssue).toMatchObject({
+      isSubIssue: true,
+      parentIssue: {
+        number: 9,
+        title: "Settings redesign"
+      }
+    });
+    expect(gateway.comments[0]?.body).toContain("issue-bot:ai");
   });
 });

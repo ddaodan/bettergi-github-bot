@@ -18,6 +18,11 @@ import { generateIssueAiHelp } from "./aiHelp.js";
 import { detectDuplicate } from "./duplicateDetection.js";
 import { computeManagedLabels } from "./labeling.js";
 import { resolveRepositoryAiContext } from "./projectContext.js";
+import {
+  createRelaxedSubIssueValidation,
+  isDirectIssueRelation,
+  resolveSubIssueProcessingMode
+} from "./subIssues.js";
 import { maybeUpdateIssueTitle } from "./titleGeneration.js";
 import { validateIssue } from "./validation.js";
 
@@ -163,19 +168,42 @@ export async function runIssueWorkflow(params: {
     return;
   }
 
-  const effectiveLabels = new Set(params.issue.labels);
-  const commentMode: CommentMode = detectCommentMode(`${params.issue.title}\n${params.issue.body}`, params.config.runtime);
-  const validation = validateIssue({
-    title: params.issue.title,
-    body: params.issue.body,
-    config: params.config.issues.validation,
-    commentMode
+  const issue = await params.gateway.resolveIssueParent(params.issue, {
+    includeContext: params.config.issues.subIssues.includeParentContext,
+    maxBodyChars: params.config.issues.subIssues.parentBodyMaxChars
   });
+  const subIssueMode = resolveSubIssueProcessingMode({
+    issue,
+    trigger: params.trigger,
+    configuredMode: params.config.issues.subIssues.mode
+  });
+  if (issue.isSubIssue && subIssueMode === "skip") {
+    core.info(`Skip automatic processing for sub-issue #${issue.number} because issues.subIssues.mode is skip.`);
+    return;
+  }
+  if (issue.isSubIssue) {
+    core.info(`Process sub-issue #${issue.number} in ${subIssueMode} mode.`);
+  }
+
+  const effectiveLabels = new Set(issue.labels);
+  const commentMode: CommentMode = detectCommentMode(`${issue.title}\n${issue.body}`, params.config.runtime);
+  const validation = issue.isSubIssue && subIssueMode === "relaxed"
+    ? createRelaxedSubIssueValidation({
+      title: issue.title,
+      body: issue.body,
+      config: params.config.issues.validation
+    })
+    : validateIssue({
+      title: issue.title,
+      body: issue.body,
+      config: params.config.issues.validation,
+      commentMode
+    });
 
   if (shouldRunValidation(params.trigger)) {
     await syncAnchoredComment({
       gateway: params.gateway,
-      issueNumber: params.issue.number,
+      issueNumber: issue.number,
       anchor: params.config.issues.validation.commentAnchor,
       body: validation.commentBody
     });
@@ -185,19 +213,19 @@ export async function runIssueWorkflow(params: {
     core.info("Issue failed template validation. Skip duplicate detection and AI help.");
     await syncAnchoredComment({
       gateway: params.gateway,
-      issueNumber: params.issue.number,
+      issueNumber: issue.number,
       anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor
     });
     await syncAnchoredComment({
       gateway: params.gateway,
-      issueNumber: params.issue.number,
+      issueNumber: issue.number,
       anchor: params.config.issues.aiHelp.commentAnchor
     });
   }
 
-  if (shouldRunTitleGeneration(params.trigger) && validation.valid) {
+  if (shouldRunTitleGeneration(params.trigger) && validation.valid && subIssueMode === "normal") {
     await maybeUpdateIssueTitle({
-      issue: params.issue,
+      issue,
       validation,
       config: params.config.issues.titleGeneration,
       gateway: params.gateway,
@@ -209,30 +237,33 @@ export async function runIssueWorkflow(params: {
   let duplicateCommentBody: string | undefined;
   let similarIssues: SimilarIssueCandidate[] = [];
   let repositoryContext: RepositoryAiContext | undefined;
-  if (shouldRunValidation(params.trigger) && validation.valid) {
+  if (shouldRunValidation(params.trigger) && validation.valid && subIssueMode === "normal") {
     const duplicateDecision = await detectDuplicate({
-      issue: params.issue,
+      issue,
       parsed: validation.parsed,
       config: params.config.issues.validation.duplicateDetection,
       provider: params.provider,
-      searchIssues: async (terms, limit) => params.gateway.searchIssues({
-        owner: params.issue.owner,
-        repo: params.issue.repo,
-        currentIssueNumber: params.issue.number,
-        terms,
-        limit
-      }),
+      searchIssues: async (terms, limit) => {
+        const candidates = await params.gateway.searchIssues({
+          owner: issue.owner,
+          repo: issue.repo,
+          currentIssueNumber: issue.number,
+          terms,
+          limit
+        });
+        return candidates.filter((candidate) => !isDirectIssueRelation(issue, candidate));
+      },
       addDuplicateLabel: async (labels) => {
         if (params.config.issues.labeling.autoCreateMissing) {
           await params.gateway.ensureLabels(params.config.issues.labeling.definitions, labels);
         }
-        await params.gateway.addLabels(params.issue.number, labels);
+        await params.gateway.addLabels(issue.number, labels);
         for (const label of labels) {
           effectiveLabels.add(label);
         }
       },
       closeIssue: async () => {
-        await params.gateway.closeIssue(params.issue.number);
+        await params.gateway.closeIssue(issue.number);
       }
     });
 
@@ -251,21 +282,28 @@ export async function runIssueWorkflow(params: {
   if (shouldRunValidation(params.trigger) && duplicated) {
     await syncAnchoredComment({
       gateway: params.gateway,
-      issueNumber: params.issue.number,
+      issueNumber: issue.number,
       anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor,
       body: duplicateCommentBody
     });
     await syncAnchoredComment({
       gateway: params.gateway,
-      issueNumber: params.issue.number,
+      issueNumber: issue.number,
       anchor: params.config.issues.aiHelp.commentAnchor
     });
   }
 
   if (shouldRunLabeling(params.trigger) && params.config.issues.labeling.enabled && !duplicated) {
-    const preservedLabels = [...effectiveLabels].filter((label) => params.config.issues.aiHelp.triggerLabels.includes(label));
+    const preservedLabels = [...effectiveLabels].filter((label) => {
+      return params.config.issues.aiHelp.triggerLabels.includes(label)
+        || (
+          issue.isSubIssue
+          && subIssueMode === "relaxed"
+          && label === params.config.issues.validation.duplicateDetection.duplicateLabel
+        );
+    });
     const managedLabels = computeManagedLabels({
-      issue: params.issue,
+      issue,
       config: params.config.issues.labeling,
       validation,
       preservedLabels
@@ -276,19 +314,19 @@ export async function runIssueWorkflow(params: {
     }
 
     if (managedLabels.labelsToAdd.length > 0) {
-      await params.gateway.addLabels(params.issue.number, managedLabels.labelsToAdd);
+      await params.gateway.addLabels(issue.number, managedLabels.labelsToAdd);
       for (const label of managedLabels.labelsToAdd) {
         effectiveLabels.add(label);
       }
     }
     for (const label of managedLabels.labelsToRemove) {
-      await params.gateway.removeLabel(params.issue.number, label);
+      await params.gateway.removeLabel(issue.number, label);
       effectiveLabels.delete(label);
     }
 
     if (params.config.issues.labeling.aiClassification.enabled) {
       repositoryContext ??= await resolveRepositoryAiContext({
-        issue: params.issue,
+        issue,
         gateway: params.gateway,
         config: params.config.issues.aiHelp.projectContext,
         templateKey: validation.template?.key ?? validation.parsed.marker
@@ -296,7 +334,7 @@ export async function runIssueWorkflow(params: {
 
       const classified = await classifyIssueContentLabels({
         issue: {
-          ...params.issue,
+          ...issue,
           labels: [...effectiveLabels]
         },
         parsed: validation.parsed,
@@ -315,7 +353,7 @@ export async function runIssueWorkflow(params: {
       }
 
       if (labelsToAdd.length > 0) {
-        await params.gateway.addLabels(params.issue.number, labelsToAdd);
+        await params.gateway.addLabels(issue.number, labelsToAdd);
         for (const label of labelsToAdd) {
           effectiveLabels.add(label);
         }
@@ -334,7 +372,7 @@ export async function runIssueWorkflow(params: {
 
       await syncAnchoredComment({
         gateway: params.gateway,
-        issueNumber: params.issue.number,
+        issueNumber: issue.number,
         anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor,
         body: similarIssuesBody
       });
@@ -343,7 +381,7 @@ export async function runIssueWorkflow(params: {
   }
 
   repositoryContext ??= await resolveRepositoryAiContext({
-    issue: params.issue,
+    issue,
     gateway: params.gateway,
     config: params.config.issues.aiHelp.projectContext,
     templateKey: validation.template?.key ?? validation.parsed.marker
@@ -352,7 +390,7 @@ export async function runIssueWorkflow(params: {
   const aiBody = await generateIssueAiHelp({
     workspace: params.workspace ?? process.env.GITHUB_WORKSPACE ?? process.cwd(),
     issue: {
-      ...params.issue,
+      ...issue,
       labels: [...effectiveLabels]
     },
     parsed: validation.parsed,
@@ -376,7 +414,7 @@ export async function runIssueWorkflow(params: {
 
       await syncAnchoredComment({
         gateway: params.gateway,
-        issueNumber: params.issue.number,
+        issueNumber: issue.number,
         anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor,
         body: similarIssuesBody
       });
@@ -386,7 +424,7 @@ export async function runIssueWorkflow(params: {
 
   await upsertAnchoredComment({
     gateway: params.gateway,
-    issueNumber: params.issue.number,
+    issueNumber: issue.number,
     anchor: params.config.issues.aiHelp.commentAnchor,
     body: aiBody
   });
@@ -394,7 +432,7 @@ export async function runIssueWorkflow(params: {
   if (shouldRunValidation(params.trigger)) {
     await syncAnchoredComment({
       gateway: params.gateway,
-      issueNumber: params.issue.number,
+      issueNumber: issue.number,
       anchor: params.config.issues.validation.duplicateDetection.similarityComment.commentAnchor
     });
   }
