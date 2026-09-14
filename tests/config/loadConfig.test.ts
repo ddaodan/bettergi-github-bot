@@ -10,6 +10,45 @@ import {
 } from "../../src/config/loadConfig.js";
 
 describe("loadRepoBotConfig", () => {
+  it("applies environment variables for validation auto-close", async () => {
+    const workspace = path.join(os.tmpdir(), `repo-bot-${Date.now()}-auto-close`);
+    await mkdir(workspace, { recursive: true });
+    const configDir = path.join(workspace, ".github");
+    await mkdir(configDir, { recursive: true });
+    await writeFile(path.join(configDir, "repo-bot.yml"), [
+      "issues:",
+      "  validation:",
+      "    enabled: true"
+    ].join("\n"));
+
+    const originalEnabled = process.env.REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_ENABLED;
+    const originalReopen = process.env.REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_REOPEN_WHEN_VALID;
+    process.env.REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_ENABLED = "true";
+    process.env.REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_REOPEN_WHEN_VALID = "false";
+    try {
+      const config = await loadRepoBotConfig({
+        workspace,
+        configPath: ".github/repo-bot.yml",
+        overridesJson: "",
+        dryRunInput: false
+      });
+
+      expect(config.issues.validation.autoClose.enabled).toBe(true);
+      expect(config.issues.validation.autoClose.reopenWhenValid).toBe(false);
+    } finally {
+      if (originalEnabled === undefined) {
+        delete process.env.REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_ENABLED;
+      } else {
+        process.env.REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_ENABLED = originalEnabled;
+      }
+      if (originalReopen === undefined) {
+        delete process.env.REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_REOPEN_WHEN_VALID;
+      } else {
+        process.env.REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_REOPEN_WHEN_VALID = originalReopen;
+      }
+    }
+  });
+
   it("merges YAML config with JSON overrides", async () => {
     const workspace = path.join(os.tmpdir(), `repo-bot-${Date.now()}`);
     await mkdir(workspace, { recursive: true });
@@ -182,6 +221,8 @@ describe("loadRepoBotConfig", () => {
     expect(names).toContain("REPO_BOT_ISSUES_SUB_ISSUES_MODE");
     expect(names).toContain("REPO_BOT_ISSUES_CODE_CONTEXT_CATEGORY_ROOTS");
     expect(names).toContain("REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_THRESHOLDS_REVIEW_MIN");
+    expect(names).toContain("REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_ENABLED");
+    expect(names).toContain("REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_REOPEN_WHEN_VALID");
     expect(names).toContain("REPO_BOT_PULL_REQUESTS_SUMMARY_ENABLED");
   });
 

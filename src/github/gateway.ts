@@ -101,7 +101,8 @@ export interface GitHubGateway {
   removeLabel(issueNumber: number, label: string): Promise<void>;
   ensureLabels(definitions: Record<string, LabelDefinition>, labels: string[]): Promise<void>;
   updateIssueTitle(issueNumber: number, title: string): Promise<void>;
-  closeIssue(issueNumber: number): Promise<void>;
+  closeIssue(issueNumber: number, options?: { stateReason?: "completed" | "not_planned" }): Promise<void>;
+  reopenIssue(issueNumber: number): Promise<void>;
   searchIssues(params: SearchIssueParams): Promise<DuplicateCandidate[]>;
 }
 
@@ -115,6 +116,10 @@ function toIssueContext(): IssueContext | undefined {
     parent_issue_url?: string | null;
   }).parent_issue_url;
 
+  const stateReason = (issue as typeof issue & {
+    state_reason?: string | null;
+  }).state_reason;
+
   return {
     kind: "issue",
     owner: context.repo.owner,
@@ -123,6 +128,7 @@ function toIssueContext(): IssueContext | undefined {
     title: issue.title ?? "",
     body: issue.body ?? "",
     state: issue.state as "open" | "closed",
+    stateReason: stateReason?.trim().toLowerCase().replace(/\s+/g, "_") || undefined,
     labels: issue.labels.map((label: string | IssueLabelValue) => typeof label === "string" ? label : label.name ?? "").filter(Boolean),
     htmlUrl: issue.html_url ?? "",
     createdAt: issue.created_at ?? "",
@@ -812,9 +818,9 @@ export class OctokitGitHubGateway implements GitHubGateway {
     });
   }
 
-  public async closeIssue(issueNumber: number): Promise<void> {
+  public async closeIssue(issueNumber: number, options?: { stateReason?: "completed" | "not_planned" }): Promise<void> {
     if (this.dryRun) {
-      core.info(`[dry-run] close issue #${issueNumber}`);
+      core.info(`[dry-run] close issue #${issueNumber}${options?.stateReason ? ` with state reason ${options.stateReason}` : ""}`);
       return;
     }
 
@@ -822,7 +828,22 @@ export class OctokitGitHubGateway implements GitHubGateway {
       owner: context.repo.owner,
       repo: context.repo.repo,
       issue_number: issueNumber,
-      state: "closed"
+      state: "closed",
+      ...(options?.stateReason ? { state_reason: options.stateReason } : {})
+    });
+  }
+
+  public async reopenIssue(issueNumber: number): Promise<void> {
+    if (this.dryRun) {
+      core.info(`[dry-run] reopen issue #${issueNumber}`);
+      return;
+    }
+
+    await this.octokit.rest.issues.update({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      issue_number: issueNumber,
+      state: "open"
     });
   }
 

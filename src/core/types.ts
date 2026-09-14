@@ -50,12 +50,18 @@ export interface DuplicateDetectionConfig {
   similarityComment: SimilarIssueCommentConfig;
 }
 
+export interface ValidationAutoCloseConfig {
+  enabled: boolean;
+  reopenWhenValid: boolean;
+}
+
 export interface ValidationConfig {
   enabled: boolean;
   fallbackTemplateKey?: string;
   commentAnchor: string;
   templates: IssueTemplateConfig[];
   duplicateDetection: DuplicateDetectionConfig;
+  autoClose: ValidationAutoCloseConfig;
 }
 
 export interface KeywordRule {
@@ -220,6 +226,7 @@ export interface RepositorySubjectContext {
 
 export interface IssueContext extends RepositorySubjectContext {
   kind: "issue";
+  stateReason?: string | null;
   isSubIssue?: boolean;
   parentRelation?: "sub_issue" | "comment_derived";
   parentIssueUrl?: string | null;

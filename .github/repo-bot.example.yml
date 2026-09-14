@@ -39,6 +39,9 @@ issues:
     enabled: true
     fallbackTemplateKey: bug
     commentAnchor: issue-bot:validation
+    autoClose:
+      enabled: false
+      reopenWhenValid: true
     templates:
       - key: bug
         detect:

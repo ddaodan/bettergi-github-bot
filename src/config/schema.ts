@@ -48,6 +48,11 @@ const duplicateDetectionSchema = z.object({
   }))
 });
 
+const validationAutoCloseSchema = z.object({
+  enabled: z.boolean().default(false),
+  reopenWhenValid: z.boolean().default(true)
+});
+
 const keywordRuleSchema = z.object({
   keywords: z.array(z.string().min(1)).min(1),
   labels: z.array(z.string().min(1)).min(1),
@@ -227,6 +232,10 @@ export const repoBotConfigSchema = z.object({
       fallbackTemplateKey: z.string().optional(),
       commentAnchor: z.string().min(1).default("issue-bot:validation"),
       templates: z.array(templateSchema).default([]),
+      autoClose: validationAutoCloseSchema.default(() => ({
+        enabled: false,
+        reopenWhenValid: true
+      })),
       duplicateDetection: duplicateDetectionSchema.default(() => ({
         enabled: true,
         bypassLabels: ["跳过重复检测"],
@@ -250,6 +259,10 @@ export const repoBotConfigSchema = z.object({
       enabled: true,
       commentAnchor: "issue-bot:validation",
       templates: [],
+      autoClose: {
+        enabled: false,
+        reopenWhenValid: true
+      },
       duplicateDetection: {
         enabled: true,
         bypassLabels: ["跳过重复检测"],
@@ -399,6 +412,10 @@ export const repoBotConfigSchema = z.object({
       enabled: true,
       commentAnchor: "issue-bot:validation",
       templates: [],
+      autoClose: {
+        enabled: false,
+        reopenWhenValid: true
+      },
       duplicateDetection: {
         enabled: true,
         bypassLabels: ["跳过重复检测"],

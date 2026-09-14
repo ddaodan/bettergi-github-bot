@@ -89,6 +89,10 @@ export function createConfig(): RepoBotConfig {
             }
           }
         ],
+        autoClose: {
+          enabled: false,
+          reopenWhenValid: true
+        },
         duplicateDetection: {
           enabled: true,
           bypassLabels: ["跳过重复检测"],
@@ -250,6 +254,8 @@ export class FakeGateway implements GitHubGateway {
 
   public readonly closedIssues: number[] = [];
 
+  public readonly reopenedIssues: number[] = [];
+
   public readonly searchRequests: SearchIssueParams[] = [];
 
   public readonly commentReactions: Array<{ commentId: number; reaction: "eyes" | "rocket" | "confused" }> = [];
@@ -406,9 +412,18 @@ export class FakeGateway implements GitHubGateway {
     this.updatedTitles.push(title);
   }
 
-  public async closeIssue(issueNumber: number): Promise<void> {
+  public async closeIssue(issueNumber: number, options?: { stateReason?: "completed" | "not_planned" }): Promise<void> {
     this.closedIssues.push(issueNumber);
     this.issue.state = "closed";
+    if (options?.stateReason) {
+      this.issue.stateReason = options.stateReason;
+    }
+  }
+
+  public async reopenIssue(issueNumber: number): Promise<void> {
+    this.reopenedIssues.push(issueNumber);
+    this.issue.state = "open";
+    this.issue.stateReason = undefined;
   }
 
   public async searchIssues(params: SearchIssueParams): Promise<DuplicateCandidate[]> {

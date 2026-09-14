@@ -37,6 +37,281 @@ describe("runIssueWorkflow", () => {
     expect(gateway.comments).toHaveLength(1);
     expect(gateway.comments[0]?.body).toContain("issue-bot:validation");
     expect(issue.labels).toContain("需要更多信息");
+    expect(gateway.closedIssues).toEqual([]);
+    expect(issue.state).toBe("open");
+  });
+
+  it("closes invalid issues when validation auto-close is enabled", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const issue = createIssue({
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "Please fill",
+        "",
+        "## Expected Behavior",
+        "The plugin should start successfully"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+
+    expect(gateway.closedIssues).toEqual([1]);
+    expect(gateway.issue.stateReason).toBe("not_planned");
+    expect(issue.state).toBe("closed");
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("issue-bot:validation");
+    expect(gateway.comments[0]?.body).toContain("已自动关闭");
+    expect(gateway.comments[0]?.body).toContain("请直接编辑此 Issue 并按模板补全上述内容");
+    expect(gateway.searchRequests).toHaveLength(0);
+    expect(issue.labels).toContain("需要更多信息");
+  });
+
+  it("reopens a closed not_planned issue after the template is completed", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const issue = createIssue({
+      state: "closed",
+      stateReason: "not_planned",
+      action: "edited",
+      labels: ["需要更多信息"],
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "1. Start the plugin",
+        "2. Wait for the crash",
+        "",
+        "## Expected Behavior",
+        "The plugin should keep running"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_edited",
+      config,
+      gateway
+    });
+
+    expect(gateway.reopenedIssues).toEqual([1]);
+    expect(issue.state).toBe("open");
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("issue-bot:validation");
+    expect(gateway.comments[0]?.body).toContain("已通过模板检查");
+    expect(gateway.comments[0]?.body).toContain("已自动重新打开");
+    expect(issue.labels).toContain("BUG");
+    expect(issue.labels).not.toContain("需要更多信息");
+  });
+
+  it("does not reopen closed issues when reopenWhenValid is disabled", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    config.issues.validation.autoClose.reopenWhenValid = false;
+    const issue = createIssue({
+      state: "closed",
+      stateReason: "not_planned",
+      action: "edited"
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_edited",
+      config,
+      gateway
+    });
+
+    expect(gateway.reopenedIssues).toEqual([]);
+    expect(issue.state).toBe("closed");
+    expect(gateway.comments).toHaveLength(0);
+  });
+
+  it("does not reopen issues closed as completed", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const issue = createIssue({
+      state: "closed",
+      stateReason: "completed",
+      action: "edited"
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_edited",
+      config,
+      gateway
+    });
+
+    expect(gateway.reopenedIssues).toEqual([]);
+    expect(issue.state).toBe("closed");
+    expect(gateway.comments).toHaveLength(0);
+  });
+
+  it("does not reopen duplicate-labeled closed issues", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const issue = createIssue({
+      state: "closed",
+      stateReason: "not_planned",
+      action: "edited",
+      labels: ["重复"]
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_edited",
+      config,
+      gateway
+    });
+
+    expect(gateway.reopenedIssues).toEqual([]);
+    expect(issue.state).toBe("closed");
+    expect(gateway.comments).toHaveLength(0);
+  });
+
+  it("does not re-close an already closed invalid issue but still updates the comment", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const issue = createIssue({
+      state: "closed",
+      stateReason: "not_planned",
+      action: "edited",
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "Please fill",
+        "",
+        "## Expected Behavior",
+        "The plugin should start successfully"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_edited",
+      config,
+      gateway
+    });
+
+    expect(gateway.closedIssues).toEqual([]);
+    expect(issue.state).toBe("closed");
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("已自动关闭");
+  });
+
+  it("re-closes an issue reopened manually without fixing the template", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const issue = createIssue({
+      state: "open",
+      action: "reopened",
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "Please fill",
+        "",
+        "## Expected Behavior",
+        "The plugin should start successfully"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_reopened",
+      config,
+      gateway
+    });
+
+    expect(gateway.closedIssues).toEqual([1]);
+    expect(gateway.issue.stateReason).toBe("not_planned");
+    expect(gateway.reopenedIssues).toEqual([]);
+  });
+
+  it("does not auto-close relaxed sub-issues when auto-close is enabled", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const issue = createIssue({
+      isSubIssue: true,
+      parentIssueUrl: "https://api.github.com/repos/octo/repo/issues/9",
+      title: "[bug] Child task",
+      body: "<!-- issue-template: bug -->\n\nShort child task.",
+      labels: ["重复"]
+    });
+    const gateway = new FakeGateway(issue, [
+      {
+        number: 9,
+        title: "Parent issue",
+        body: "Short child task.",
+        labels: [],
+        state: "open",
+        htmlUrl: "https://github.com/octo/repo/issues/9",
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z"
+      }
+    ]);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+
+    expect(gateway.closedIssues).toEqual([]);
+    expect(gateway.reopenedIssues).toEqual([]);
+    expect(issue.labels).toContain("BUG");
+    expect(issue.labels).toContain("重复");
+  });
+
+  it("reopens a bot-closed issue via command refresh after the template is completed", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const issue = createIssue({
+      state: "closed",
+      stateReason: "not_planned",
+      labels: ["需要更多信息"]
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "command_refresh",
+      config,
+      gateway
+    });
+
+    expect(gateway.reopenedIssues).toEqual([1]);
+    expect(issue.state).toBe("open");
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("已自动重新打开");
   });
 
   it("does not comment on valid issues when ai help is disabled", async () => {

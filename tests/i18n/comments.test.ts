@@ -4,7 +4,8 @@ import {
   renderAiHelpComment,
   renderFixStatusComment,
   renderFixSuggestionComment,
-  renderSimilarIssuesComment
+  renderSimilarIssuesComment,
+  renderValidationComment
 } from "../../src/i18n/comments.js";
 
 const help = {
@@ -153,6 +154,44 @@ describe("comment renderers", () => {
     expect(comment).toContain("`src/config/save.ts`：保存逻辑集中在这里。");
     expect(comment).toContain("```diff");
     expect(comment).toContain("> 注：以上内容由 AI 生成，仅供参考");
+  });
+
+  it("renders auto-close validation wording when closedForInvalidTemplate is set", () => {
+    const comment = renderValidationComment({
+      mode: "zh",
+      valid: false,
+      missingSections: ["- Steps to Reproduce"],
+      closedForInvalidTemplate: true
+    });
+
+    expect(comment).toContain("已自动关闭");
+    expect(comment).toContain("请直接编辑此 Issue 并按模板补全上述内容");
+    expect(comment).toContain("不要重复创建新 Issue");
+  });
+
+  it("renders reopened validation wording when reopenedAfterFix is set", () => {
+    const comment = renderValidationComment({
+      mode: "zh-en",
+      valid: true,
+      templateKey: "bug",
+      missingSections: [],
+      reopenedAfterFix: true
+    });
+
+    expect(comment).toContain("已自动重新打开");
+    expect(comment).toContain("reopened automatically");
+    expect(comment).toContain("`bug`");
+  });
+
+  it("keeps the default validation wording when auto-close is not used", () => {
+    const comment = renderValidationComment({
+      mode: "zh",
+      valid: false,
+      missingSections: ["- Steps to Reproduce"]
+    });
+
+    expect(comment).toContain("请补充以下必填内容");
+    expect(comment).not.toContain("已自动关闭");
   });
 
   it("renders dedicated English content for bilingual fix suggestions", () => {

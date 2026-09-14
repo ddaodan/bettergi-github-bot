@@ -25,6 +25,28 @@ describe("validateIssue", () => {
     expect(result.commentBody).toContain("模板检查结果");
   });
 
+  it("uses the auto-close wording when auto-close is enabled", () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const result = validateIssue({
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows",
+        "",
+        "## Steps to Reproduce",
+        "Please fill"
+      ].join("\n"),
+      config: config.issues.validation,
+      commentMode: "zh"
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.commentBody).toContain("已自动关闭");
+    expect(result.commentBody).toContain("请直接编辑此 Issue 并按模板补全上述内容");
+  });
+
   it("does not emit a validation comment for valid issues", () => {
     const config = createConfig();
     const result = validateIssue({

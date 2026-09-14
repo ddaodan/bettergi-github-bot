@@ -8,7 +8,7 @@
 
 ### Issue 自动流程
 
-- 模板检查：校验 Issue 是否符合模板或表单要求；失败时评论提醒，通过时只同步标签。
+- 模板检查：校验 Issue 是否符合模板或表单要求；失败时评论提醒并同步标签。可选启用 `autoClose` 后，未按模板填写或必填内容不完整的开放 Issue 会被自动关闭，并在用户编辑补全后自动重新打开。
 - 自动标题：模板通过后，可为仅保留模板前缀的 Issue 生成标题，并高置信纠正与正文明显无关的标题。
 - 重复 Issue 检测：规则初筛 + 可选 AI 复判；高置信重复可自动关闭，近似重复会在 AI 评论顶部折叠展示。
 - 标签同步：仅管理配置中声明的托管标签，不删除维护者手工添加的非托管标签。
@@ -119,6 +119,9 @@ issues:
     enabled: true
     fallbackTemplateKey: bug
     commentAnchor: issue-bot:validation
+    autoClose:
+      enabled: false
+      reopenWhenValid: true
     templates: []
     duplicateDetection:
       enabled: true
@@ -169,6 +172,27 @@ issues:
 - `opened` / `edited` / `reopened`：模板检查 -> 标题生成 -> 重复检测 -> 标签同步 -> AI 帮助。
 - `labeled`：不触发 Bot，维护者手动调整标签不会启动自动流程。
 - `issue_comment`：仅处理 plain issue 的 `created` / `edited`，且必须显式 mention。
+
+### 模板违规自动关闭与补全后重开
+
+`issues.validation.autoClose` 默认关闭，需要显式启用：
+
+```yml
+issues:
+  validation:
+    autoClose:
+      enabled: true
+      reopenWhenValid: true
+```
+
+启用后：
+
+- 未使用模板、模板匹配失败或必填段落缺失/仍为占位内容的开放 Issue，在 `opened`、`edited`、`reopened` 和 `@bot /refresh` 等自动处理触发时被关闭（`state_reason: not planned`），并评论说明缺少的必填内容与补全方式。
+- 模板检查失败仍然跳过标题生成、重复检测和 AI 帮助；标签同步与失败标签（如 `需要更多信息`）逻辑不变。
+- 用户直接编辑已关闭的 Issue 并按模板补全内容后，Bot 检测到模板检查通过且关闭原因是 `not_planned`，会自动重新打开 Issue，并继续执行标题、标签、重复检测和 AI 帮助流程。
+- `reopenWhenValid: false` 时只自动关闭、不自动重开。
+- 为避免与现有流程冲突，以下情况不会自动重开：关闭原因不是 `not_planned`（例如维护者以 `completed` 关闭）、当前已带有重复标签、relaxed Sub-issue（未执行严格模板校验）。
+- 已关闭但仍未通过模板检查的 Issue 不会重复调用关闭 API，只会更新锚点评论；用户未补全模板而手动重开时，Bot 会再次关闭。
 
 GitHub Actions 无法在事件产生前按评论作者过滤 `issue_comment`。示例 workflow 会在 job 启动前跳过 bot 评论和不含受支持指令的评论，并通过 `run-name` 标出 Issue 编号、事件和触发者；这些被过滤的记录会显示为 skipped，但不会 checkout 或运行 Bot。
 

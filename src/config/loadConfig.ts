@@ -66,6 +66,8 @@ export const repoBotConfigEnvironmentVariables: EnvironmentOverrideDefinition[] 
   environmentOverride(["issues", "validation", "fallbackTemplateKey"], "string"),
   environmentOverride(["issues", "validation", "commentAnchor"], "string"),
   environmentOverride(["issues", "validation", "templates"], "json"),
+  environmentOverride(["issues", "validation", "autoClose", "enabled"], "boolean"),
+  environmentOverride(["issues", "validation", "autoClose", "reopenWhenValid"], "boolean"),
   environmentOverride(["issues", "validation", "duplicateDetection", "enabled"], "boolean"),
   environmentOverride(["issues", "validation", "duplicateDetection", "bypassLabels"], "json"),
   environmentOverride(["issues", "validation", "duplicateDetection", "duplicateLabel"], "string"),

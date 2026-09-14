@@ -27,6 +27,7 @@ export function validateIssue(params: {
   body: string;
   config: ValidationConfig;
   commentMode: CommentMode;
+  dryRun?: boolean;
 }): ValidationOutcome {
   if (!params.config.enabled) {
     return {
@@ -52,7 +53,9 @@ export function validateIssue(params: {
       commentBody: renderValidationComment({
         mode: params.commentMode,
         valid: false,
-        missingSections: ["未找到可用模板 / No matching template found"]
+        missingSections: ["未找到可用模板 / No matching template found"],
+        closedForInvalidTemplate: params.config.autoClose.enabled,
+        dryRun: params.dryRun
       })
     };
   }
@@ -83,7 +86,9 @@ export function validateIssue(params: {
         mode: params.commentMode,
         valid: false,
         templateKey: template.key,
-        missingSections: missingSections.map((item) => item.aliases[0] ?? item.id)
+        missingSections: missingSections.map((item) => item.aliases[0] ?? item.id),
+        closedForInvalidTemplate: params.config.autoClose.enabled,
+        dryRun: params.dryRun
       })
   };
 }

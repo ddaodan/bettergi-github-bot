@@ -46,6 +46,8 @@
 | `issues.validation.fallbackTemplateKey` | `REPO_BOT_ISSUES_VALIDATION_FALLBACK_TEMPLATE_KEY` | 字符串 |
 | `issues.validation.commentAnchor` | `REPO_BOT_ISSUES_VALIDATION_COMMENT_ANCHOR` | 字符串 |
 | `issues.validation.templates` | `REPO_BOT_ISSUES_VALIDATION_TEMPLATES` | JSON 数组 |
+| `issues.validation.autoClose.enabled` | `REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_ENABLED` | 布尔值 |
+| `issues.validation.autoClose.reopenWhenValid` | `REPO_BOT_ISSUES_VALIDATION_AUTO_CLOSE_REOPEN_WHEN_VALID` | 布尔值 |
 | `issues.validation.duplicateDetection.enabled` | `REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_ENABLED` | 布尔值 |
 | `issues.validation.duplicateDetection.bypassLabels` | `REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_BYPASS_LABELS` | JSON 数组 |
 | `issues.validation.duplicateDetection.duplicateLabel` | `REPO_BOT_ISSUES_VALIDATION_DUPLICATE_DETECTION_DUPLICATE_LABEL` | 字符串 |

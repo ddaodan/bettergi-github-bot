@@ -10,7 +10,7 @@ import type {
 } from "../../core/types.js";
 import { syncAnchoredComment, upsertAnchoredComment } from "../../github/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
-import { renderDuplicateComment, renderSimilarIssuesComment } from "../../i18n/comments.js";
+import { renderDuplicateComment, renderSimilarIssuesComment, renderValidationComment } from "../../i18n/comments.js";
 import { detectCommentMode } from "../../i18n/language.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
 import { classifyIssueContentLabels } from "./aiClassification.js";
@@ -81,6 +81,11 @@ async function resolveIssueAutoProcessingCutoff(params: {
     core.warning(
       `Unable to read repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}. Ignore automatic cutoff: ${String(error)}`
     );
+    return undefined;
+  }
+
+  if (params.config.runtime.dryRun) {
+    core.info(`Dry-run: skip initializing repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}.`);
     return undefined;
   }
 
@@ -200,7 +205,8 @@ export async function runIssueWorkflow(params: {
       title: issue.title,
       body: issue.body,
       config: params.config.issues.validation,
-      commentMode
+      commentMode,
+      dryRun: params.config.runtime.dryRun
     });
 
   if (shouldRunValidation(params.trigger)) {
@@ -210,6 +216,53 @@ export async function runIssueWorkflow(params: {
       anchor: params.config.issues.validation.commentAnchor,
       body: validation.commentBody
     });
+  }
+
+  const autoCloseConfig = params.config.issues.validation.autoClose;
+  const shouldAutoReopen = shouldRunValidation(params.trigger)
+    && autoCloseConfig.enabled
+    && autoCloseConfig.reopenWhenValid
+    && validation.executed
+    && validation.valid
+    && issue.state === "closed"
+    && issue.stateReason === "not_planned"
+    && !issue.labels.includes(params.config.issues.validation.duplicateDetection.duplicateLabel);
+
+  if (shouldAutoReopen) {
+    await params.gateway.reopenIssue(issue.number);
+    if (!params.config.runtime.dryRun) {
+      issue.state = "open";
+      issue.stateReason = undefined;
+    }
+    core.info(`Reopened issue #${issue.number} after template validation passed.`);
+    await syncAnchoredComment({
+      gateway: params.gateway,
+      issueNumber: issue.number,
+      anchor: params.config.issues.validation.commentAnchor,
+      body: renderValidationComment({
+        mode: commentMode,
+        valid: true,
+        templateKey: validation.template?.key,
+        missingSections: [],
+        reopenedAfterFix: true,
+        dryRun: params.config.runtime.dryRun
+      })
+    });
+  }
+
+  if (
+    shouldRunValidation(params.trigger)
+    && autoCloseConfig.enabled
+    && validation.executed
+    && !validation.valid
+    && issue.state === "open"
+  ) {
+    await params.gateway.closeIssue(issue.number, { stateReason: "not_planned" });
+    if (!params.config.runtime.dryRun) {
+      issue.state = "closed";
+      issue.stateReason = "not_planned";
+    }
+    core.info(`Closed issue #${issue.number} because template validation failed.`);
   }
 
   if (shouldRunValidation(params.trigger) && validation.executed && !validation.valid) {
