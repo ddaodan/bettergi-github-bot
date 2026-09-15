@@ -315,6 +315,7 @@ export interface ValidationOutcome {
   executed: boolean;
   valid: boolean;
   template?: IssueTemplateConfig;
+  templateMatched: boolean;
   parsed: ParsedIssue;
   missingSections: Array<{
     id: string;

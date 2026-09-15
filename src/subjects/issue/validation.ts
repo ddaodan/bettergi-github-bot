@@ -1,7 +1,7 @@
 import { DEFAULT_PLACEHOLDER_HINTS } from "../../core/constants.js";
 import type { CommentMode, ValidationConfig, ValidationOutcome } from "../../core/types.js";
 import { renderValidationComment } from "../../i18n/comments.js";
-import { getSectionContent, matchTemplate, normalizeText, parseIssueBody } from "./parser.js";
+import { detectTemplate, getSectionContent, matchTemplate, normalizeText, parseIssueBody } from "./parser.js";
 
 function isPlaceholder(content: string, hints: string[]): boolean {
   const normalized = normalizeText(content);
@@ -33,6 +33,7 @@ export function validateIssue(params: {
     return {
       executed: false,
       valid: true,
+      templateMatched: false,
       parsed: parseIssueBody(params.body),
       missingSections: [],
       desiredLabels: [],
@@ -41,11 +42,15 @@ export function validateIssue(params: {
   }
 
   const parsed = parseIssueBody(params.body);
+  const detected = detectTemplate(parsed, params.config.templates, params.title);
   const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey, params.title);
+  const templateMatched = Boolean(detected);
+
   if (!template) {
     return {
       executed: true,
       valid: false,
+      templateMatched,
       parsed,
       missingSections: [],
       desiredLabels: [],
@@ -76,6 +81,7 @@ export function validateIssue(params: {
     executed: true,
     valid,
     template,
+    templateMatched,
     parsed,
     missingSections,
     desiredLabels: valid ? template.labels.whenValid : [],

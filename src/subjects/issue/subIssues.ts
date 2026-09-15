@@ -35,6 +35,7 @@ export function createRelaxedSubIssueValidation(params: {
     return {
       executed: false,
       valid: true,
+      templateMatched: false,
       parsed,
       missingSections: [],
       desiredLabels: [],
@@ -52,6 +53,7 @@ export function createRelaxedSubIssueValidation(params: {
     executed: false,
     valid: true,
     template,
+    templateMatched: Boolean(template),
     parsed,
     missingSections: [],
     desiredLabels: template?.labels.whenValid ?? [],

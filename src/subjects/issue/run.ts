@@ -255,6 +255,7 @@ export async function runIssueWorkflow(params: {
     && autoCloseConfig.enabled
     && validation.executed
     && !validation.valid
+    && !validation.templateMatched
     && issue.state === "open"
   ) {
     await params.gateway.closeIssue(issue.number, { stateReason: "not_planned" });
@@ -262,7 +263,7 @@ export async function runIssueWorkflow(params: {
       issue.state = "closed";
       issue.stateReason = "not_planned";
     }
-    core.info(`Closed issue #${issue.number} because template validation failed.`);
+    core.info(`Closed issue #${issue.number} because no template was found.`);
   }
 
   if (shouldRunValidation(params.trigger) && validation.executed && !validation.valid) {

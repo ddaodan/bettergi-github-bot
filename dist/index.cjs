@@ -44624,6 +44624,7 @@ function validateIssue(params) {
     return {
       executed: false,
       valid: true,
+      templateMatched: false,
       parsed: parseIssueBody(params.body),
       missingSections: [],
       desiredLabels: [],
@@ -44631,11 +44632,14 @@ function validateIssue(params) {
     };
   }
   const parsed = parseIssueBody(params.body);
+  const detected = detectTemplate(parsed, params.config.templates, params.title);
   const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey, params.title);
+  const templateMatched = Boolean(detected);
   if (!template) {
     return {
       executed: true,
       valid: false,
+      templateMatched,
       parsed,
       missingSections: [],
       desiredLabels: [],
@@ -44662,6 +44666,7 @@ function validateIssue(params) {
     executed: true,
     valid,
     template,
+    templateMatched,
     parsed,
     missingSections,
     desiredLabels: valid ? template.labels.whenValid : [],
@@ -45310,6 +45315,7 @@ function createRelaxedSubIssueValidation(params) {
     return {
       executed: false,
       valid: true,
+      templateMatched: false,
       parsed,
       missingSections: [],
       desiredLabels: [],
@@ -45325,6 +45331,7 @@ function createRelaxedSubIssueValidation(params) {
     executed: false,
     valid: true,
     template,
+    templateMatched: Boolean(template),
     parsed,
     missingSections: [],
     desiredLabels: template?.labels.whenValid ?? [],
@@ -45672,13 +45679,13 @@ ${issue2.body}`, params.config.runtime);
       })
     });
   }
-  if (shouldRunValidation(params.trigger) && autoCloseConfig.enabled && validation.executed && !validation.valid && issue2.state === "open") {
+  if (shouldRunValidation(params.trigger) && autoCloseConfig.enabled && validation.executed && !validation.valid && !validation.templateMatched && issue2.state === "open") {
     await params.gateway.closeIssue(issue2.number, { stateReason: "not_planned" });
     if (!params.config.runtime.dryRun) {
       issue2.state = "closed";
       issue2.stateReason = "not_planned";
     }
-    core12.info(`Closed issue #${issue2.number} because template validation failed.`);
+    core12.info(`Closed issue #${issue2.number} because no template was found.`);
   }
   if (shouldRunValidation(params.trigger) && validation.executed && !validation.valid) {
     core12.info("Issue failed template validation. Skip duplicate detection and AI help.");
