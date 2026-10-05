@@ -44,6 +44,7 @@ issues:
       reopenWhenValid: true
     templates:
       - key: bug
+        issueType: Bug  # 可选：模板匹配后同步组织级 Issue Type（需要组织仓库且 Type 名称存在）
         detect:
           markers:
             - bug
@@ -60,11 +61,11 @@ issues:
             aliases:
               - Expected Behavior
         labels:
-          whenValid:
-            - BUG
+          whenValid: []
           whenInvalid:
             - 需要更多信息
       - key: feature
+        issueType: Feature
         detect:
           markers:
             - feature
@@ -78,11 +79,11 @@ issues:
             aliases:
               - Motivation
         labels:
-          whenValid:
-            - 功能建议
+          whenValid: []
           whenInvalid:
             - 需要更多信息
       - key: question
+        issueType: Question
         detect:
           markers:
             - question
@@ -93,8 +94,7 @@ issues:
             aliases:
               - Question
         labels:
-          whenValid:
-            - 问题咨询
+          whenValid: []
           whenInvalid:
             - 需要更多信息
     duplicateDetection:

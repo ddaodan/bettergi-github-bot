@@ -40338,10 +40338,12 @@ config(en_default());
 var sectionRuleSchema = external_exports.object({
   id: external_exports.string().min(1),
   aliases: external_exports.array(external_exports.string().min(1)).min(1),
-  placeholderHints: external_exports.array(external_exports.string().min(1)).default([])
+  placeholderHints: external_exports.array(external_exports.string().min(1)).default([]),
+  transferExempt: external_exports.boolean().default(false)
 });
 var templateSchema = external_exports.object({
   key: external_exports.string().min(1),
+  issueType: external_exports.string().min(1).optional(),
   detect: external_exports.object({
     markers: external_exports.array(external_exports.string().min(1)).default([]),
     titlePrefixes: external_exports.array(external_exports.string().min(1)).default([])
@@ -41529,6 +41531,7 @@ function toIssueContext() {
   }
   const parentIssueUrl = issue2.parent_issue_url;
   const stateReason = issue2.state_reason;
+  const issueType = issue2.type;
   return {
     kind: "issue",
     owner: import_github.context.repo.owner,
@@ -41538,6 +41541,7 @@ function toIssueContext() {
     body: issue2.body ?? "",
     state: issue2.state,
     stateReason: stateReason?.trim().toLowerCase().replace(/\s+/g, "_") || void 0,
+    typeName: issueType?.name ?? null,
     labels: issue2.labels.map((label) => typeof label === "string" ? label : label.name ?? "").filter(Boolean),
     htmlUrl: issue2.html_url ?? "",
     createdAt: issue2.created_at ?? "",
@@ -42105,6 +42109,40 @@ var OctokitGitHubGateway = class {
       repo: import_github.context.repo.repo,
       issue_number: issueNumber,
       state: "open"
+    });
+  }
+  async isTransferredIssue(issueNumber) {
+    const events = await this.octokit.paginate(
+      this.octokit.rest.issues.listEventsForTimeline,
+      {
+        owner: import_github.context.repo.owner,
+        repo: import_github.context.repo.repo,
+        issue_number: issueNumber,
+        per_page: 100
+      },
+      (response, done) => {
+        const transferred = response.data.some((item) => item.event === "transferred");
+        if (transferred) {
+          done();
+        }
+        return response.data;
+      }
+    );
+    return events.some((item) => item.event === "transferred");
+  }
+  async setIssueType(issueNumber, typeName) {
+    if (this.dryRun) {
+      core2.info(`[dry-run] set issue type "${typeName}" on issue #${issueNumber}`);
+      return;
+    }
+    await this.octokit.request("PATCH /repos/{owner}/{repo}/issues/{issue_number}", {
+      owner: import_github.context.repo.owner,
+      repo: import_github.context.repo.repo,
+      issue_number: issueNumber,
+      type: typeName,
+      headers: {
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
     });
   }
   async searchIssues(params) {
@@ -43304,58 +43342,75 @@ function getAiCommentLayout(templateKey) {
   }
 }
 function renderValidationComment(params) {
+  const transferredNote = params.transferred ? bilingual(
+    params.mode,
+    "> \u68C0\u6D4B\u5230\u672C Issue \u7531\u5176\u4ED6\u4ED3\u5E93\u8F6C\u79FB\u800C\u6765\uFF0C\u672C\u6B21\u4EC5\u8981\u6C42\u901A\u7528\u5FC5\u586B\u5185\u5BB9\uFF0C\u4ED3\u5E93\u7279\u6709\u6BB5\u843D\u6682\u4E0D\u5F3A\u5236\u3002",
+    "> This issue was detected as transferred from another repository. Only universal required sections are enforced; repository-specific sections are waived for now."
+  ) : void 0;
   if (params.valid) {
     if (params.reopenedAfterFix) {
-      return bilingual(
+      return [
+        bilingual(
+          params.mode,
+          `## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C
+
+\u5DF2\u901A\u8FC7\u6A21\u677F\u68C0\u67E5\uFF0C${params.dryRun ? "\u8BA1\u5212\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u6B64 Issue\uFF08\u5F53\u524D\u4E3A dry-run\uFF0C\u672A\u5B9E\u9645\u4FEE\u6539 Issue \u72B6\u6001\uFF09" : "\u5DF2\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u6B64 Issue"}\u3002\u5F53\u524D\u8BC6\u522B\u6A21\u677F\uFF1A\`${params.templateKey ?? "unknown"}\`\u3002`,
+          `## Template Check Result
+
+Template validation passed and this issue ${params.dryRun ? "is marked for automatic reopening (dry-run; the issue state was not changed)" : "has been reopened automatically"}. Detected template: \`${params.templateKey ?? "unknown"}\`.`
+        ),
+        transferredNote
+      ].filter((part) => Boolean(part)).join("\n\n");
+    }
+    return [
+      bilingual(
         params.mode,
         `## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C
 
-\u5DF2\u901A\u8FC7\u6A21\u677F\u68C0\u67E5\uFF0C${params.dryRun ? "\u8BA1\u5212\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u6B64 Issue\uFF08\u5F53\u524D\u4E3A dry-run\uFF0C\u672A\u5B9E\u9645\u4FEE\u6539 Issue \u72B6\u6001\uFF09" : "\u5DF2\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u6B64 Issue"}\u3002\u5F53\u524D\u8BC6\u522B\u6A21\u677F\uFF1A\`${params.templateKey ?? "unknown"}\`\u3002`,
+\u5DF2\u901A\u8FC7\u6A21\u677F\u68C0\u67E5\u3002\u5F53\u524D\u8BC6\u522B\u6A21\u677F\uFF1A\`${params.templateKey ?? "unknown"}\`\u3002`,
         `## Template Check Result
 
-Template validation passed and this issue ${params.dryRun ? "is marked for automatic reopening (dry-run; the issue state was not changed)" : "has been reopened automatically"}. Detected template: \`${params.templateKey ?? "unknown"}\`.`
-      );
-    }
-    return bilingual(
-      params.mode,
-      `## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C
-
-\u5DF2\u901A\u8FC7\u6A21\u677F\u68C0\u67E5\u3002\u5F53\u524D\u8BC6\u522B\u6A21\u677F\uFF1A\`${params.templateKey ?? "unknown"}\`\u3002`,
-      `## Template Check Result
-
 The issue passed template validation. Detected template: \`${params.templateKey ?? "unknown"}\`.`
-    );
+      ),
+      transferredNote
+    ].filter((part) => Boolean(part)).join("\n\n");
   }
   const zhMissing = params.missingSections.map((item) => `- ${item}`).join("\n") || "- \u6682\u65E0";
   const enMissing = params.missingSections.map((item) => `- ${item}`).join("\n") || "- None";
   if (params.closedForInvalidTemplate) {
-    return bilingual(
-      params.mode,
-      `## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C
+    return [
+      bilingual(
+        params.mode,
+        `## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C
 
 Issue \u672A\u6309\u6A21\u677F\u586B\u5199\u6216\u5FC5\u586B\u5185\u5BB9\u4E0D\u5B8C\u6574\uFF0C${params.dryRun ? "\u8BA1\u5212\u81EA\u52A8\u5173\u95ED\uFF08\u5F53\u524D\u4E3A dry-run\uFF0C\u672A\u5B9E\u9645\u4FEE\u6539 Issue \u72B6\u6001\uFF09" : "\u5DF2\u81EA\u52A8\u5173\u95ED"}\u3002\u7F3A\u5C11\u7684\u5FC5\u586B\u5185\u5BB9\uFF1A
 ${zhMissing}
 
 \u8BF7\u76F4\u63A5\u7F16\u8F91\u6B64 Issue \u5E76\u6309\u6A21\u677F\u8865\u5168\u4E0A\u8FF0\u5185\u5BB9\uFF0C\u4E0D\u8981\u91CD\u590D\u521B\u5EFA\u65B0 Issue\uFF1B\u8865\u5168\u5E76\u901A\u8FC7\u68C0\u67E5\u540E\u5C06\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u3002`,
-      `## Template Check Result
+        `## Template Check Result
 
 This issue was ${params.dryRun ? "marked for automatic closure (dry-run; the issue state was not changed)" : "closed automatically"} because it was not filled in according to the template or required sections are incomplete. Missing required sections:
 ${enMissing}
 
 Please edit this issue directly and complete the required sections instead of creating a new one. It will be reopened automatically once the template check passes.`
-    );
+      ),
+      transferredNote
+    ].filter((part) => Boolean(part)).join("\n\n");
   }
-  return bilingual(
-    params.mode,
-    `## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C
+  return [
+    bilingual(
+      params.mode,
+      `## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C
 
 Issue \u672A\u901A\u8FC7\u6A21\u677F\u68C0\u67E5\uFF0C\u8BF7\u8865\u5145\u4EE5\u4E0B\u5FC5\u586B\u5185\u5BB9\uFF1A
 ${zhMissing}`,
-    `## Template Check Result
+      `## Template Check Result
 
 This issue did not pass template validation. Please complete the following required sections:
 ${enMissing}`
-  );
+    ),
+    transferredNote
+  ].filter((part) => Boolean(part)).join("\n\n");
 }
 function renderDuplicateComment(params) {
   const issueRef = `#${params.duplicateOf.number}`;
@@ -44635,6 +44690,7 @@ function validateIssue(params) {
   const detected = detectTemplate(parsed, params.config.templates, params.title);
   const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey, params.title);
   const templateMatched = Boolean(detected);
+  const willAutoClose = params.config.autoClose.enabled && !templateMatched && !params.transferred;
   if (!template) {
     return {
       executed: true,
@@ -44648,12 +44704,14 @@ function validateIssue(params) {
         mode: params.commentMode,
         valid: false,
         missingSections: ["\u672A\u627E\u5230\u53EF\u7528\u6A21\u677F / No matching template found"],
-        closedForInvalidTemplate: params.config.autoClose.enabled,
+        closedForInvalidTemplate: willAutoClose,
+        transferred: params.transferred,
         dryRun: params.dryRun
       })
     };
   }
-  const missingSections = template.requiredSections.filter((rule) => {
+  const effectiveSections = params.transferred ? template.requiredSections.filter((rule) => !rule.transferExempt) : template.requiredSections;
+  const missingSections = effectiveSections.filter((rule) => {
     const content = getSectionContent(parsed, rule);
     const hints = [...DEFAULT_PLACEHOLDER_HINTS, ...rule.placeholderHints ?? []];
     return isPlaceholder(content, hints);
@@ -44676,7 +44734,8 @@ function validateIssue(params) {
       valid: false,
       templateKey: template.key,
       missingSections: missingSections.map((item) => item.aliases[0] ?? item.id),
-      closedForInvalidTemplate: params.config.autoClose.enabled,
+      closedForInvalidTemplate: willAutoClose,
+      transferred: params.transferred,
       dryRun: params.dryRun
     })
   };
@@ -45596,6 +45655,14 @@ async function shouldSkipIssueAutoProcessing(params) {
 function shouldRunValidation(trigger) {
   return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
+async function resolveIssueTransferStatus(params) {
+  try {
+    return await params.gateway.isTransferredIssue(params.issue.number);
+  } catch (error48) {
+    core12.warning(`Unable to check transfer status for issue #${params.issue.number}: ${String(error48)}`);
+    return false;
+  }
+}
 function shouldRunTitleGeneration(trigger) {
   return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
@@ -45637,6 +45704,12 @@ async function runIssueWorkflow(params) {
   const effectiveLabels = new Set(issue2.labels);
   const commentMode = detectCommentMode(`${issue2.title}
 ${issue2.body}`, params.config.runtime);
+  const isTransferred = shouldRunValidation(params.trigger) && !issue2.isSubIssue ? await resolveIssueTransferStatus({ issue: issue2, gateway: params.gateway }) : false;
+  if (isTransferred) {
+    core12.info(
+      `Issue #${issue2.number} was transferred from another repository; transfer-exempt sections are waived and auto-close is skipped.`
+    );
+  }
   const validation = issue2.isSubIssue && subIssueMode === "relaxed" ? createRelaxedSubIssueValidation({
     title: issue2.title,
     body: issue2.body,
@@ -45646,7 +45719,8 @@ ${issue2.body}`, params.config.runtime);
     body: issue2.body,
     config: params.config.issues.validation,
     commentMode,
-    dryRun: params.config.runtime.dryRun
+    dryRun: params.config.runtime.dryRun,
+    transferred: isTransferred
   });
   if (shouldRunValidation(params.trigger)) {
     await syncAnchoredComment({
@@ -45655,6 +45729,18 @@ ${issue2.body}`, params.config.runtime);
       anchor: params.config.issues.validation.commentAnchor,
       body: validation.commentBody
     });
+  }
+  const desiredIssueType = validation.executed ? validation.template?.issueType : void 0;
+  if (shouldRunValidation(params.trigger) && desiredIssueType && issue2.typeName !== desiredIssueType) {
+    try {
+      await params.gateway.setIssueType(issue2.number, desiredIssueType);
+      if (!params.config.runtime.dryRun) {
+        issue2.typeName = desiredIssueType;
+      }
+      core12.info(`Set issue type of #${issue2.number} to "${desiredIssueType}".`);
+    } catch (error48) {
+      core12.warning(`Unable to set issue type "${desiredIssueType}" on issue #${issue2.number}: ${String(error48)}`);
+    }
   }
   const autoCloseConfig = params.config.issues.validation.autoClose;
   const shouldAutoReopen = shouldRunValidation(params.trigger) && autoCloseConfig.enabled && autoCloseConfig.reopenWhenValid && validation.executed && validation.valid && issue2.state === "closed" && issue2.stateReason === "not_planned" && !issue2.labels.includes(params.config.issues.validation.duplicateDetection.duplicateLabel);
@@ -45679,7 +45765,7 @@ ${issue2.body}`, params.config.runtime);
       })
     });
   }
-  if (shouldRunValidation(params.trigger) && autoCloseConfig.enabled && validation.executed && !validation.valid && !validation.templateMatched && issue2.state === "open") {
+  if (shouldRunValidation(params.trigger) && autoCloseConfig.enabled && validation.executed && !validation.valid && !validation.templateMatched && !isTransferred && issue2.state === "open") {
     await params.gateway.closeIssue(issue2.number, { stateReason: "not_planned" });
     if (!params.config.runtime.dryRun) {
       issue2.state = "closed";

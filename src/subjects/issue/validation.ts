@@ -28,6 +28,7 @@ export function validateIssue(params: {
   config: ValidationConfig;
   commentMode: CommentMode;
   dryRun?: boolean;
+  transferred?: boolean;
 }): ValidationOutcome {
   if (!params.config.enabled) {
     return {
@@ -45,6 +46,7 @@ export function validateIssue(params: {
   const detected = detectTemplate(parsed, params.config.templates, params.title);
   const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey, params.title);
   const templateMatched = Boolean(detected);
+  const willAutoClose = params.config.autoClose.enabled && !templateMatched && !params.transferred;
 
   if (!template) {
     return {
@@ -59,13 +61,17 @@ export function validateIssue(params: {
         mode: params.commentMode,
         valid: false,
         missingSections: ["未找到可用模板 / No matching template found"],
-        closedForInvalidTemplate: params.config.autoClose.enabled,
+        closedForInvalidTemplate: willAutoClose,
+        transferred: params.transferred,
         dryRun: params.dryRun
       })
     };
   }
 
-  const missingSections = template.requiredSections
+  const effectiveSections = params.transferred
+    ? template.requiredSections.filter((rule) => !rule.transferExempt)
+    : template.requiredSections;
+  const missingSections = effectiveSections
     .filter((rule) => {
       const content = getSectionContent(parsed, rule);
       const hints = [...DEFAULT_PLACEHOLDER_HINTS, ...(rule.placeholderHints ?? [])];
@@ -93,7 +99,8 @@ export function validateIssue(params: {
         valid: false,
         templateKey: template.key,
         missingSections: missingSections.map((item) => item.aliases[0] ?? item.id),
-        closedForInvalidTemplate: params.config.autoClose.enabled,
+        closedForInvalidTemplate: willAutoClose,
+        transferred: params.transferred,
         dryRun: params.dryRun
       })
   };

@@ -266,6 +266,10 @@ export class FakeGateway implements GitHubGateway {
 
   public readonly parentLookupOptions: IssueParentLookupOptions[] = [];
 
+  public readonly transferredIssueNumbers = new Set<number>();
+
+  public readonly issueTypeUpdates: Array<{ issueNumber: number; typeName: string }> = [];
+
   public readonly textAttachments = new Map<string, IssueTextAttachment>();
 
   public readonly repositoryDirectories = new Map<string, RepositoryContentEntry[]>();
@@ -424,6 +428,17 @@ export class FakeGateway implements GitHubGateway {
     this.reopenedIssues.push(issueNumber);
     this.issue.state = "open";
     this.issue.stateReason = undefined;
+  }
+
+  public async isTransferredIssue(issueNumber: number): Promise<boolean> {
+    return this.transferredIssueNumbers.has(issueNumber);
+  }
+
+  public async setIssueType(issueNumber: number, typeName: string): Promise<void> {
+    this.issueTypeUpdates.push({ issueNumber, typeName });
+    if (issueNumber === this.issue.number) {
+      this.issue.typeName = typeName;
+    }
   }
 
   public async searchIssues(params: SearchIssueParams): Promise<DuplicateCandidate[]> {

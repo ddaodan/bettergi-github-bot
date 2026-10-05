@@ -25,10 +25,21 @@ describe("validateIssue", () => {
     expect(result.commentBody).toContain("模板检查结果");
   });
 
-  it("uses the auto-close wording when auto-close is enabled", () => {
+  it("uses the auto-close wording only when no template is detected", () => {
     const config = createConfig();
     config.issues.validation.autoClose.enabled = true;
-    const result = validateIssue({
+    const noTemplateResult = validateIssue({
+      body: "这个插件用不了，快点修复！！",
+      config: config.issues.validation,
+      commentMode: "zh"
+    });
+
+    expect(noTemplateResult.valid).toBe(false);
+    expect(noTemplateResult.templateMatched).toBe(false);
+    expect(noTemplateResult.commentBody).toContain("已自动关闭");
+    expect(noTemplateResult.commentBody).toContain("请直接编辑此 Issue 并按模板补全上述内容");
+
+    const templateMatchedResult = validateIssue({
       body: [
         "<!-- issue-template: bug -->",
         "",
@@ -42,9 +53,48 @@ describe("validateIssue", () => {
       commentMode: "zh"
     });
 
-    expect(result.valid).toBe(false);
-    expect(result.commentBody).toContain("已自动关闭");
-    expect(result.commentBody).toContain("请直接编辑此 Issue 并按模板补全上述内容");
+    expect(templateMatchedResult.valid).toBe(false);
+    expect(templateMatchedResult.templateMatched).toBe(true);
+    expect(templateMatchedResult.commentBody).toContain("请补充以下必填内容");
+    expect(templateMatchedResult.commentBody).not.toContain("已自动关闭");
+  });
+
+  it("waives transfer-exempt sections for transferred issues", () => {
+    const config = createConfig();
+    config.issues.validation.templates[0]?.requiredSections.push({
+      id: "script-name",
+      aliases: ["相关脚本名称与版本"],
+      transferExempt: true
+    });
+    const body = [
+      "<!-- issue-template: bug -->",
+      "",
+      "## Environment",
+      "Windows 11",
+      "",
+      "## Steps to Reproduce",
+      "1. Start the plugin",
+      "",
+      "## Expected Behavior",
+      "The plugin should keep running"
+    ].join("\n");
+
+    const nativeResult = validateIssue({
+      body,
+      config: config.issues.validation,
+      commentMode: "zh"
+    });
+    expect(nativeResult.valid).toBe(false);
+    expect(nativeResult.missingSections.map((item) => item.id)).toEqual(["script-name"]);
+
+    const transferredResult = validateIssue({
+      body,
+      config: config.issues.validation,
+      commentMode: "zh",
+      transferred: true
+    });
+    expect(transferredResult.valid).toBe(true);
+    expect(transferredResult.commentBody).toBeUndefined();
   });
 
   it("does not emit a validation comment for valid issues", () => {

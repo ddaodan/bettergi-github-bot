@@ -141,6 +141,18 @@ function shouldRunValidation(trigger: IssueWorkflowTrigger): boolean {
   return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
 
+async function resolveIssueTransferStatus(params: {
+  issue: IssueContext;
+  gateway: GitHubGateway;
+}): Promise<boolean> {
+  try {
+    return await params.gateway.isTransferredIssue(params.issue.number);
+  } catch (error) {
+    core.warning(`Unable to check transfer status for issue #${params.issue.number}: ${String(error)}`);
+    return false;
+  }
+}
+
 function shouldRunTitleGeneration(trigger: IssueWorkflowTrigger): boolean {
   return ["issue_opened", "issue_edited", "issue_reopened", "command_refresh"].includes(trigger);
 }
@@ -195,6 +207,14 @@ export async function runIssueWorkflow(params: {
 
   const effectiveLabels = new Set(issue.labels);
   const commentMode: CommentMode = detectCommentMode(`${issue.title}\n${issue.body}`, params.config.runtime);
+  const isTransferred = shouldRunValidation(params.trigger) && !issue.isSubIssue
+    ? await resolveIssueTransferStatus({ issue, gateway: params.gateway })
+    : false;
+  if (isTransferred) {
+    core.info(
+      `Issue #${issue.number} was transferred from another repository; transfer-exempt sections are waived and auto-close is skipped.`
+    );
+  }
   const validation = issue.isSubIssue && subIssueMode === "relaxed"
     ? createRelaxedSubIssueValidation({
       title: issue.title,
@@ -206,7 +226,8 @@ export async function runIssueWorkflow(params: {
       body: issue.body,
       config: params.config.issues.validation,
       commentMode,
-      dryRun: params.config.runtime.dryRun
+      dryRun: params.config.runtime.dryRun,
+      transferred: isTransferred
     });
 
   if (shouldRunValidation(params.trigger)) {
@@ -216,6 +237,19 @@ export async function runIssueWorkflow(params: {
       anchor: params.config.issues.validation.commentAnchor,
       body: validation.commentBody
     });
+  }
+
+  const desiredIssueType = validation.executed ? validation.template?.issueType : undefined;
+  if (shouldRunValidation(params.trigger) && desiredIssueType && issue.typeName !== desiredIssueType) {
+    try {
+      await params.gateway.setIssueType(issue.number, desiredIssueType);
+      if (!params.config.runtime.dryRun) {
+        issue.typeName = desiredIssueType;
+      }
+      core.info(`Set issue type of #${issue.number} to "${desiredIssueType}".`);
+    } catch (error) {
+      core.warning(`Unable to set issue type "${desiredIssueType}" on issue #${issue.number}: ${String(error)}`);
+    }
   }
 
   const autoCloseConfig = params.config.issues.validation.autoClose;
@@ -256,6 +290,7 @@ export async function runIssueWorkflow(params: {
     && validation.executed
     && !validation.valid
     && !validation.templateMatched
+    && !isTransferred
     && issue.state === "open"
   ) {
     await params.gateway.closeIssue(issue.number, { stateReason: "not_planned" });

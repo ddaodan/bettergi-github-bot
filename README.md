@@ -8,7 +8,8 @@
 
 ### Issue 自动流程
 
-- 模板检查：校验 Issue 是否符合模板或表单要求；失败时评论提醒并同步标签。可选启用 `autoClose` 后，未按模板填写或必填内容不完整的开放 Issue 会被自动关闭，并在用户编辑补全后自动重新打开。
+- 模板检查：校验 Issue 是否符合模板或表单要求；失败时评论提醒并同步标签。可选启用 `autoClose` 后，完全未使用模板的开放 Issue 会被自动关闭（模板匹配但必填内容不完整时仅评论提醒），并在用户编辑补全后自动重新打开。
+- Issue Type 同步：模板匹配后可将组织级 Issue Type（如 `Bug`、`Feature`）同步到 Issue，替代标签做分类；状态类标签（如 `需要更多信息`）仍走标签体系。
 - 自动标题：模板通过后，可为仅保留模板前缀的 Issue 生成标题，并高置信纠正与正文明显无关的标题。
 - 重复 Issue 检测：规则初筛 + 可选 AI 复判；高置信重复可自动关闭，近似重复会在 AI 评论顶部折叠展示。
 - 标签同步：仅管理配置中声明的托管标签，不删除维护者手工添加的非托管标签。
@@ -187,12 +188,51 @@ issues:
 
 启用后：
 
-- 未使用模板、模板匹配失败或必填段落缺失/仍为占位内容的开放 Issue，在 `opened`、`edited`、`reopened` 和 `@bot /refresh` 等自动处理触发时被关闭（`state_reason: not planned`），并评论说明缺少的必填内容与补全方式。
+- 只有完全未匹配到模板的开放 Issue 会被自动关闭（`state_reason: not planned`），并评论说明补全方式；模板已匹配但必填段落缺失/仍为占位内容时，仅评论提醒缺少的内容，不关闭 Issue。
 - 模板检查失败仍然跳过标题生成、重复检测和 AI 帮助；标签同步与失败标签（如 `需要更多信息`）逻辑不变。
 - 用户直接编辑已关闭的 Issue 并按模板补全内容后，Bot 检测到模板检查通过且关闭原因是 `not_planned`，会自动重新打开 Issue，并继续执行标题、标签、重复检测和 AI 帮助流程。
 - `reopenWhenValid: false` 时只自动关闭、不自动重开。
 - 为避免与现有流程冲突，以下情况不会自动重开：关闭原因不是 `not_planned`（例如维护者以 `completed` 关闭）、当前已带有重复标签、relaxed Sub-issue（未执行严格模板校验）。
 - 已关闭但仍未通过模板检查的 Issue 不会重复调用关闭 API，只会更新锚点评论；用户未补全模板而手动重开时，Bot 会再次关闭。
+
+### Issue Type 同步
+
+模板支持可选的 `issueType` 字段，把组织级 Issue Type（GitHub 原生功能，仅组织仓库可用）同步到 Issue 上：
+
+```yml
+templates:
+  - key: bug
+    issueType: Bug
+    labels:
+      whenValid: []   # 分类改用 Type 后可清空
+      whenInvalid:
+        - 需要更多信息
+```
+
+- 只要模板被匹配到（marker 或标题前缀），无论模板检查是否通过都会设置 Type；分类与内容完整性是两回事。
+- `issueType` 必须与组织里已配置的 Issue Type 名称完全一致；设置失败（例如组织未建该 Type）只记警告，不影响其余流程。
+- Bot 从事件 payload 读取当前 Type，仅在不一致时调用更新 API；新版 caller workflow 会过滤 Bot 自身事件，不会形成触发循环。
+- 想完全改用 Type 分类时，把各模板 `labels.whenValid` 清空。注意：分类标签若仍留在 `labeling.managed` 中，会在不再是期望标签时被自动摘除；要保留存量分类标签就把它们从 `managed` 移出。
+- 状态类标签（如 `需要更多信息`、重复标签）仍走标签体系，不受影响。
+
+### 转移 Issue 的处理
+
+Bot 通过 Issue 时间线中的 `transferred` 事件识别从其他仓库转移而来的 Issue，并对它们放宽处理：
+
+- 模板中标记 `transferExempt: true` 的段落对转移 Issue 豁免（适用于多仓库共用一套模板、但各自表单存在仓库特有段落的场景）：
+
+  ```yml
+  requiredSections:
+    - id: description
+      aliases: [问题描述]
+    - id: script-name
+      aliases: [相关脚本名称与版本]
+      transferExempt: true
+  ```
+
+- 转移 Issue 永远不会被自动关闭，即使完全未匹配到模板。
+- 转移 Issue 的验证评论会附带说明"仅要求通用必填内容"。
+- 每次自动处理会额外调用一次 Issue 时间线 API 用于转移识别；查询失败时按普通 Issue 处理。
 
 GitHub Actions 无法在事件产生前按评论作者过滤 `issue_comment`。示例 workflow 会在 job 启动前跳过 bot 评论和不含受支持指令的评论，并通过 `run-name` 标出 Issue 编号、事件和触发者；这些被过滤的记录会显示为 skipped，但不会 checkout 或运行 Bot。
 

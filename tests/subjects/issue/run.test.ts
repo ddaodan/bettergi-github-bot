@@ -41,7 +41,7 @@ describe("runIssueWorkflow", () => {
     expect(issue.state).toBe("open");
   });
 
-  it("closes invalid issues when validation auto-close is enabled", async () => {
+  it("comments but does not close template-detected issues when auto-close is enabled", async () => {
     const config = createConfig();
     config.issues.validation.autoClose.enabled = true;
     const issue = createIssue({
@@ -57,6 +57,31 @@ describe("runIssueWorkflow", () => {
         "## Expected Behavior",
         "The plugin should start successfully"
       ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+
+    expect(gateway.closedIssues).toEqual([]);
+    expect(issue.state).toBe("open");
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("issue-bot:validation");
+    expect(gateway.comments[0]?.body).toContain("请补充以下必填内容");
+    expect(gateway.comments[0]?.body).not.toContain("已自动关闭");
+    expect(gateway.searchRequests).toHaveLength(0);
+    expect(issue.labels).toContain("需要更多信息");
+  });
+
+  it("closes issues without any template when validation auto-close is enabled", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    const issue = createIssue({
+      body: "这个插件用不了，快点修复！！"
     });
     const gateway = new FakeGateway(issue);
 
@@ -219,7 +244,9 @@ describe("runIssueWorkflow", () => {
     expect(gateway.closedIssues).toEqual([]);
     expect(issue.state).toBe("closed");
     expect(gateway.comments).toHaveLength(1);
-    expect(gateway.comments[0]?.body).toContain("已自动关闭");
+    expect(gateway.comments[0]?.body).toContain("issue-bot:validation");
+    expect(gateway.comments[0]?.body).toContain("请补充以下必填内容");
+    expect(gateway.comments[0]?.body).not.toContain("已自动关闭");
   });
 
   it("re-closes an issue reopened manually without fixing the template", async () => {
@@ -228,18 +255,7 @@ describe("runIssueWorkflow", () => {
     const issue = createIssue({
       state: "open",
       action: "reopened",
-      body: [
-        "<!-- issue-template: bug -->",
-        "",
-        "## Environment",
-        "Windows 11",
-        "",
-        "## Steps to Reproduce",
-        "Please fill",
-        "",
-        "## Expected Behavior",
-        "The plugin should start successfully"
-      ].join("\n")
+      body: "这个插件用不了，快点修复！！"
     });
     const gateway = new FakeGateway(issue);
 
@@ -253,6 +269,84 @@ describe("runIssueWorkflow", () => {
     expect(gateway.closedIssues).toEqual([1]);
     expect(gateway.issue.stateReason).toBe("not_planned");
     expect(gateway.reopenedIssues).toEqual([]);
+  });
+
+  it("waives transfer-exempt sections and skips auto-close for transferred issues", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    config.issues.validation.templates[0]?.requiredSections.push({
+      id: "script-name",
+      aliases: ["相关脚本名称与版本"],
+      transferExempt: true
+    });
+    const issue = createIssue({
+      number: 7,
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "1. Start the plugin",
+        "2. Wait for the crash",
+        "",
+        "## Expected Behavior",
+        "The plugin should keep running"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+    gateway.transferredIssueNumbers.add(7);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+
+    expect(gateway.closedIssues).toEqual([]);
+    expect(issue.state).toBe("open");
+    expect(issue.labels).toContain("BUG");
+    expect(issue.labels).not.toContain("需要更多信息");
+    expect(gateway.comments).toHaveLength(0);
+  });
+
+  it("still enforces universal sections for transferred issues without closing them", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    config.issues.validation.templates[0]?.requiredSections.push({
+      id: "script-name",
+      aliases: ["相关脚本名称与版本"],
+      transferExempt: true
+    });
+    const issue = createIssue({
+      number: 8,
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Please fill"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+    gateway.transferredIssueNumbers.add(8);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+
+    expect(gateway.closedIssues).toEqual([]);
+    expect(issue.state).toBe("open");
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("请补充以下必填内容");
+    expect(gateway.comments[0]?.body).toContain("- Steps to Reproduce");
+    expect(gateway.comments[0]?.body).not.toContain("- 相关脚本名称与版本");
+    expect(gateway.comments[0]?.body).toContain("转移");
+    expect(issue.labels).toContain("需要更多信息");
   });
 
   it("does not auto-close relaxed sub-issues when auto-close is enabled", async () => {
@@ -328,6 +422,65 @@ describe("runIssueWorkflow", () => {
 
     expect(issue.labels).toContain("BUG");
     expect(gateway.comments).toHaveLength(0);
+  });
+
+  it("sets the issue type from the detected template even when sections are incomplete", async () => {
+    const config = createConfig();
+    config.issues.validation.templates[0]!.issueType = "Bug";
+    const issue = createIssue({
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "Please fill",
+        "",
+        "## Expected Behavior",
+        "The plugin should start successfully"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+
+    expect(gateway.issueTypeUpdates).toEqual([{ issueNumber: 1, typeName: "Bug" }]);
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("请补充以下必填内容");
+  });
+
+  it("skips issue type updates when the template has no type or the type already matches", async () => {
+    const config = createConfig();
+    const unchangedIssue = createIssue({ typeName: "Bug" });
+    const unchangedGateway = new FakeGateway(unchangedIssue);
+
+    await runIssueWorkflow({
+      issue: unchangedIssue,
+      trigger: "issue_opened",
+      config,
+      gateway: unchangedGateway
+    });
+
+    expect(unchangedGateway.issueTypeUpdates).toEqual([]);
+
+    config.issues.validation.templates[0]!.issueType = "Bug";
+    const matchedIssue = createIssue({ typeName: "Bug" });
+    const matchedGateway = new FakeGateway(matchedIssue);
+
+    await runIssueWorkflow({
+      issue: matchedIssue,
+      trigger: "issue_opened",
+      config,
+      gateway: matchedGateway
+    });
+
+    expect(matchedGateway.issueTypeUpdates).toEqual([]);
   });
 
   it("skips automatic processing for issues created before the cutoff date", async () => {

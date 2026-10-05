@@ -103,6 +103,8 @@ export interface GitHubGateway {
   updateIssueTitle(issueNumber: number, title: string): Promise<void>;
   closeIssue(issueNumber: number, options?: { stateReason?: "completed" | "not_planned" }): Promise<void>;
   reopenIssue(issueNumber: number): Promise<void>;
+  isTransferredIssue(issueNumber: number): Promise<boolean>;
+  setIssueType(issueNumber: number, typeName: string): Promise<void>;
   searchIssues(params: SearchIssueParams): Promise<DuplicateCandidate[]>;
 }
 
@@ -120,6 +122,10 @@ function toIssueContext(): IssueContext | undefined {
     state_reason?: string | null;
   }).state_reason;
 
+  const issueType = (issue as typeof issue & {
+    type?: { name?: string | null } | null;
+  }).type;
+
   return {
     kind: "issue",
     owner: context.repo.owner,
@@ -129,6 +135,7 @@ function toIssueContext(): IssueContext | undefined {
     body: issue.body ?? "",
     state: issue.state as "open" | "closed",
     stateReason: stateReason?.trim().toLowerCase().replace(/\s+/g, "_") || undefined,
+    typeName: issueType?.name ?? null,
     labels: issue.labels.map((label: string | IssueLabelValue) => typeof label === "string" ? label : label.name ?? "").filter(Boolean),
     htmlUrl: issue.html_url ?? "",
     createdAt: issue.created_at ?? "",
@@ -844,6 +851,45 @@ export class OctokitGitHubGateway implements GitHubGateway {
       repo: context.repo.repo,
       issue_number: issueNumber,
       state: "open"
+    });
+  }
+
+  public async isTransferredIssue(issueNumber: number): Promise<boolean> {
+    const events = await this.octokit.paginate(
+      this.octokit.rest.issues.listEventsForTimeline,
+      {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: issueNumber,
+        per_page: 100
+      },
+      (response, done) => {
+        const transferred = (response.data as unknown as Array<{ event?: string }>)
+          .some((item) => item.event === "transferred");
+        if (transferred) {
+          done();
+        }
+        return response.data;
+      }
+    );
+
+    return (events as unknown as Array<{ event?: string }>).some((item) => item.event === "transferred");
+  }
+
+  public async setIssueType(issueNumber: number, typeName: string): Promise<void> {
+    if (this.dryRun) {
+      core.info(`[dry-run] set issue type "${typeName}" on issue #${issueNumber}`);
+      return;
+    }
+
+    await this.octokit.request("PATCH /repos/{owner}/{repo}/issues/{issue_number}", {
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      issue_number: issueNumber,
+      type: typeName,
+      headers: {
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
     });
   }
 

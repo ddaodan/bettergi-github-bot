@@ -11,10 +11,12 @@ export interface SectionRule {
   id: string;
   aliases: string[];
   placeholderHints?: string[];
+  transferExempt?: boolean;
 }
 
 export interface IssueTemplateConfig {
   key: string;
+  issueType?: string;
   detect: {
     markers: string[];
     titlePrefixes: string[];
@@ -228,6 +230,8 @@ export interface IssueContext extends RepositorySubjectContext {
   kind: "issue";
   stateReason?: string | null;
   isSubIssue?: boolean;
+  isTransferred?: boolean;
+  typeName?: string | null;
   parentRelation?: "sub_issue" | "comment_derived";
   parentIssueUrl?: string | null;
   parentIssue?: IssueParentContext;

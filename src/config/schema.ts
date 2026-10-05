@@ -3,11 +3,13 @@ import { z } from "zod";
 const sectionRuleSchema = z.object({
   id: z.string().min(1),
   aliases: z.array(z.string().min(1)).min(1),
-  placeholderHints: z.array(z.string().min(1)).default([])
+  placeholderHints: z.array(z.string().min(1)).default([]),
+  transferExempt: z.boolean().default(false)
 });
 
 const templateSchema = z.object({
   key: z.string().min(1),
+  issueType: z.string().min(1).optional(),
   detect: z.object({
     markers: z.array(z.string().min(1)).default([]),
     titlePrefixes: z.array(z.string().min(1)).default([])

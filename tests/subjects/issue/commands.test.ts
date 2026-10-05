@@ -114,7 +114,7 @@ describe("issue comment commands", () => {
     });
 
     await runIssueCommentCommand({
-      workspace: "E:\\bettergi-github-bot",
+      workspace: process.cwd(),
       command: command!,
       config,
       gateway
@@ -159,7 +159,7 @@ describe("issue comment commands", () => {
     });
 
     await runIssueCommentCommand({
-      workspace: "E:\\bettergi-github-bot",
+      workspace: process.cwd(),
       command: command!,
       config,
       gateway
@@ -205,14 +205,14 @@ describe("issue comment commands", () => {
     });
 
     await runIssueCommentCommand({
-      workspace: "E:\\bettergi-github-bot",
+      workspace: process.cwd(),
       command: parsedCommand!,
       config,
       gateway,
       provider
     });
     await runIssueCommentCommand({
-      workspace: "E:\\bettergi-github-bot",
+      workspace: process.cwd(),
       command: parsedCommand!,
       config,
       gateway,
@@ -252,7 +252,7 @@ describe("issue comment commands", () => {
     const invalidGateway = new FakeGateway(invalidIssue, [], undefined, undefined, invalidComment);
 
     await runIssueCommentCommand({
-      workspace: "E:\\bettergi-github-bot",
+      workspace: process.cwd(),
       command: parseIssueCommentCommand({
         comment: invalidComment,
         mentions: config.issues.commands.mentions
@@ -274,7 +274,7 @@ describe("issue comment commands", () => {
     const duplicateGateway = new FakeGateway(duplicateIssue, [], undefined, undefined, duplicateComment);
 
     await runIssueCommentCommand({
-      workspace: "E:\\bettergi-github-bot",
+      workspace: process.cwd(),
       command: parseIssueCommentCommand({
         comment: duplicateComment,
         mentions: config.issues.commands.mentions
@@ -296,7 +296,7 @@ describe("issue comment commands", () => {
     const closedGateway = new FakeGateway(closedIssue, [], undefined, undefined, closedComment);
 
     await runIssueCommentCommand({
-      workspace: "E:\\bettergi-github-bot",
+      workspace: process.cwd(),
       command: parseIssueCommentCommand({
         comment: closedComment,
         mentions: config.issues.commands.mentions
@@ -316,7 +316,7 @@ describe("issue comment commands", () => {
     const unavailableGateway = new FakeGateway(unavailableIssue, [], undefined, undefined, unavailableComment);
 
     await runIssueCommentCommand({
-      workspace: "E:\\bettergi-github-bot",
+      workspace: process.cwd(),
       command: parseIssueCommentCommand({
         comment: unavailableComment,
         mentions: config.issues.commands.mentions
@@ -524,7 +524,7 @@ describe("issue comment commands", () => {
     } as unknown as OpenAiCompatibleProvider;
 
     await runIssueCommentCommand({
-      workspace: "E:\\bettergi-github-bot",
+      workspace: process.cwd(),
       command: parseIssueCommentCommand({
         comment,
         mentions: config.issues.commands.mentions
