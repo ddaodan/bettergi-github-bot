@@ -12,7 +12,8 @@ const templateSchema = z.object({
   issueType: z.string().min(1).optional(),
   detect: z.object({
     markers: z.array(z.string().min(1)).default([]),
-    titlePrefixes: z.array(z.string().min(1)).default([])
+    titlePrefixes: z.array(z.string().min(1)).default([]),
+    formSignatures: z.array(z.string().min(1)).default([])
   }),
   requiredSections: z.array(sectionRuleSchema).default([]),
   labels: z.object({

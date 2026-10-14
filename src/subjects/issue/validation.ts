@@ -1,3 +1,5 @@
+import * as core from "@actions/core";
+
 import { DEFAULT_PLACEHOLDER_HINTS } from "../../core/constants.js";
 import type { CommentMode, ValidationConfig, ValidationOutcome } from "../../core/types.js";
 import { renderValidationComment } from "../../i18n/comments.js";
@@ -48,7 +50,10 @@ export function validateIssue(params: {
   const templateMatched = Boolean(detected);
   const willAutoClose = params.config.autoClose.enabled && !templateMatched && !params.transferred;
 
-  if (!template) {
+  if (!detected) {
+    core.info(
+      `Issue did not match any template (title prefix/section headings without a form signature are not accepted). Fallback template: ${template?.key ?? "none"}.`
+    );
     return {
       executed: true,
       valid: false,
@@ -56,7 +61,7 @@ export function validateIssue(params: {
       parsed,
       missingSections: [],
       desiredLabels: [],
-      invalidLabels: [],
+      invalidLabels: template?.labels.whenInvalid ?? [],
       commentBody: renderValidationComment({
         mode: params.commentMode,
         valid: false,
@@ -69,8 +74,8 @@ export function validateIssue(params: {
   }
 
   const effectiveSections = params.transferred
-    ? template.requiredSections.filter((rule) => !rule.transferExempt)
-    : template.requiredSections;
+    ? detected.requiredSections.filter((rule) => !rule.transferExempt)
+    : detected.requiredSections;
   const missingSections = effectiveSections
     .filter((rule) => {
       const content = getSectionContent(parsed, rule);
@@ -86,18 +91,18 @@ export function validateIssue(params: {
   return {
     executed: true,
     valid,
-    template,
+    template: detected,
     templateMatched,
     parsed,
     missingSections,
-    desiredLabels: valid ? template.labels.whenValid : [],
-    invalidLabels: valid ? [] : template.labels.whenInvalid,
+    desiredLabels: valid ? detected.labels.whenValid : [],
+    invalidLabels: valid ? [] : detected.labels.whenInvalid,
     commentBody: valid
       ? undefined
       : renderValidationComment({
         mode: params.commentMode,
         valid: false,
-        templateKey: template.key,
+        templateKey: detected.key,
         missingSections: missingSections.map((item) => item.aliases[0] ?? item.id),
         closedForInvalidTemplate: willAutoClose,
         transferred: params.transferred,

@@ -25,8 +25,7 @@ describe("validateIssue", () => {
     expect(result.commentBody).toContain("模板检查结果");
   });
 
-  it("uses the auto-close wording only when no template is detected", () => {
-    const config = createConfig();
+  it("uses the auto-close wording only when no template is detected", () => {    const config = createConfig();
     config.issues.validation.autoClose.enabled = true;
     const noTemplateResult = validateIssue({
       body: "这个插件用不了，快点修复！！",
@@ -170,5 +169,85 @@ describe("validateIssue", () => {
     expect(result.template?.key).toBe("bug");
     expect(result.valid).toBe(true);
     expect(result.commentBody).toBeUndefined();
+  });
+
+  it("rejects title prefix and section matches when the configured form signature is missing", () => {
+    const config = createConfig();
+    config.issues.validation.templates[0]!.detect.formSignatures = ["我已搜索现有 Issue，确认没有相同问题"];
+
+    const result = validateIssue({
+      title: "[bug] 手写的伪模板",
+      body: [
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "1. 打开 BetterGI",
+        "",
+        "## Expected Behavior",
+        "正常启动"
+      ].join("\n"),
+      config: config.issues.validation,
+      commentMode: "zh"
+    });
+
+    expect(result.templateMatched).toBe(false);
+    expect(result.valid).toBe(false);
+    expect(result.commentBody).toContain("未找到可用模板");
+  });
+
+  it("accepts the same body once the form signature is present", () => {
+    const config = createConfig();
+    config.issues.validation.templates[0]!.detect.formSignatures = ["我已搜索现有 Issue，确认没有相同问题"];
+
+    const result = validateIssue({
+      title: "[bug] 通过表单提交",
+      body: [
+        "### 提交确认 / Checklist",
+        "",
+        "- [x] 我已搜索现有 Issue，确认没有相同问题",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "1. 打开 BetterGI",
+        "",
+        "## Expected Behavior",
+        "正常启动"
+      ].join("\n"),
+      config: config.issues.validation,
+      commentMode: "zh"
+    });
+
+    expect(result.templateMatched).toBe(true);
+    expect(result.valid).toBe(true);
+    expect(result.commentBody).toBeUndefined();
+  });
+
+  it("trusts an explicit hidden template marker even without a form signature", () => {
+    const config = createConfig();
+    config.issues.validation.templates[0]!.detect.formSignatures = ["我已搜索现有 Issue，确认没有相同问题"];
+
+    const result = validateIssue({
+      title: "[bug] 带隐藏标记",
+      body: [
+        "<!-- issue-template: bug -->",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "1. 打开 BetterGI",
+        "",
+        "## Expected Behavior",
+        "正常启动"
+      ].join("\n"),
+      config: config.issues.validation,
+      commentMode: "zh"
+    });
+
+    expect(result.templateMatched).toBe(true);
+    expect(result.valid).toBe(true);
   });
 });

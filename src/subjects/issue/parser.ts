@@ -159,12 +159,30 @@ export function parseIssueBody(body: string): ParsedIssue {
 
   return {
     marker: extractTemplateMarker(body),
+    raw: body,
     sections,
     headings,
     images: extractIssueImages(body),
     attachments: extractIssueAttachments(body),
     textAttachments: []
   };
+}
+
+function normalizeSignatureText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function hasFormSignature(parsed: ParsedIssue, template: IssueTemplateConfig): boolean {
+  const signatures = template.detect.formSignatures ?? [];
+  if (signatures.length === 0) {
+    return true;
+  }
+
+  const haystack = normalizeSignatureText(parsed.raw ?? "");
+  return signatures.some((signature) => haystack.includes(normalizeSignatureText(signature)));
 }
 
 function scoreTemplateBySections(parsed: ParsedIssue, template: IssueTemplateConfig): number {
@@ -203,7 +221,7 @@ export function detectTemplate(
   if (normalizedTitle) {
     const byTitlePrefix = templates.find((template) => template.detect.titlePrefixes
       .some((prefix) => normalizedTitle.startsWith(normalizeTitle(prefix))));
-    if (byTitlePrefix) {
+    if (byTitlePrefix && hasFormSignature(parsed, byTitlePrefix)) {
       return byTitlePrefix;
     }
   }
@@ -213,7 +231,7 @@ export function detectTemplate(
       template,
       score: scoreTemplateBySections(parsed, template)
     }))
-    .filter((entry) => entry.score > 0)
+    .filter((entry) => entry.score > 0 && hasFormSignature(parsed, entry.template))
     .sort((left, right) => right.score - left.score);
 
   if (rankedTemplates.length > 0) {

@@ -103,6 +103,41 @@ describe("runIssueWorkflow", () => {
     expect(issue.labels).toContain("需要更多信息");
   });
 
+  it("treats a hand-written pseudo template body as missing template", async () => {
+    const config = createConfig();
+    config.issues.validation.autoClose.enabled = true;
+    config.issues.validation.templates[0]!.detect.formSignatures = [
+      "我已搜索现有 Issue，确认没有相同问题"
+    ];
+    const issue = createIssue({
+      title: "[bug] 手写的伪模板正文",
+      body: [
+        "### 提交确认 / Checklist",
+        "",
+        "- [x] 已经搜索过现有 issue，未找到相同问题。",
+        "",
+        "### 描述",
+        "",
+        "我自己照着模板写了一份说明，但没有走表单。"
+      ].join("\n")
+    });
+    const gateway = new FakeGateway(issue);
+
+    await runIssueWorkflow({
+      issue,
+      trigger: "issue_opened",
+      config,
+      gateway
+    });
+
+    expect(gateway.closedIssues).toEqual([1]);
+    expect(issue.state).toBe("closed");
+    expect(gateway.comments).toHaveLength(1);
+    expect(gateway.comments[0]?.body).toContain("未找到可用模板");
+    expect(gateway.comments[0]?.body).toContain("已自动关闭");
+    expect(gateway.searchRequests).toHaveLength(0);
+  });
+
   it("reopens a closed not_planned issue after the template is completed", async () => {
     const config = createConfig();
     config.issues.validation.autoClose.enabled = true;

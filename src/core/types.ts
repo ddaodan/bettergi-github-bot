@@ -20,6 +20,7 @@ export interface IssueTemplateConfig {
   detect: {
     markers: string[];
     titlePrefixes: string[];
+    formSignatures?: string[];
   };
   requiredSections: SectionRule[];
   labels: {
@@ -308,6 +309,7 @@ export interface IssueTextAttachment extends IssueAttachmentReference {
 
 export interface ParsedIssue {
   marker?: string;
+  raw: string;
   sections: Record<string, string>;
   headings: string[];
   images: IssueImageReference[];

@@ -17598,12 +17598,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info11 = this._prepareRequest(verb, parsedUrl, headers);
+          let info12 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info11, data);
+            response = yield this.requestRaw(info12, data);
             if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
               let authenticationHandler;
               for (const handler2 of this.handlers) {
@@ -17613,7 +17613,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info11, data);
+                return authenticationHandler.handleAuthentication(this, info12, data);
               } else {
                 return response;
               }
@@ -17636,8 +17636,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info11 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info11, data);
+              info12 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info12, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -17666,7 +17666,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info11, data) {
+      requestRaw(info12, data) {
         return __awaiter(this, void 0, void 0, function* () {
           return new Promise((resolve, reject) => {
             function callbackForResult(err, res) {
@@ -17678,7 +17678,7 @@ var require_lib = __commonJS({
                 resolve(res);
               }
             }
-            this.requestRawWithCallback(info11, data, callbackForResult);
+            this.requestRawWithCallback(info12, data, callbackForResult);
           });
         });
       }
@@ -17688,12 +17688,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info11, data, onResult) {
+      requestRawWithCallback(info12, data, onResult) {
         if (typeof data === "string") {
-          if (!info11.options.headers) {
-            info11.options.headers = {};
+          if (!info12.options.headers) {
+            info12.options.headers = {};
           }
-          info11.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info12.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult(err, res) {
@@ -17702,7 +17702,7 @@ var require_lib = __commonJS({
             onResult(err, res);
           }
         }
-        const req = info11.httpModule.request(info11.options, (msg) => {
+        const req = info12.httpModule.request(info12.options, (msg) => {
           const res = new HttpClientResponse(msg);
           handleResult(void 0, res);
         });
@@ -17714,7 +17714,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error(`Request timeout: ${info11.options.path}`));
+          handleResult(new Error(`Request timeout: ${info12.options.path}`));
         });
         req.on("error", function(err) {
           handleResult(err);
@@ -17750,27 +17750,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info11 = {};
-        info11.parsedUrl = requestUrl;
-        const usingSsl = info11.parsedUrl.protocol === "https:";
-        info11.httpModule = usingSsl ? https : http;
+        const info12 = {};
+        info12.parsedUrl = requestUrl;
+        const usingSsl = info12.parsedUrl.protocol === "https:";
+        info12.httpModule = usingSsl ? https : http;
         const defaultPort = usingSsl ? 443 : 80;
-        info11.options = {};
-        info11.options.host = info11.parsedUrl.hostname;
-        info11.options.port = info11.parsedUrl.port ? parseInt(info11.parsedUrl.port) : defaultPort;
-        info11.options.path = (info11.parsedUrl.pathname || "") + (info11.parsedUrl.search || "");
-        info11.options.method = method;
-        info11.options.headers = this._mergeHeaders(headers);
+        info12.options = {};
+        info12.options.host = info12.parsedUrl.hostname;
+        info12.options.port = info12.parsedUrl.port ? parseInt(info12.parsedUrl.port) : defaultPort;
+        info12.options.path = (info12.parsedUrl.pathname || "") + (info12.parsedUrl.search || "");
+        info12.options.method = method;
+        info12.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info11.options.headers["user-agent"] = this.userAgent;
+          info12.options.headers["user-agent"] = this.userAgent;
         }
-        info11.options.agent = this._getAgent(info11.parsedUrl);
+        info12.options.agent = this._getAgent(info12.parsedUrl);
         if (this.handlers) {
           for (const handler2 of this.handlers) {
-            handler2.prepareRequest(info11.options);
+            handler2.prepareRequest(info12.options);
           }
         }
-        return info11;
+        return info12;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -19760,10 +19760,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.notice = notice;
-    function info11(message) {
+    function info12(message) {
       process.stdout.write(message + os.EOL);
     }
-    exports2.info = info11;
+    exports2.info = info12;
     function startGroup(name) {
       (0, command_1.issue)("group", name);
     }
@@ -23936,7 +23936,7 @@ var require_github = __commonJS({
 });
 
 // src/index.ts
-var core13 = __toESM(require_core(), 1);
+var core14 = __toESM(require_core(), 1);
 
 // src/config/loadConfig.ts
 var import_promises = require("fs/promises");
@@ -40346,7 +40346,8 @@ var templateSchema = external_exports.object({
   issueType: external_exports.string().min(1).optional(),
   detect: external_exports.object({
     markers: external_exports.array(external_exports.string().min(1)).default([]),
-    titlePrefixes: external_exports.array(external_exports.string().min(1)).default([])
+    titlePrefixes: external_exports.array(external_exports.string().min(1)).default([]),
+    formSignatures: external_exports.array(external_exports.string().min(1)).default([])
   }),
   requiredSections: external_exports.array(sectionRuleSchema).default([]),
   labels: external_exports.object({
@@ -43172,7 +43173,7 @@ function tryCreateProvider(config2) {
 }
 
 // src/subjects/issue/fix.ts
-var core7 = __toESM(require_core(), 1);
+var core8 = __toESM(require_core(), 1);
 
 // src/github/comments.ts
 function createAnchor(anchor) {
@@ -43721,12 +43722,24 @@ function parseIssueBody(body) {
   flush();
   return {
     marker: extractTemplateMarker(body),
+    raw: body,
     sections,
     headings,
     images: extractIssueImages(body),
     attachments: extractIssueAttachments(body),
     textAttachments: []
   };
+}
+function normalizeSignatureText(value) {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
+}
+function hasFormSignature(parsed, template) {
+  const signatures = template.detect.formSignatures ?? [];
+  if (signatures.length === 0) {
+    return true;
+  }
+  const haystack = normalizeSignatureText(parsed.raw ?? "");
+  return signatures.some((signature) => haystack.includes(normalizeSignatureText(signature)));
 }
 function scoreTemplateBySections(parsed, template) {
   if (template.requiredSections.length === 0) {
@@ -43754,14 +43767,14 @@ function detectTemplate(parsed, templates, title) {
   const normalizedTitle = normalizeTitle(title ?? "");
   if (normalizedTitle) {
     const byTitlePrefix = templates.find((template) => template.detect.titlePrefixes.some((prefix) => normalizedTitle.startsWith(normalizeTitle(prefix))));
-    if (byTitlePrefix) {
+    if (byTitlePrefix && hasFormSignature(parsed, byTitlePrefix)) {
       return byTitlePrefix;
     }
   }
   const rankedTemplates = templates.map((template) => ({
     template,
     score: scoreTemplateBySections(parsed, template)
-  })).filter((entry) => entry.score > 0).sort((left, right) => right.score - left.score);
+  })).filter((entry) => entry.score > 0 && hasFormSignature(parsed, entry.template)).sort((left, right) => right.score - left.score);
   if (rankedTemplates.length > 0) {
     return rankedTemplates[0]?.template;
   }
@@ -44647,6 +44660,9 @@ async function resolveRepositoryAiContext(params) {
   };
 }
 
+// src/subjects/issue/validation.ts
+var core7 = __toESM(require_core(), 1);
+
 // src/core/constants.ts
 var DEFAULT_PLACEHOLDER_HINTS = [
   "\u8BF7\u586B\u5199",
@@ -44691,7 +44707,10 @@ function validateIssue(params) {
   const template = matchTemplate(parsed, params.config.templates, params.config.fallbackTemplateKey, params.title);
   const templateMatched = Boolean(detected);
   const willAutoClose = params.config.autoClose.enabled && !templateMatched && !params.transferred;
-  if (!template) {
+  if (!detected) {
+    core7.info(
+      `Issue did not match any template (title prefix/section headings without a form signature are not accepted). Fallback template: ${template?.key ?? "none"}.`
+    );
     return {
       executed: true,
       valid: false,
@@ -44699,7 +44718,7 @@ function validateIssue(params) {
       parsed,
       missingSections: [],
       desiredLabels: [],
-      invalidLabels: [],
+      invalidLabels: template?.labels.whenInvalid ?? [],
       commentBody: renderValidationComment({
         mode: params.commentMode,
         valid: false,
@@ -44710,7 +44729,7 @@ function validateIssue(params) {
       })
     };
   }
-  const effectiveSections = params.transferred ? template.requiredSections.filter((rule) => !rule.transferExempt) : template.requiredSections;
+  const effectiveSections = params.transferred ? detected.requiredSections.filter((rule) => !rule.transferExempt) : detected.requiredSections;
   const missingSections = effectiveSections.filter((rule) => {
     const content = getSectionContent(parsed, rule);
     const hints = [...DEFAULT_PLACEHOLDER_HINTS, ...rule.placeholderHints ?? []];
@@ -44723,16 +44742,16 @@ function validateIssue(params) {
   return {
     executed: true,
     valid,
-    template,
+    template: detected,
     templateMatched,
     parsed,
     missingSections,
-    desiredLabels: valid ? template.labels.whenValid : [],
-    invalidLabels: valid ? [] : template.labels.whenInvalid,
+    desiredLabels: valid ? detected.labels.whenValid : [],
+    invalidLabels: valid ? [] : detected.labels.whenInvalid,
     commentBody: valid ? void 0 : renderValidationComment({
       mode: params.commentMode,
       valid: false,
-      templateKey: template.key,
+      templateKey: detected.key,
       missingSections: missingSections.map((item) => item.aliases[0] ?? item.id),
       closedForInvalidTemplate: willAutoClose,
       transferred: params.transferred,
@@ -44906,7 +44925,7 @@ async function runIssueFixCommand(params) {
     });
     return "success";
   } catch (error48) {
-    core7.warning(`Skip /fix because provider request failed: ${String(error48)}`);
+    core8.warning(`Skip /fix because provider request failed: ${String(error48)}`);
     await updateFixStatusComment({
       gateway: params.gateway,
       issueNumber: params.issue.number,
@@ -44922,10 +44941,10 @@ async function runIssueFixCommand(params) {
 }
 
 // src/subjects/issue/run.ts
-var core12 = __toESM(require_core(), 1);
+var core13 = __toESM(require_core(), 1);
 
 // src/subjects/issue/aiClassification.ts
-var core8 = __toESM(require_core(), 1);
+var core9 = __toESM(require_core(), 1);
 function unique2(values) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -44934,7 +44953,7 @@ async function classifyIssueContentLabels(params) {
     return { labels: [], definitions: {} };
   }
   if (!params.provider) {
-    core8.info("Skip AI label classification because provider is unavailable.");
+    core9.info("Skip AI label classification because provider is unavailable.");
     return { labels: [], definitions: {} };
   }
   const owner = params.config.sourceRepository.owner.trim() || params.issue.owner;
@@ -44950,7 +44969,7 @@ async function classifyIssueContentLabels(params) {
     entries = entries.filter(([name]) => !exclude.has(name));
   }
   if (entries.length === 0) {
-    core8.info(`Skip AI label classification because no candidate labels are available from ${owner}/${repo}.`);
+    core9.info(`Skip AI label classification because no candidate labels are available from ${owner}/${repo}.`);
     return { labels: [], definitions: {} };
   }
   try {
@@ -44969,33 +44988,33 @@ async function classifyIssueContentLabels(params) {
     const selected = unique2(classified.filter((item) => item.confidence >= params.config.minConfidence).map((item) => item.name)).filter((name) => allowed.has(name)).slice(0, params.config.maxLabels);
     const definitions = Object.fromEntries(selected.map((name) => [name, allowed.get(name)]).filter((entry) => Boolean(entry[1])));
     if (selected.length > 0) {
-      core8.info(`AI label classification selected: ${selected.join(", ")}`);
+      core9.info(`AI label classification selected: ${selected.join(", ")}`);
     } else {
-      core8.info("AI label classification did not select any labels above the confidence threshold.");
+      core9.info("AI label classification did not select any labels above the confidence threshold.");
     }
     return {
       labels: selected,
       definitions
     };
   } catch (error48) {
-    core8.warning(`Skip AI label classification because provider request failed: ${String(error48)}`);
+    core9.warning(`Skip AI label classification because provider request failed: ${String(error48)}`);
     return { labels: [], definitions: {} };
   }
 }
 
 // src/subjects/issue/aiHelp.ts
-var core9 = __toESM(require_core(), 1);
+var core10 = __toESM(require_core(), 1);
 async function generateIssueAiHelp(params) {
   if (!params.config.enabled) {
     return void 0;
   }
   if (!params.provider) {
-    core9.info("Skip AI help because provider is unavailable.");
+    core10.info("Skip AI help because provider is unavailable.");
     return void 0;
   }
   const hasTriggerLabel = params.config.triggerLabels.length === 0 || params.config.triggerLabels.some((label) => params.issue.labels.includes(label));
   if (!hasTriggerLabel) {
-    core9.info("Skip AI help because trigger labels do not match.");
+    core10.info("Skip AI help because trigger labels do not match.");
     return void 0;
   }
   try {
@@ -45040,13 +45059,13 @@ async function generateIssueAiHelp(params) {
       relatedIssues: params.relatedIssues
     });
   } catch (error48) {
-    core9.warning(`Skip AI help because provider request failed: ${String(error48)}`);
+    core10.warning(`Skip AI help because provider request failed: ${String(error48)}`);
     return void 0;
   }
 }
 
 // src/subjects/issue/duplicateDetection.ts
-var core10 = __toESM(require_core(), 1);
+var core11 = __toESM(require_core(), 1);
 var MAX_DUPLICATE_SEARCH_TERMS = 8;
 var MAX_DUPLICATE_SEARCH_PHRASES = 4;
 var MAX_DUPLICATE_TITLE_TOKENS = 3;
@@ -45291,7 +45310,7 @@ async function detectDuplicate(params) {
         };
       }
     } catch (error48) {
-      core10.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
+      core11.warning(`Duplicate AI review failed for #${entry.candidate.number}: ${String(error48)}`);
     }
   }
   if (!bestReview) {
@@ -45413,7 +45432,7 @@ function isDirectIssueRelation(issue2, candidate) {
 }
 
 // src/subjects/issue/titleGeneration.ts
-var core11 = __toESM(require_core(), 1);
+var core12 = __toESM(require_core(), 1);
 var PREFERRED_SECTION_PATTERN = /(description|summary|problem|question|request|suggestion|content|描述|问题|建议|需求|内容|现象)/i;
 var LOW_SIGNAL_SECTION_PATTERN = /(checklist|environment|version|steps|expected|logs?|attachments?|提交确认|系统环境|版本|复现|期望|日志|附件)/i;
 function normalizeComparable2(value) {
@@ -45481,11 +45500,11 @@ function composeTitle(params) {
   const existingPrefix = findConfiguredPrefix(params.currentTitle, params.prefixes);
   const prefix = existingPrefix || params.prefixes[0]?.trim() || "";
   const availableLength = Math.max(1, params.maxLength - Array.from(prefix).length - (prefix ? 1 : 0));
-  const core14 = takeUnicode(normalizeGeneratedCore(params.generatedCore, params.prefixes), availableLength);
-  if (!normalizeComparable2(core14)) {
+  const core15 = takeUnicode(normalizeGeneratedCore(params.generatedCore, params.prefixes), availableLength);
+  if (!normalizeComparable2(core15)) {
     return "";
   }
-  return prefix ? `${prefix} ${core14}`.trim() : core14;
+  return prefix ? `${prefix} ${core15}`.trim() : core15;
 }
 function titleUnits(value) {
   const normalized = value.normalize("NFKC").toLowerCase();
@@ -45544,11 +45563,11 @@ async function maybeUpdateIssueTitle(params) {
           generatedCore = sanitizedTitle;
         }
       } else if (mismatchReview) {
-        core11.info(`Keep issue #${params.issue.number} title after AI mismatch review (${suggestion.confidence.toFixed(2)}).`);
+        core12.info(`Keep issue #${params.issue.number} title after AI mismatch review (${suggestion.confidence.toFixed(2)}).`);
         return false;
       }
     } catch (error48) {
-      core11.warning(`AI issue title suggestion failed. Keep the existing title: ${String(error48)}`);
+      core12.warning(`AI issue title suggestion failed. Keep the existing title: ${String(error48)}`);
     }
   }
   if (!generatedCore) {
@@ -45565,7 +45584,7 @@ async function maybeUpdateIssueTitle(params) {
   }
   await params.gateway.updateIssueTitle(params.issue.number, title);
   params.issue.title = title;
-  core11.info(`Updated issue #${params.issue.number} title to "${title}".`);
+  core12.info(`Updated issue #${params.issue.number} title to "${title}".`);
   return true;
 }
 
@@ -45602,7 +45621,7 @@ async function resolveIssueAutoProcessingCutoff(params) {
     const stored = (await params.gateway.getRepositoryVariable(AUTO_PROCESSING_CUTOFF_VARIABLE))?.trim();
     if (stored) {
       if (Number.isNaN(Date.parse(stored))) {
-        core12.warning(
+        core13.warning(
           `Repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE} contains an invalid date string: ${stored}. Ignore automatic cutoff.`
         );
         return void 0;
@@ -45610,23 +45629,23 @@ async function resolveIssueAutoProcessingCutoff(params) {
       return stored;
     }
   } catch (error48) {
-    core12.warning(
+    core13.warning(
       `Unable to read repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}. Ignore automatic cutoff: ${String(error48)}`
     );
     return void 0;
   }
   if (params.config.runtime.dryRun) {
-    core12.info(`Dry-run: skip initializing repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}.`);
+    core13.info(`Dry-run: skip initializing repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}.`);
     return void 0;
   }
   const activationTimestamp = params.trigger === "issue_opened" ? params.issue.createdAt : (/* @__PURE__ */ new Date()).toISOString();
   try {
     await params.gateway.upsertRepositoryVariable(AUTO_PROCESSING_CUTOFF_VARIABLE, activationTimestamp);
-    core12.info(
+    core13.info(
       `Initialized automatic issue cutoff at ${activationTimestamp} in repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}.`
     );
   } catch (error48) {
-    core12.warning(
+    core13.warning(
       `Unable to initialize repository variable ${AUTO_PROCESSING_CUTOFF_VARIABLE}. Ignore automatic cutoff: ${String(error48)}`
     );
     return void 0;
@@ -45659,7 +45678,7 @@ async function resolveIssueTransferStatus(params) {
   try {
     return await params.gateway.isTransferredIssue(params.issue.number);
   } catch (error48) {
-    core12.warning(`Unable to check transfer status for issue #${params.issue.number}: ${String(error48)}`);
+    core13.warning(`Unable to check transfer status for issue #${params.issue.number}: ${String(error48)}`);
     return false;
   }
 }
@@ -45679,7 +45698,7 @@ async function runIssueWorkflow(params) {
     config: params.config,
     gateway: params.gateway
   })) {
-    core12.info(
+    core13.info(
       `Skip automatic processing for issue #${params.issue.number}: created at ${params.issue.createdAt} is earlier than the automatic cutoff or the hardcoded legacy cutoff ${LEGACY_ISSUE_HARDCODED_CUTOFF}.`
     );
     return;
@@ -45695,18 +45714,18 @@ async function runIssueWorkflow(params) {
   });
   const relationLabel = issue2.parentRelation === "comment_derived" ? "comment-derived issue" : "sub-issue";
   if (issue2.isSubIssue && subIssueMode === "skip") {
-    core12.info(`Skip automatic processing for ${relationLabel} #${issue2.number} because issues.subIssues.mode is skip.`);
+    core13.info(`Skip automatic processing for ${relationLabel} #${issue2.number} because issues.subIssues.mode is skip.`);
     return;
   }
   if (issue2.isSubIssue) {
-    core12.info(`Process ${relationLabel} #${issue2.number} in ${subIssueMode} mode.`);
+    core13.info(`Process ${relationLabel} #${issue2.number} in ${subIssueMode} mode.`);
   }
   const effectiveLabels = new Set(issue2.labels);
   const commentMode = detectCommentMode(`${issue2.title}
 ${issue2.body}`, params.config.runtime);
   const isTransferred = shouldRunValidation(params.trigger) && !issue2.isSubIssue ? await resolveIssueTransferStatus({ issue: issue2, gateway: params.gateway }) : false;
   if (isTransferred) {
-    core12.info(
+    core13.info(
       `Issue #${issue2.number} was transferred from another repository; transfer-exempt sections are waived and auto-close is skipped.`
     );
   }
@@ -45737,9 +45756,9 @@ ${issue2.body}`, params.config.runtime);
       if (!params.config.runtime.dryRun) {
         issue2.typeName = desiredIssueType;
       }
-      core12.info(`Set issue type of #${issue2.number} to "${desiredIssueType}".`);
+      core13.info(`Set issue type of #${issue2.number} to "${desiredIssueType}".`);
     } catch (error48) {
-      core12.warning(`Unable to set issue type "${desiredIssueType}" on issue #${issue2.number}: ${String(error48)}`);
+      core13.warning(`Unable to set issue type "${desiredIssueType}" on issue #${issue2.number}: ${String(error48)}`);
     }
   }
   const autoCloseConfig = params.config.issues.validation.autoClose;
@@ -45750,7 +45769,7 @@ ${issue2.body}`, params.config.runtime);
       issue2.state = "open";
       issue2.stateReason = void 0;
     }
-    core12.info(`Reopened issue #${issue2.number} after template validation passed.`);
+    core13.info(`Reopened issue #${issue2.number} after template validation passed.`);
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: issue2.number,
@@ -45771,10 +45790,10 @@ ${issue2.body}`, params.config.runtime);
       issue2.state = "closed";
       issue2.stateReason = "not_planned";
     }
-    core12.info(`Closed issue #${issue2.number} because no template was found.`);
+    core13.info(`Closed issue #${issue2.number} because no template was found.`);
   }
   if (shouldRunValidation(params.trigger) && validation.executed && !validation.valid) {
-    core12.info("Issue failed template validation. Skip duplicate detection and AI help.");
+    core13.info("Issue failed template validation. Skip duplicate detection and AI help.");
     await syncAnchoredComment({
       gateway: params.gateway,
       issueNumber: issue2.number,
@@ -46079,9 +46098,9 @@ async function runIssueCommentCommand(params) {
 async function run() {
   try {
     const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
-    const configPath = core13.getInput("config-path") || ".github/repo-bot.yml";
-    const overridesJson = core13.getInput("config-overrides-json");
-    const dryRun = core13.getBooleanInput("dry-run", { required: false });
+    const configPath = core14.getInput("config-path") || ".github/repo-bot.yml";
+    const overridesJson = core14.getInput("config-overrides-json");
+    const dryRun = core14.getBooleanInput("dry-run", { required: false });
     const config2 = await loadRepoBotConfig({
       workspace,
       configPath,
@@ -46093,14 +46112,14 @@ async function run() {
       throw new Error("Missing REPO_BOT_GITHUB_TOKEN or GITHUB_TOKEN.");
     }
     if (process.env.REPO_BOT_GITHUB_TOKEN?.trim()) {
-      core13.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
+      core14.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
     }
     const gateway = new OctokitGitHubGateway(token, config2.runtime.dryRun);
     const provider = tryCreateProvider(config2.providers.openAiCompatible);
     const issueComment = await gateway.getIssueCommentContext();
     if (issueComment) {
       if (issueComment.commentAuthorType.toLowerCase() === "bot") {
-        core13.info("Ignore an issue comment created or edited by a bot.");
+        core14.info("Ignore an issue comment created or edited by a bot.");
         return;
       }
       const command = parseIssueCommentCommand({
@@ -46108,21 +46127,21 @@ async function run() {
         mentions: config2.issues.commands.mentions
       });
       if (!command) {
-        core13.info("Current issue comment does not contain a supported bot command.");
+        core14.info("Current issue comment does not contain a supported bot command.");
         return;
       }
       if (!isIssueCommentCommandEnabled({
         command,
         config: config2.issues.commands
       })) {
-        core13.info(`Issue command /${command.command} is disabled or unsupported.`);
+        core14.info(`Issue command /${command.command} is disabled or unsupported.`);
         return;
       }
       if (!canExecuteIssueCommentCommand({
         command,
         config: config2.issues.commands
       })) {
-        core13.info(`Ignore issue command /${command.command} due to access restrictions.`);
+        core14.info(`Ignore issue command /${command.command} due to access restrictions.`);
         return;
       }
       await runIssueCommentCommand({
@@ -46132,21 +46151,21 @@ async function run() {
         gateway,
         provider
       });
-      core13.info(`Repo Bot completed command /${command.command} for issue #${command.issue.number}.`);
+      core14.info(`Repo Bot completed command /${command.command} for issue #${command.issue.number}.`);
       return;
     }
     const issue2 = await gateway.getIssueContext();
     if (!issue2) {
-      core13.info("Current event is not a plain issue event. Nothing to do.");
+      core14.info("Current event is not a plain issue event. Nothing to do.");
       return;
     }
     if (issue2.actorType?.toLowerCase() === "bot") {
-      core13.info(`Ignore issue action "${issue2.action}" created by a bot.`);
+      core14.info(`Ignore issue action "${issue2.action}" created by a bot.`);
       return;
     }
     const trigger = resolveIssueWorkflowTrigger(issue2.action);
     if (!trigger) {
-      core13.info(`Current issue action "${issue2.action}" is not handled.`);
+      core14.info(`Current issue action "${issue2.action}" is not handled.`);
       return;
     }
     await runIssueWorkflow({
@@ -46157,9 +46176,9 @@ async function run() {
       gateway,
       provider
     });
-    core13.info(`Repo Bot completed for issue #${issue2.number}.`);
+    core14.info(`Repo Bot completed for issue #${issue2.number}.`);
   } catch (error48) {
-    core13.setFailed(error48 instanceof Error ? error48.message : String(error48));
+    core14.setFailed(error48 instanceof Error ? error48.message : String(error48));
   }
 }
 void run();
