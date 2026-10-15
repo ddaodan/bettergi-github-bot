@@ -1,3 +1,5 @@
+import * as core from "@actions/core";
+
 import type {
   IssueAttachmentReference,
   IssueImageReference,
@@ -182,7 +184,15 @@ export function hasFormSignature(parsed: ParsedIssue, template: IssueTemplateCon
   }
 
   const haystack = normalizeSignatureText(parsed.raw ?? "");
-  return signatures.some((signature) => haystack.includes(normalizeSignatureText(signature)));
+  const missing = signatures.filter((signature) => !haystack.includes(normalizeSignatureText(signature)));
+  if (missing.length > 0) {
+    core.info(
+      `Template "${template.key}" is missing ${missing.length}/${signatures.length} form signature(s): ${missing.join(" | ")}`
+    );
+    return false;
+  }
+
+  return true;
 }
 
 function scoreTemplateBySections(parsed: ParsedIssue, template: IssueTemplateConfig): number {
@@ -221,8 +231,10 @@ export function detectTemplate(
   if (normalizedTitle) {
     const byTitlePrefix = templates.find((template) => template.detect.titlePrefixes
       .some((prefix) => normalizedTitle.startsWith(normalizeTitle(prefix))));
-    if (byTitlePrefix && hasFormSignature(parsed, byTitlePrefix)) {
-      return byTitlePrefix;
+    if (byTitlePrefix) {
+      // 标题前缀已经指明用的是哪个模板：签名不齐就直接判为未使用模板，
+      // 不能继续往下匹配到别的模板（各模板的签名存在包含关系，否则会误判）。
+      return hasFormSignature(parsed, byTitlePrefix) ? byTitlePrefix : undefined;
     }
   }
 

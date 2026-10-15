@@ -225,6 +225,70 @@ describe("validateIssue", () => {
     expect(result.commentBody).toBeUndefined();
   });
 
+  it("rejects the issue when only part of the required signatures match", () => {
+    const config = createConfig();
+    config.issues.validation.templates[0]!.detect.formSignatures = [
+      "我已搜索现有 Issue，确认没有相同问题",
+      "我已阅读相关脚本的 README 或使用说明",
+      "我已移除日志、截图中的 UID、路径等隐私信息"
+    ];
+
+    const result = validateIssue({
+      title: "[bug] 部分篡改的正文",
+      body: [
+        "### 提交确认 / Checklist",
+        "",
+        "- [x] 我已搜索现有 Issue，确认没有相同问题",
+        "- [x] 我翻过 README 了",
+        "- [x] 日志我自己留着，就不发了",
+        "",
+        "## Environment",
+        "Windows 11",
+        "",
+        "## Steps to Reproduce",
+        "1. 打开 BetterGI",
+        "",
+        "## Expected Behavior",
+        "正常启动"
+      ].join("\n"),
+      config: config.issues.validation,
+      commentMode: "zh"
+    });
+
+    expect(result.templateMatched).toBe(false);
+    expect(result.valid).toBe(false);
+    expect(result.commentBody).toContain("未找到可用模板");
+  });
+
+  it("does not fall through to another template when the prefix-matched template lacks signatures", () => {
+    const config = createConfig();
+    const bugTemplate = config.issues.validation.templates[0]!;
+    bugTemplate.detect.formSignatures = ["签名甲", "签名乙", "签名丙"];
+    config.issues.validation.templates.push({
+      ...bugTemplate,
+      key: "question",
+      issueType: undefined,
+      detect: {
+        markers: ["question"],
+        titlePrefixes: ["[question]"],
+        // 与 bug 的签名存在包含关系：真实表单里 question 的勾选项就是 bug 的前两项
+        formSignatures: ["签名甲", "签名乙"]
+      },
+      requiredSections: [{ id: "environment", aliases: ["Environment"] }]
+    });
+
+    const result = validateIssue({
+      title: "[bug] 只对上了前两项签名",
+      body: ["## Environment", "签名甲 签名乙", "Windows 11"].join("\n"),
+      config: config.issues.validation,
+      commentMode: "zh"
+    });
+
+    expect(result.templateMatched).toBe(false);
+    expect(result.template?.key).not.toBe("question");
+    expect(result.commentBody).toContain("未找到可用模板");
+  });
+
   it("trusts an explicit hidden template marker even without a form signature", () => {
     const config = createConfig();
     config.issues.validation.templates[0]!.detect.formSignatures = ["我已搜索现有 Issue，确认没有相同问题"];
