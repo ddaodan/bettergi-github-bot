@@ -269,19 +269,6 @@ export async function runIssueWorkflow(params: {
       issue.stateReason = undefined;
     }
     core.info(`Reopened issue #${issue.number} after template validation passed.`);
-    await syncAnchoredComment({
-      gateway: params.gateway,
-      issueNumber: issue.number,
-      anchor: params.config.issues.validation.commentAnchor,
-      body: renderValidationComment({
-        mode: commentMode,
-        valid: true,
-        templateKey: validation.template?.key,
-        missingSections: [],
-        reopenedAfterFix: true,
-        dryRun: params.config.runtime.dryRun
-      })
-    });
   }
 
   if (

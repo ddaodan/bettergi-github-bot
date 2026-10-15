@@ -65,7 +65,8 @@ export function validateIssue(params: {
       commentBody: renderValidationComment({
         mode: params.commentMode,
         valid: false,
-        missingSections: ["未找到可用模板 / No matching template found"],
+        noTemplateDetected: true,
+        missingSections: [],
         closedForInvalidTemplate: willAutoClose,
         transferred: params.transferred,
         dryRun: params.dryRun

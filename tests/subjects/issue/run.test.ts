@@ -98,7 +98,9 @@ describe("runIssueWorkflow", () => {
     expect(gateway.comments).toHaveLength(1);
     expect(gateway.comments[0]?.body).toContain("issue-bot:validation");
     expect(gateway.comments[0]?.body).toContain("已自动关闭");
-    expect(gateway.comments[0]?.body).toContain("请直接编辑此 Issue 并按模板补全上述内容");
+    expect(gateway.comments[0]?.body).toContain("未检测到 Issue 模板内容");
+    expect(gateway.comments[0]?.body).toContain("请使用仓库提供的 Issue 模板提交");
+    expect(gateway.comments[0]?.body).not.toContain("缺少的必填内容");
     expect(gateway.searchRequests).toHaveLength(0);
     expect(issue.labels).toContain("需要更多信息");
   });
@@ -133,7 +135,7 @@ describe("runIssueWorkflow", () => {
     expect(gateway.closedIssues).toEqual([1]);
     expect(issue.state).toBe("closed");
     expect(gateway.comments).toHaveLength(1);
-    expect(gateway.comments[0]?.body).toContain("未找到可用模板");
+    expect(gateway.comments[0]?.body).toContain("未检测到 Issue 模板内容");
     expect(gateway.comments[0]?.body).toContain("已自动关闭");
     expect(gateway.searchRequests).toHaveLength(0);
   });
@@ -171,10 +173,9 @@ describe("runIssueWorkflow", () => {
 
     expect(gateway.reopenedIssues).toEqual([1]);
     expect(issue.state).toBe("open");
-    expect(gateway.comments).toHaveLength(1);
-    expect(gateway.comments[0]?.body).toContain("issue-bot:validation");
-    expect(gateway.comments[0]?.body).toContain("已通过模板检查");
-    expect(gateway.comments[0]?.body).toContain("已自动重新打开");
+    // 通过校验后不再保留模板检查评论，只留正常流程的输出
+    expect(gateway.comments.filter((comment) => comment.body.includes("issue-bot:validation"))).toHaveLength(0);
+    expect(gateway.comments.filter((comment) => comment.body.includes("已通过模板检查"))).toHaveLength(0);
     expect(issue.labels).toContain("BUG");
     expect(issue.labels).not.toContain("需要更多信息");
   });
@@ -439,8 +440,7 @@ describe("runIssueWorkflow", () => {
 
     expect(gateway.reopenedIssues).toEqual([1]);
     expect(issue.state).toBe("open");
-    expect(gateway.comments).toHaveLength(1);
-    expect(gateway.comments[0]?.body).toContain("已自动重新打开");
+    expect(gateway.comments.filter((comment) => comment.body.includes("issue-bot:validation"))).toHaveLength(0);
   });
 
   it("does not comment on valid issues when ai help is disabled", async () => {

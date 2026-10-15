@@ -183,8 +183,8 @@ export function renderValidationComment(params: {
   valid: boolean;
   templateKey?: string;
   missingSections: string[];
+  noTemplateDetected?: boolean;
   closedForInvalidTemplate?: boolean;
-  reopenedAfterFix?: boolean;
   transferred?: boolean;
   dryRun?: boolean;
 }): string {
@@ -197,17 +197,6 @@ export function renderValidationComment(params: {
     : undefined;
 
   if (params.valid) {
-    if (params.reopenedAfterFix) {
-      return [
-        bilingual(
-          params.mode,
-          `## 模板检查结果\n\n已通过模板检查，${params.dryRun ? "计划自动重新打开此 Issue（当前为 dry-run，未实际修改 Issue 状态）" : "已自动重新打开此 Issue"}。当前识别模板：\`${params.templateKey ?? "unknown"}\`。`,
-          `## Template Check Result\n\nTemplate validation passed and this issue ${params.dryRun ? "is marked for automatic reopening (dry-run; the issue state was not changed)" : "has been reopened automatically"}. Detected template: \`${params.templateKey ?? "unknown"}\`.`
-        ),
-        transferredNote
-      ].filter((part): part is string => Boolean(part)).join("\n\n");
-    }
-
     return [
       bilingual(
         params.mode,
@@ -221,12 +210,34 @@ export function renderValidationComment(params: {
   const zhMissing = params.missingSections.map((item) => `- ${item}`).join("\n") || "- 暂无";
   const enMissing = params.missingSections.map((item) => `- ${item}`).join("\n") || "- None";
 
+  if (params.noTemplateDetected) {
+    if (params.closedForInvalidTemplate) {
+      return [
+        bilingual(
+          params.mode,
+          `## 模板检查结果\n\n未检测到 Issue 模板内容，${params.dryRun ? "计划自动关闭（当前为 dry-run，未实际修改 Issue 状态）" : "已自动关闭"}。\n\n请使用仓库提供的 Issue 模板提交，补全后会自动重新打开。`,
+          `## Template Check Result\n\nNo issue template content was detected, so this issue ${params.dryRun ? "is marked for automatic closure (dry-run; the issue state was not changed)" : "was closed automatically"}.\n\nPlease submit using one of the repository's issue templates; it will be reopened automatically once completed.`
+        ),
+        transferredNote
+      ].filter((part): part is string => Boolean(part)).join("\n\n");
+    }
+
+    return [
+      bilingual(
+        params.mode,
+        "## 模板检查结果\n\n未检测到 Issue 模板内容。\n\n请使用仓库提供的 Issue 模板提交。",
+        "## Template Check Result\n\nNo issue template content was detected.\n\nPlease submit using one of the repository's issue templates."
+      ),
+      transferredNote
+    ].filter((part): part is string => Boolean(part)).join("\n\n");
+  }
+
   if (params.closedForInvalidTemplate) {
     return [
       bilingual(
         params.mode,
-        `## 模板检查结果\n\nIssue 未按模板填写或必填内容不完整，${params.dryRun ? "计划自动关闭（当前为 dry-run，未实际修改 Issue 状态）" : "已自动关闭"}。缺少的必填内容：\n${zhMissing}\n\n请直接编辑此 Issue 并按模板补全上述内容，不要重复创建新 Issue；补全并通过检查后将自动重新打开。`,
-        `## Template Check Result\n\nThis issue was ${params.dryRun ? "marked for automatic closure (dry-run; the issue state was not changed)" : "closed automatically"} because it was not filled in according to the template or required sections are incomplete. Missing required sections:\n${enMissing}\n\nPlease edit this issue directly and complete the required sections instead of creating a new one. It will be reopened automatically once the template check passes.`
+        `## 模板检查结果\n\nIssue 未按模板填写或必填内容不完整，${params.dryRun ? "计划自动关闭（当前为 dry-run，未实际修改 Issue 状态）" : "已自动关闭"}。缺少的必填内容：\n${zhMissing}\n\n请按模板补全上述内容，补全并通过检查后将自动重新打开。`,
+        `## Template Check Result\n\nThis issue was ${params.dryRun ? "marked for automatic closure (dry-run; the issue state was not changed)" : "closed automatically"} because it was not filled in according to the template or required sections are incomplete. Missing required sections:\n${enMissing}\n\nPlease complete the sections above according to the template. It will be reopened automatically once the template check passes.`
       ),
       transferredNote
     ].filter((part): part is string => Boolean(part)).join("\n\n");

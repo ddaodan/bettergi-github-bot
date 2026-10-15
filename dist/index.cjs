@@ -43349,20 +43349,6 @@ function renderValidationComment(params) {
     "> This issue was detected as transferred from another repository. Only universal required sections are enforced; repository-specific sections are waived for now."
   ) : void 0;
   if (params.valid) {
-    if (params.reopenedAfterFix) {
-      return [
-        bilingual(
-          params.mode,
-          `## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C
-
-\u5DF2\u901A\u8FC7\u6A21\u677F\u68C0\u67E5\uFF0C${params.dryRun ? "\u8BA1\u5212\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u6B64 Issue\uFF08\u5F53\u524D\u4E3A dry-run\uFF0C\u672A\u5B9E\u9645\u4FEE\u6539 Issue \u72B6\u6001\uFF09" : "\u5DF2\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u6B64 Issue"}\u3002\u5F53\u524D\u8BC6\u522B\u6A21\u677F\uFF1A\`${params.templateKey ?? "unknown"}\`\u3002`,
-          `## Template Check Result
-
-Template validation passed and this issue ${params.dryRun ? "is marked for automatic reopening (dry-run; the issue state was not changed)" : "has been reopened automatically"}. Detected template: \`${params.templateKey ?? "unknown"}\`.`
-        ),
-        transferredNote
-      ].filter((part) => Boolean(part)).join("\n\n");
-    }
     return [
       bilingual(
         params.mode,
@@ -43378,6 +43364,34 @@ The issue passed template validation. Detected template: \`${params.templateKey 
   }
   const zhMissing = params.missingSections.map((item) => `- ${item}`).join("\n") || "- \u6682\u65E0";
   const enMissing = params.missingSections.map((item) => `- ${item}`).join("\n") || "- None";
+  if (params.noTemplateDetected) {
+    if (params.closedForInvalidTemplate) {
+      return [
+        bilingual(
+          params.mode,
+          `## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C
+
+\u672A\u68C0\u6D4B\u5230 Issue \u6A21\u677F\u5185\u5BB9\uFF0C${params.dryRun ? "\u8BA1\u5212\u81EA\u52A8\u5173\u95ED\uFF08\u5F53\u524D\u4E3A dry-run\uFF0C\u672A\u5B9E\u9645\u4FEE\u6539 Issue \u72B6\u6001\uFF09" : "\u5DF2\u81EA\u52A8\u5173\u95ED"}\u3002
+
+\u8BF7\u4F7F\u7528\u4ED3\u5E93\u63D0\u4F9B\u7684 Issue \u6A21\u677F\u63D0\u4EA4\uFF0C\u8865\u5168\u540E\u4F1A\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u3002`,
+          `## Template Check Result
+
+No issue template content was detected, so this issue ${params.dryRun ? "is marked for automatic closure (dry-run; the issue state was not changed)" : "was closed automatically"}.
+
+Please submit using one of the repository's issue templates; it will be reopened automatically once completed.`
+        ),
+        transferredNote
+      ].filter((part) => Boolean(part)).join("\n\n");
+    }
+    return [
+      bilingual(
+        params.mode,
+        "## \u6A21\u677F\u68C0\u67E5\u7ED3\u679C\n\n\u672A\u68C0\u6D4B\u5230 Issue \u6A21\u677F\u5185\u5BB9\u3002\n\n\u8BF7\u4F7F\u7528\u4ED3\u5E93\u63D0\u4F9B\u7684 Issue \u6A21\u677F\u63D0\u4EA4\u3002",
+        "## Template Check Result\n\nNo issue template content was detected.\n\nPlease submit using one of the repository's issue templates."
+      ),
+      transferredNote
+    ].filter((part) => Boolean(part)).join("\n\n");
+  }
   if (params.closedForInvalidTemplate) {
     return [
       bilingual(
@@ -43387,13 +43401,13 @@ The issue passed template validation. Detected template: \`${params.templateKey 
 Issue \u672A\u6309\u6A21\u677F\u586B\u5199\u6216\u5FC5\u586B\u5185\u5BB9\u4E0D\u5B8C\u6574\uFF0C${params.dryRun ? "\u8BA1\u5212\u81EA\u52A8\u5173\u95ED\uFF08\u5F53\u524D\u4E3A dry-run\uFF0C\u672A\u5B9E\u9645\u4FEE\u6539 Issue \u72B6\u6001\uFF09" : "\u5DF2\u81EA\u52A8\u5173\u95ED"}\u3002\u7F3A\u5C11\u7684\u5FC5\u586B\u5185\u5BB9\uFF1A
 ${zhMissing}
 
-\u8BF7\u76F4\u63A5\u7F16\u8F91\u6B64 Issue \u5E76\u6309\u6A21\u677F\u8865\u5168\u4E0A\u8FF0\u5185\u5BB9\uFF0C\u4E0D\u8981\u91CD\u590D\u521B\u5EFA\u65B0 Issue\uFF1B\u8865\u5168\u5E76\u901A\u8FC7\u68C0\u67E5\u540E\u5C06\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u3002`,
+\u8BF7\u6309\u6A21\u677F\u8865\u5168\u4E0A\u8FF0\u5185\u5BB9\uFF0C\u8865\u5168\u5E76\u901A\u8FC7\u68C0\u67E5\u540E\u5C06\u81EA\u52A8\u91CD\u65B0\u6253\u5F00\u3002`,
         `## Template Check Result
 
 This issue was ${params.dryRun ? "marked for automatic closure (dry-run; the issue state was not changed)" : "closed automatically"} because it was not filled in according to the template or required sections are incomplete. Missing required sections:
 ${enMissing}
 
-Please edit this issue directly and complete the required sections instead of creating a new one. It will be reopened automatically once the template check passes.`
+Please complete the sections above according to the template. It will be reopened automatically once the template check passes.`
       ),
       transferredNote
     ].filter((part) => Boolean(part)).join("\n\n");
@@ -44730,7 +44744,8 @@ function validateIssue(params) {
       commentBody: renderValidationComment({
         mode: params.commentMode,
         valid: false,
-        missingSections: ["\u672A\u627E\u5230\u53EF\u7528\u6A21\u677F / No matching template found"],
+        noTemplateDetected: true,
+        missingSections: [],
         closedForInvalidTemplate: willAutoClose,
         transferred: params.transferred,
         dryRun: params.dryRun
@@ -45778,19 +45793,6 @@ ${issue2.body}`, params.config.runtime);
       issue2.stateReason = void 0;
     }
     core14.info(`Reopened issue #${issue2.number} after template validation passed.`);
-    await syncAnchoredComment({
-      gateway: params.gateway,
-      issueNumber: issue2.number,
-      anchor: params.config.issues.validation.commentAnchor,
-      body: renderValidationComment({
-        mode: commentMode,
-        valid: true,
-        templateKey: validation.template?.key,
-        missingSections: [],
-        reopenedAfterFix: true,
-        dryRun: params.config.runtime.dryRun
-      })
-    });
   }
   if (shouldRunValidation(params.trigger) && autoCloseConfig.enabled && validation.executed && !validation.valid && !validation.templateMatched && !isTransferred && issue2.state === "open") {
     await params.gateway.closeIssue(issue2.number, { stateReason: "not_planned" });

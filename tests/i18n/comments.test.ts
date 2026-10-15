@@ -165,22 +165,27 @@ describe("comment renderers", () => {
     });
 
     expect(comment).toContain("已自动关闭");
-    expect(comment).toContain("请直接编辑此 Issue 并按模板补全上述内容");
-    expect(comment).toContain("不要重复创建新 Issue");
+    expect(comment).toContain("请按模板补全上述内容");
+    expect(comment).toContain("补全并通过检查后将自动重新打开");
+    expect(comment).not.toContain("不要重复创建新 Issue");
   });
 
-  it("renders reopened validation wording when reopenedAfterFix is set", () => {
+  it("renders dedicated wording when no template was detected", () => {
     const comment = renderValidationComment({
       mode: "zh-en",
-      valid: true,
-      templateKey: "bug",
+      valid: false,
+      noTemplateDetected: true,
       missingSections: [],
-      reopenedAfterFix: true
+      closedForInvalidTemplate: true
     });
 
-    expect(comment).toContain("已自动重新打开");
-    expect(comment).toContain("reopened automatically");
-    expect(comment).toContain("`bug`");
+    expect(comment).toContain("未检测到 Issue 模板内容");
+    expect(comment).toContain("已自动关闭");
+    expect(comment).toContain("请使用仓库提供的 Issue 模板提交");
+    expect(comment).toContain("No issue template content was detected");
+    expect(comment).not.toContain("缺少的必填内容");
+    expect(comment).not.toContain("未找到可用模板");
+    expect(comment).not.toContain("不要重复创建新 Issue");
   });
 
   it("keeps the default validation wording when auto-close is not used", () => {

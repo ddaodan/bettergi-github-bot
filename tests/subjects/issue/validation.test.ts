@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 
 import { validateIssue } from "../../../src/subjects/issue/validation.js";
 import { createConfig } from "../../helpers/fixtures.js";
@@ -25,7 +25,8 @@ describe("validateIssue", () => {
     expect(result.commentBody).toContain("模板检查结果");
   });
 
-  it("uses the auto-close wording only when no template is detected", () => {    const config = createConfig();
+  it("uses the auto-close wording only when no template is detected", () => {
+    const config = createConfig();
     config.issues.validation.autoClose.enabled = true;
     const noTemplateResult = validateIssue({
       body: "这个插件用不了，快点修复！！",
@@ -36,7 +37,8 @@ describe("validateIssue", () => {
     expect(noTemplateResult.valid).toBe(false);
     expect(noTemplateResult.templateMatched).toBe(false);
     expect(noTemplateResult.commentBody).toContain("已自动关闭");
-    expect(noTemplateResult.commentBody).toContain("请直接编辑此 Issue 并按模板补全上述内容");
+    expect(noTemplateResult.commentBody).toContain("未检测到 Issue 模板内容");
+    expect(noTemplateResult.commentBody).not.toContain("缺少的必填内容");
 
     const templateMatchedResult = validateIssue({
       body: [
@@ -193,7 +195,7 @@ describe("validateIssue", () => {
 
     expect(result.templateMatched).toBe(false);
     expect(result.valid).toBe(false);
-    expect(result.commentBody).toContain("未找到可用模板");
+    expect(result.commentBody).toContain("未检测到 Issue 模板内容");
   });
 
   it("accepts the same body once the form signature is present", () => {
@@ -257,7 +259,7 @@ describe("validateIssue", () => {
 
     expect(result.templateMatched).toBe(false);
     expect(result.valid).toBe(false);
-    expect(result.commentBody).toContain("未找到可用模板");
+    expect(result.commentBody).toContain("未检测到 Issue 模板内容");
   });
 
   it("does not fall through to another template when the prefix-matched template lacks signatures", () => {
@@ -286,7 +288,7 @@ describe("validateIssue", () => {
 
     expect(result.templateMatched).toBe(false);
     expect(result.template?.key).not.toBe("question");
-    expect(result.commentBody).toContain("未找到可用模板");
+    expect(result.commentBody).toContain("未检测到 Issue 模板内容");
   });
 
   it("trusts an explicit hidden template marker even without a form signature", () => {
