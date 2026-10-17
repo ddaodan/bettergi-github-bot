@@ -177,6 +177,35 @@ describe("issue references", () => {
     expect(findUnclosedIssueReferences(refs).map((ref) => ref.number)).toEqual([9]);
   });
 
+  it("does not treat descriptive Chinese verbs as closing statements", () => {
+    // 真实场景：作者说「应该能解决 #32 的闪退问题」，这不是关闭语句，需要补 close
+    const refs = collectPullRequestIssueReferences({
+      title: "fix: 修复启动器初始化异常",
+      body: "这个改动应该能解决 #32 的闪退问题。",
+      commitMessages: []
+    });
+
+    const ref = refs.find((item) => item.number === 32);
+    expect(ref?.hasCloseKeyword).toBe(false);
+  });
+
+  it("does not treat descriptive English phrases as closing statements", () => {
+    const refs = collectPullRequestIssueReferences({
+      title: "Improve UI",
+      body: "should fix the crash reported in #9",
+      commitMessages: []
+    });
+
+    expect(findUnclosedIssueReferences(refs).map((ref) => ref.number)).toEqual([9]);
+  });
+
+  it("accepts explicit closing statements", () => {
+    for (const body of ["close #5", "fixes #5", "resolved #5", "修复 #5", "关闭 #5"]) {
+      const refs = collectPullRequestIssueReferences({ title: "", body, commitMessages: [] });
+      expect(refs.find((item) => item.number === 5)?.hasCloseKeyword, body).toBe(true);
+    }
+  });
+
   it("appends close keywords idempotently", () => {
     const once = appendCloseKeywords({ body: "描述", numbers: [5], template: "close #{number}" });
     expect(once).toBe("描述\n\nclose #5");

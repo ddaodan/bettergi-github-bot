@@ -46353,23 +46353,70 @@ async function runIssueCommentCommand(params) {
 var core15 = __toESM(require_core(), 1);
 
 // src/subjects/pullRequest/issueLink.ts
-var CLOSE_KEYWORD_PATTERN = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|修复|解决|处理|关闭)/gi;
 var CONNECTOR_PATTERN = /^[\s:：,，、]+$/;
 function stripMarkdownLinks(value) {
   return value.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
 }
-function hasCloseKeywordBefore(prefix) {
-  const normalized = stripMarkdownLinks(prefix);
-  CLOSE_KEYWORD_PATTERN.lastIndex = 0;
+var GITHUB_CLOSING_KEYWORDS = [
+  "close",
+  "closes",
+  "closed",
+  "fix",
+  "fixes",
+  "fixed",
+  "resolve",
+  "resolves",
+  "resolved"
+];
+var CHINESE_CLOSING_KEYWORDS = ["\u5173\u95ED", "\u4FEE\u590D", "\u89E3\u51B3"];
+var CHINESE_CONNECTOR_PATTERN = /^[\s:：,，、]*$/;
+function findLastKeywordEnd(text, keywords) {
+  const lower = text.toLowerCase();
   let closestEnd = -1;
-  let match;
-  while ((match = CLOSE_KEYWORD_PATTERN.exec(normalized)) !== null) {
-    closestEnd = match.index + match[0].length;
+  for (const keyword of keywords) {
+    const needle = keyword.toLowerCase();
+    let index = lower.indexOf(needle);
+    while (index >= 0) {
+      const candidateEnd = index + needle.length;
+      const before = index === 0 ? " " : lower[index - 1] ?? " ";
+      const isLatin = /[a-z]/.test(needle);
+      const boundaryOk = !isLatin || !/[a-z]/.test(before);
+      if (boundaryOk && candidateEnd > closestEnd) {
+        closestEnd = candidateEnd;
+      }
+      index = lower.indexOf(needle, index + 1);
+    }
   }
+  return closestEnd;
+}
+var CHINESE_DESCRIPTIVE_AFTER_PATTERN = /^\s*(?:的|了|中所?|后|时|问题|异常|情况|功能|内容|报错|闪退|崩溃)/;
+function hasCloseKeywordBefore(prefix, suffix = "") {
+  const normalized = stripMarkdownLinks(prefix);
+  const withoutLinks = normalized.replace(/\s+/g, " ");
+  const latinEnd = findLastKeywordEnd(withoutLinks, GITHUB_CLOSING_KEYWORDS);
+  let chineseEnd = -1;
+  for (const keyword of CHINESE_CLOSING_KEYWORDS) {
+    const index = withoutLinks.lastIndexOf(keyword);
+    if (index < 0) {
+      continue;
+    }
+    const after = withoutLinks.slice(index + keyword.length);
+    if (!CHINESE_CONNECTOR_PATTERN.test(after)) {
+      continue;
+    }
+    if (suffix && CHINESE_DESCRIPTIVE_AFTER_PATTERN.test(suffix)) {
+      continue;
+    }
+    const end = index + keyword.length;
+    if (end > chineseEnd) {
+      chineseEnd = end;
+    }
+  }
+  const closestEnd = Math.max(latinEnd, chineseEnd);
   if (closestEnd < 0) {
     return false;
   }
-  const between = normalized.slice(closestEnd);
+  const between = withoutLinks.slice(closestEnd);
   if (between.trim().length === 0) {
     return true;
   }
@@ -46391,11 +46438,14 @@ function extractIssueReferences(text, source) {
       continue;
     }
     const lineStart = text.lastIndexOf("\n", match.index) + 1;
+    const lineEnd = text.indexOf("\n", match.index);
     const prefix = text.slice(Math.max(lineStart, match.index - 120), match.index);
+    const suffix = text.slice(match.index, lineEnd < 0 ? Math.min(text.length, match.index + 120) : lineEnd);
+    const suffixAfterReference = suffix.replace(/^#\d+\b/, "");
     references.push({
       number: number4,
       source,
-      hasCloseKeyword: hasCloseKeywordBefore(prefix)
+      hasCloseKeyword: hasCloseKeywordBefore(prefix, suffixAfterReference)
     });
   }
   return references;

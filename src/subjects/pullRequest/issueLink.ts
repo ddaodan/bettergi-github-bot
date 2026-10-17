@@ -6,9 +6,7 @@ export interface PullRequestIssueReference {
   hasCloseKeyword: boolean;
 }
 
-const CLOSE_KEYWORD_PATTERN = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|修复|解决|处理|关闭)/gi;
-
-/** Words that may appear between a closing keyword and the issue reference. */
+/** Short connectors allowed between a closing keyword and the issue reference. */
 const CONNECTOR_PATTERN = /^[\s:：,，、]+$/;
 
 function stripMarkdownLinks(value: string): string {
@@ -16,32 +14,106 @@ function stripMarkdownLinks(value: string): string {
 }
 
 /**
- * Determines whether the text immediately preceding an issue reference contains a
- * closing keyword. Only the closest keyword counts, and only if everything between
- * that keyword and the reference is whitespace or punctuation (optionally with a
- * short connector such as "the crash in"). This keeps `Fixes #12 and see #56` from
- * marking #56 as closable.
+ * Keywords that make GitHub close an issue when the pull request is merged.
+ * Deliberately narrow: descriptive verbs such as "解决 #12 的问题" or
+ * "fix the crash in #12" do NOT count, because those are exactly the cases
+ * where the closing keyword still needs to be added.
  */
-function hasCloseKeywordBefore(prefix: string): boolean {
-  const normalized = stripMarkdownLinks(prefix);
-  CLOSE_KEYWORD_PATTERN.lastIndex = 0;
+const GITHUB_CLOSING_KEYWORDS = [
+  "close",
+  "closes",
+  "closed",
+  "fix",
+  "fixes",
+  "fixed",
+  "resolve",
+  "resolves",
+  "resolved"
+];
 
+/** Chinese keywords that read as an explicit closing statement. */
+const CHINESE_CLOSING_KEYWORDS = ["关闭", "修复", "解决"];
+
+/**
+ * For Chinese keywords, only whitespace, punctuation or a very short connector
+ * may sit between the keyword and the reference. This keeps 「解决 #12 的问题」
+ * and 「解决这个 #12 的问题」 from counting as explicit closing statements.
+ */
+const CHINESE_CONNECTOR_PATTERN = /^[\s:：,，、]*$/;
+
+function findLastKeywordEnd(text: string, keywords: string[]): number {
+  const lower = text.toLowerCase();
   let closestEnd = -1;
-  let match: RegExpExecArray | null;
-  while ((match = CLOSE_KEYWORD_PATTERN.exec(normalized)) !== null) {
-    closestEnd = match.index + match[0].length;
+
+  for (const keyword of keywords) {
+    const needle = keyword.toLowerCase();
+    let index = lower.indexOf(needle);
+    while (index >= 0) {
+      const candidateEnd = index + needle.length;
+      // Require a word boundary for latin keywords so "prefix" does not match "fix".
+      const before = index === 0 ? " " : lower[index - 1] ?? " ";
+      const isLatin = /[a-z]/.test(needle);
+      const boundaryOk = !isLatin || !/[a-z]/.test(before);
+      if (boundaryOk && candidateEnd > closestEnd) {
+        closestEnd = candidateEnd;
+      }
+      index = lower.indexOf(needle, index + 1);
+    }
   }
 
+  return closestEnd;
+}
+
+/**
+ * Determines whether the text immediately preceding an issue reference forms an
+ * explicit closing statement such as "close #12", "fixes #12" or "修复 #12".
+ *
+ * Only the closest keyword counts, everything between the keyword and the reference
+ * must be whitespace/punctuation, and the keyword must not be followed by a
+ * descriptive suffix (e.g. "解决 #12 的问题" is not a closing statement).
+ */
+/**
+ * Text that follows a Chinese keyword's reference and turns it into a description.
+ * e.g. 「解决 #12 的问题」/「修复 #12 中提到的异常」are descriptions, not closing statements.
+ */
+const CHINESE_DESCRIPTIVE_AFTER_PATTERN = /^\s*(?:的|了|中所?|后|时|问题|异常|情况|功能|内容|报错|闪退|崩溃)/;
+
+function hasCloseKeywordBefore(prefix: string, suffix = ""): boolean {
+  const normalized = stripMarkdownLinks(prefix);
+  const withoutLinks = normalized.replace(/\s+/g, " ");
+
+  const latinEnd = findLastKeywordEnd(withoutLinks, GITHUB_CLOSING_KEYWORDS);
+
+  // Chinese keywords must be directly followed by the reference (punctuation allowed),
+  // and the reference must not be followed by a descriptive phrase.
+  let chineseEnd = -1;
+  for (const keyword of CHINESE_CLOSING_KEYWORDS) {
+    const index = withoutLinks.lastIndexOf(keyword);
+    if (index < 0) {
+      continue;
+    }
+    const after = withoutLinks.slice(index + keyword.length);
+    if (!CHINESE_CONNECTOR_PATTERN.test(after)) {
+      continue;
+    }
+    if (suffix && CHINESE_DESCRIPTIVE_AFTER_PATTERN.test(suffix)) {
+      continue;
+    }
+    const end = index + keyword.length;
+    if (end > chineseEnd) {
+      chineseEnd = end;
+    }
+  }
+
+  const closestEnd = Math.max(latinEnd, chineseEnd);
   if (closestEnd < 0) {
     return false;
   }
 
-  const between = normalized.slice(closestEnd);
+  const between = withoutLinks.slice(closestEnd);
   if (between.trim().length === 0) {
     return true;
   }
-
-  // Allow short connectors like " #", " the crash in ", but not another issue reference.
   if (CONNECTOR_PATTERN.test(between)) {
     return true;
   }
@@ -69,14 +141,18 @@ export function extractIssueReferences(
       continue;
     }
 
-    // Inspect the same line before the reference, bounded to a reasonable window.
+    // Inspect the same line around the reference, bounded to a reasonable window.
     const lineStart = text.lastIndexOf("\n", match.index) + 1;
+    const lineEnd = text.indexOf("\n", match.index);
     const prefix = text.slice(Math.max(lineStart, match.index - 120), match.index);
+    const suffix = text.slice(match.index, lineEnd < 0 ? Math.min(text.length, match.index + 120) : lineEnd);
+    // Drop the reference itself so the descriptive check looks at what follows "#12".
+    const suffixAfterReference = suffix.replace(/^#\d+\b/, "");
 
     references.push({
       number,
       source,
-      hasCloseKeyword: hasCloseKeywordBefore(prefix)
+      hasCloseKeyword: hasCloseKeywordBefore(prefix, suffixAfterReference)
     });
   }
 
