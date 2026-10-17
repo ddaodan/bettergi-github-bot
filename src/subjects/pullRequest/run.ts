@@ -1,4 +1,4 @@
-﻿import * as core from "@actions/core";
+import * as core from "@actions/core";
 
 import type { CommentMode, PullRequestContext, RepoBotConfig } from "../../core/types.js";
 import { syncAnchoredComment } from "../../github/comments.js";
@@ -18,6 +18,7 @@ export function resolvePullRequestWorkflowTrigger(action: string): PullRequestWo
   switch (action) {
     case "opened":
     case "reopened":
+    case "edited":
       return "pull_request_opened";
     case "synchronize":
     case "ready_for_review":

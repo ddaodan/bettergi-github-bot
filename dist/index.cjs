@@ -46641,6 +46641,7 @@ function resolvePullRequestWorkflowTrigger(action) {
   switch (action) {
     case "opened":
     case "reopened":
+    case "edited":
       return "pull_request_opened";
     case "synchronize":
     case "ready_for_review":

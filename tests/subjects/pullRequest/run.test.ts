@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { PullRequestContext } from "../../../src/core/types.js";
-import { runPullRequestWorkflow } from "../../../src/subjects/pullRequest/run.js";
+import { resolvePullRequestWorkflowTrigger, runPullRequestWorkflow } from "../../../src/subjects/pullRequest/run.js";
 import { createConfig, createIssue, FakeGateway } from "../../helpers/fixtures.js";
 
 function createPullRequest(overrides: Partial<PullRequestContext> = {}): PullRequestContext {
@@ -63,6 +63,25 @@ function enableScriptsListConfig(config = createConfig()) {
   };
   return config;
 }
+
+describe("resolvePullRequestWorkflowTrigger", () => {
+  it("handles opened, reopened and edited actions", () => {
+    for (const action of ["opened", "reopened", "edited"]) {
+      expect(resolvePullRequestWorkflowTrigger(action), action).toBe("pull_request_opened");
+    }
+  });
+
+  it("handles synchronize and ready_for_review actions", () => {
+    for (const action of ["synchronize", "ready_for_review"]) {
+      expect(resolvePullRequestWorkflowTrigger(action), action).toBe("pull_request_synchronize");
+    }
+  });
+
+  it("ignores unrelated actions", () => {
+    expect(resolvePullRequestWorkflowTrigger("labeled")).toBeUndefined();
+    expect(resolvePullRequestWorkflowTrigger("closed")).toBeUndefined();
+  });
+});
 
 describe("runPullRequestWorkflow - path labels", () => {
   it("labels a pathing pull request and ignores pathing assets inside scripts", async () => {
