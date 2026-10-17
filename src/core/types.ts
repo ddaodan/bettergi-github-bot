@@ -207,7 +207,80 @@ export interface RepoBotConfig {
     summary: {
       enabled: boolean;
     };
+    autoProcessing: PullRequestAutoProcessingConfig;
+    pathLabels: PullRequestPathLabelConfig;
+    locationCheck: PullRequestLocationCheckConfig;
+    issueLink: PullRequestIssueLinkConfig;
   };
+}
+
+export interface PullRequestAutoProcessingConfig {
+  /** Skip pull requests created before this cutoff. Empty string or "auto" disables the cutoff. */
+  skipCreatedBefore: string;
+}
+
+export interface PullRequestPathLabelConfig {
+  enabled: boolean;
+  /** When true, labels that this feature is responsible for get removed when no longer matched. */
+  managed: boolean;
+  /**
+   * Ordered matching rules. The first rule whose path prefixes match a changed file claims that file.
+   * Later, more specific rules should come first when prefixes overlap.
+   */
+  rules: PullRequestPathLabelRule[];
+  /** Label applied when only documentation files changed. */
+  documentationLabel: string;
+  /** Extra label applied when files fall outside every configured rule. */
+  unmatchedLabel: string;
+  commentAnchor: string;
+}
+
+export interface PullRequestPathLabelRule {
+  label: string;
+  pathPrefixes: string[];
+}
+
+export interface PullRequestLocationCheckConfig {
+  enabled: boolean;
+  commentAnchor: string;
+  /** Paths that are always acceptable regardless of their owning category. */
+  allowedPaths: string[];
+  /** Files inside these roots are accepted as script resources even when they live outside their category root. */
+  scriptRoots: string[];
+  /** File extensions that identify each category when found outside of that category's path prefixes. */
+  fileKindRules: PullRequestFileKindRule[];
+  /** Sub-rules derived from the repository README submission rules. */
+  rules: PullRequestLocationRuleConfig;
+}
+
+export interface PullRequestFileKindRule {
+  /** Human readable category shown in comments (e.g. 战斗策略). */
+  category: string;
+  /** Directory where files of this kind are expected to live (e.g. repo/combat). */
+  expectedLocation: string;
+  extensions: string[];
+}
+
+export interface PullRequestLocationRuleConfig {
+  /** 地图追踪路线文件名格式：编号-材料名称-[区域]-[二级区域]-二级子区域-数量 */
+  pathingFileNamePattern: string;
+  pathingRequireReadme: boolean;
+  jsFolderNameNoSpace: boolean;
+  jsFolderNamePattern: string;
+}
+
+export interface PullRequestIssueLinkConfig {
+  enabled: boolean;
+  /** Comment anchor used for the issue-link summary comment. */
+  commentAnchor: string;
+  /** When true, a missing close keyword is repaired by appending the keyword to the pull request body. */
+  appendCloseKeyword: boolean;
+  /** Keyword template; `{number}` is replaced with the issue number. */
+  closeKeywordTemplate: string;
+  /** The bot adds this label when it links issues on its own initiative. */
+  linkedLabel: string;
+  /** Issue references must resolve to issues in the same repository. */
+  requireSameRepository: boolean;
 }
 
 export interface RepositorySubjectContext {
@@ -257,6 +330,19 @@ export type IssueWorkflowTrigger =
 
 export interface PullRequestContext extends RepositorySubjectContext {
   kind: "pull_request";
+  isDraft: boolean;
+  merged: boolean;
+  baseBranch: string;
+  headBranch: string;
+  /** Lazily populated by the gateway when changed files are requested. */
+  changedFiles?: PullRequestFile[];
+}
+
+export interface PullRequestFile {
+  filename: string;
+  status: "added" | "removed" | "modified" | "renamed" | "copied" | "changed" | "unchanged";
+  additions: number;
+  deletions: number;
 }
 
 export type IssueCommandType = "fix" | "refresh";

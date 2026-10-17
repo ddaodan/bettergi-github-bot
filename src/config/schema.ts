@@ -514,16 +514,112 @@ export const repoBotConfigSchema = z.object({
       enabled: z.boolean().default(false)
     }).default(() => ({
       enabled: false
+    })),
+    autoProcessing: z.object({
+      skipCreatedBefore: z.string().default("")
+    }).default(() => ({
+      skipCreatedBefore: ""
+    })),
+    pathLabels: z.object({
+      enabled: z.boolean().default(false),
+      managed: z.boolean().default(true),
+      rules: z.array(z.object({
+        label: z.string().min(1),
+        pathPrefixes: z.array(z.string().min(1)).min(1)
+      })).default([]),
+      documentationLabel: z.string().default("documentation"),
+      unmatchedLabel: z.string().default(""),
+      commentAnchor: z.string().default("pull-bot:path-labels")
+    }).default(() => ({
+      enabled: false,
+      managed: true,
+      rules: [],
+      documentationLabel: "documentation",
+      unmatchedLabel: "",
+      commentAnchor: "pull-bot:path-labels"
+    })),
+    locationCheck: z.object({
+      enabled: z.boolean().default(false),
+      commentAnchor: z.string().default("pull-bot:location"),
+      allowedPaths: z.array(z.string().min(1)).default([]),
+      scriptRoots: z.array(z.string().min(1)).default([]),
+      fileKindRules: z.array(z.object({
+        category: z.string().min(1),
+        expectedLocation: z.string().min(1),
+        extensions: z.array(z.string().min(1)).min(1)
+      })).default([]),
+      rules: z.object({
+        pathingFileNamePattern: z.string().default(""),
+        pathingRequireReadme: z.boolean().default(false),
+        jsFolderNameNoSpace: z.boolean().default(false),
+        jsFolderNamePattern: z.string().default("")
+      }).default(() => ({
+        pathingFileNamePattern: "",
+        pathingRequireReadme: false,
+        jsFolderNameNoSpace: false,
+        jsFolderNamePattern: ""
+      }))
+    }).default(() => ({
+      enabled: false,
+      commentAnchor: "pull-bot:location",
+      allowedPaths: [],
+      scriptRoots: [],
+      fileKindRules: [],
+      rules: {
+        pathingFileNamePattern: "",
+        pathingRequireReadme: false,
+        jsFolderNameNoSpace: false,
+        jsFolderNamePattern: ""
+      }
+    })),
+    issueLink: z.object({
+      enabled: z.boolean().default(false),
+      commentAnchor: z.string().default("pull-bot:issue-link"),
+      appendCloseKeyword: z.boolean().default(true),
+      closeKeywordTemplate: z.string().default("close #{number}"),
+      linkedLabel: z.string().default(""),
+      requireSameRepository: z.boolean().default(true)
+    }).default(() => ({
+      enabled: false,
+      commentAnchor: "pull-bot:issue-link",
+      appendCloseKeyword: true,
+      closeKeywordTemplate: "close #{number}",
+      linkedLabel: "",
+      requireSameRepository: true
     }))
   }).default(() => ({
-    review: {
-      enabled: false
+    review: { enabled: false },
+    labeling: { enabled: false },
+    summary: { enabled: false },
+    autoProcessing: { skipCreatedBefore: "" },
+    pathLabels: {
+      enabled: false,
+      managed: true,
+      rules: [],
+      documentationLabel: "documentation",
+      unmatchedLabel: "",
+      commentAnchor: "pull-bot:path-labels"
     },
-    labeling: {
-      enabled: false
+    locationCheck: {
+      enabled: false,
+      commentAnchor: "pull-bot:location",
+      allowedPaths: [],
+      scriptRoots: [],
+      fileKindRules: [],
+      rules: {
+        pathingFileNamePattern: "",
+        pathingRequireReadme: false,
+        jsFolderNameNoSpace: false,
+        jsFolderNamePattern: ""
+      }
     },
-    summary: {
-      enabled: false
+    issueLink: {
+      enabled: false,
+      commentAnchor: "pull-bot:issue-link",
+      appendCloseKeyword: true,
+      closeKeywordTemplate: "close #{number}",
+      linkedLabel: "",
+      requireSameRepository: true
     }
   }))
 });

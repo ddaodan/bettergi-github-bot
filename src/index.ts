@@ -9,7 +9,9 @@ import {
   parseIssueCommentCommand,
   runIssueCommentCommand
 } from "./subjects/issue/commands.js";
+import { detectCommentMode } from "./i18n/language.js";
 import { resolveIssueWorkflowTrigger, runIssueWorkflow } from "./subjects/issue/run.js";
+import { resolvePullRequestWorkflowTrigger, runPullRequestWorkflow } from "./subjects/pullRequest/run.js";
 
 async function run(): Promise<void> {
   try {
@@ -83,6 +85,42 @@ async function run(): Promise<void> {
     }
 
     const issue = await gateway.getIssueContext();
+    const pullRequest = issue ? undefined : await gateway.getPullRequestContext();
+
+    if (pullRequest) {
+      if (pullRequest.actorType?.toLowerCase() === "bot") {
+        core.info(`Ignore pull request action "${pullRequest.action}" created by a bot.`);
+        return;
+      }
+
+      const pullRequestTrigger = resolvePullRequestWorkflowTrigger(pullRequest.action);
+      if (!pullRequestTrigger) {
+        core.info(`Current pull request action "${pullRequest.action}" is not handled.`);
+        return;
+      }
+
+      const enabled = config.pullRequests.pathLabels.enabled
+        || config.pullRequests.locationCheck.enabled
+        || config.pullRequests.issueLink.enabled;
+      if (!enabled) {
+        core.info("Pull request handling is disabled in configuration.");
+        return;
+      }
+
+      await runPullRequestWorkflow({
+        pullRequest,
+        trigger: pullRequestTrigger,
+        config,
+        gateway,
+        commentMode: detectCommentMode(
+          [pullRequest.title, pullRequest.body].filter(Boolean).join("\n"),
+          config.runtime
+        )
+      });
+
+      core.info(`Repo Bot completed for pull request #${pullRequest.number}.`);
+      return;
+    }
 
     if (!issue) {
       core.info("Current event is not a plain issue event. Nothing to do.");

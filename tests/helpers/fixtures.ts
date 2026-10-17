@@ -5,6 +5,7 @@ import type {
   IssueContext,
   IssueTextAttachment,
   LabelDefinition,
+  PullRequestContext,
   RepoBotConfig,
   RepositoryMetadata
 } from "../../src/core/types.js";
@@ -12,6 +13,7 @@ import type {
   CommentRecord,
   GitHubGateway,
   IssueParentLookupOptions,
+  PullRequestFileRecord,
   RepositoryContentEntry,
   SearchIssueParams
 } from "../../src/github/gateway.js";
@@ -183,7 +185,37 @@ export function createConfig(): RepoBotConfig {
     pullRequests: {
       review: { enabled: false },
       labeling: { enabled: false },
-      summary: { enabled: false }
+      summary: { enabled: false },
+      autoProcessing: { skipCreatedBefore: "" },
+      pathLabels: {
+        enabled: false,
+        managed: true,
+        rules: [],
+        documentationLabel: "documentation",
+        unmatchedLabel: "",
+        commentAnchor: "pull-bot:path-labels"
+      },
+      locationCheck: {
+        enabled: false,
+        commentAnchor: "pull-bot:location",
+        allowedPaths: [],
+        scriptRoots: [],
+        fileKindRules: [],
+        rules: {
+          pathingFileNamePattern: "",
+          pathingRequireReadme: false,
+          jsFolderNameNoSpace: false,
+          jsFolderNamePattern: ""
+        }
+      },
+      issueLink: {
+        enabled: false,
+        commentAnchor: "pull-bot:issue-link",
+        appendCloseKeyword: true,
+        closeKeywordTemplate: "close #{number}",
+        linkedLabel: "",
+        requireSameRepository: true
+      }
     }
   };
 }
@@ -248,6 +280,8 @@ export class FakeGateway implements GitHubGateway {
 
   public readonly createdLabels = new Set<string>();
 
+  public readonly addedLabels: string[] = [];
+
   public readonly deletedCommentIds: number[] = [];
 
   public readonly removedLabels: string[] = [];
@@ -276,6 +310,19 @@ export class FakeGateway implements GitHubGateway {
 
   public readonly repositoryTextFiles = new Map<string, string>();
 
+  public readonly pullRequestFileRequests: number[] = [];
+
+  public readonly pullRequestBodyUpdates: Array<{ prNumber: number; body: string }> = [];
+
+  public readonly repositoryIssues = new Map<
+    string,
+    { number: number; title: string; state: string; htmlUrl: string }
+  >();
+
+  public pullRequest?: PullRequestContext;
+
+  public pullRequestFiles: PullRequestFileRecord[] = [];
+
   private commentId = 1;
 
   public constructor(
@@ -296,6 +343,35 @@ export class FakeGateway implements GitHubGateway {
 
   public async getIssueContext(): Promise<IssueContext | undefined> {
     return this.issue;
+  }
+
+  public async getPullRequestContext(): Promise<PullRequestContext | undefined> {
+    return this.pullRequest;
+  }
+
+  public async listPullRequestFiles(prNumber: number): Promise<PullRequestFileRecord[]> {
+    this.pullRequestFileRequests.push(prNumber);
+    return this.pullRequestFiles;
+  }
+
+  public async updatePullRequestBody(prNumber: number, body: string): Promise<void> {
+    this.pullRequestBodyUpdates.push({ prNumber, body });
+    if (!this.pullRequest) {
+      return;
+    }
+    this.pullRequest.body = body;
+    if (prNumber === this.pullRequest.number) {
+      // keep the stored context in sync for assertions
+    }
+  }
+
+  public async getIssueStateForRepository(params: {
+    owner: string;
+    repo: string;
+    number: number;
+  }): Promise<{ number: number; title: string; state: string; htmlUrl: string } | undefined> {
+    const key = `${params.owner}/${params.repo}#${params.number}`;
+    return this.repositoryIssues.get(key);
   }
 
   public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {
@@ -382,6 +458,15 @@ export class FakeGateway implements GitHubGateway {
   }
 
   public async addLabels(issueNumber: number, labels: string[]): Promise<void> {
+    if (this.pullRequest && issueNumber === this.pullRequest.number) {
+      for (const label of labels) {
+        if (!this.pullRequest.labels.includes(label)) {
+          this.pullRequest.labels.push(label);
+        }
+        this.addedLabels.push(label);
+      }
+      return;
+    }
     if (issueNumber !== this.issue.number) {
       return;
     }
@@ -389,10 +474,16 @@ export class FakeGateway implements GitHubGateway {
       if (!this.issue.labels.includes(label)) {
         this.issue.labels.push(label);
       }
+      this.addedLabels.push(label);
     }
   }
 
   public async removeLabel(issueNumber: number, label: string): Promise<void> {
+    if (this.pullRequest && issueNumber === this.pullRequest.number) {
+      this.pullRequest.labels = this.pullRequest.labels.filter((item) => item !== label);
+      this.removedLabels.push(label);
+      return;
+    }
     if (issueNumber !== this.issue.number) {
       return;
     }

@@ -9,6 +9,7 @@ import type {
   IssueParentContext,
   IssueTextAttachment,
   LabelDefinition,
+  PullRequestContext,
   RepositoryMetadata
 } from "../core/types.js";
 import { downloadGitHubTextAttachment, isSupportedTextAttachment } from "./attachments.js";
@@ -80,8 +81,23 @@ export interface RepositoryContentEntry {
   sha: string;
 }
 
+export interface PullRequestFileRecord {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+}
+
 export interface GitHubGateway {
   getIssueContext(): Promise<IssueContext | undefined>;
+  getPullRequestContext(): Promise<PullRequestContext | undefined>;
+  listPullRequestFiles(prNumber: number): Promise<PullRequestFileRecord[]>;
+  updatePullRequestBody(prNumber: number, body: string): Promise<void>;
+  getIssueStateForRepository(params: {
+    owner: string;
+    repo: string;
+    number: number;
+  }): Promise<{ number: number; title: string; state: string; htmlUrl: string } | undefined>;
   getIssueCommentContext(): Promise<IssueCommentContext | undefined>;
   resolveIssueParent(issue: IssueContext, options: IssueParentLookupOptions): Promise<IssueContext>;
   getRepositoryVariable(name: string): Promise<string | undefined>;
@@ -144,6 +160,36 @@ function toIssueContext(): IssueContext | undefined {
     actorLogin: context.payload.sender?.login ?? "",
     actorType: context.payload.sender?.type ?? "",
     parentIssueUrl
+  };
+}
+
+function toPullRequestContext(): PullRequestContext | undefined {
+  const pullRequest = context.payload.pull_request;
+  if (!pullRequest) {
+    return undefined;
+  }
+
+  return {
+    kind: "pull_request",
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    number: pullRequest.number,
+    title: pullRequest.title ?? "",
+    body: pullRequest.body ?? "",
+    state: pullRequest.state as "open" | "closed",
+    labels: (pullRequest.labels ?? [])
+      .map((label: string | IssueLabelValue) => typeof label === "string" ? label : label.name ?? "")
+      .filter(Boolean),
+    htmlUrl: pullRequest.html_url ?? "",
+    createdAt: pullRequest.created_at ?? "",
+    updatedAt: pullRequest.updated_at ?? "",
+    action: context.payload.action ?? "",
+    actorLogin: context.payload.sender?.login ?? "",
+    actorType: context.payload.sender?.type ?? "",
+    isDraft: Boolean(pullRequest.draft),
+    merged: Boolean(pullRequest.merged),
+    baseBranch: pullRequest.base?.ref ?? "",
+    headBranch: pullRequest.head?.ref ?? ""
   };
 }
 
@@ -252,6 +298,72 @@ export class OctokitGitHubGateway implements GitHubGateway {
 
   public async getIssueContext(): Promise<IssueContext | undefined> {
     return toIssueContext();
+  }
+
+  public async getPullRequestContext(): Promise<PullRequestContext | undefined> {
+    return toPullRequestContext();
+  }
+
+  public async listPullRequestFiles(prNumber: number): Promise<PullRequestFileRecord[]> {
+    const files = await this.octokit.paginate(
+      this.octokit.rest.pulls.listFiles,
+      {
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        pull_number: prNumber,
+        per_page: 100
+      }
+    );
+
+    return files.map((file) => ({
+      filename: file.filename,
+      status: file.status,
+      additions: file.additions,
+      deletions: file.deletions
+    }));
+  }
+
+  public async updatePullRequestBody(prNumber: number, body: string): Promise<void> {
+    if (this.dryRun) {
+      core.info(`[dry-run] update body of pull request #${prNumber}`);
+      return;
+    }
+
+    await this.octokit.rest.pulls.update({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: prNumber,
+      body
+    });
+  }
+
+  public async getIssueStateForRepository(params: {
+    owner: string;
+    repo: string;
+    number: number;
+  }): Promise<{ number: number; title: string; state: string; htmlUrl: string } | undefined> {
+    try {
+      const response = await this.octokit.rest.issues.get({
+        owner: params.owner,
+        repo: params.repo,
+        issue_number: params.number
+      });
+
+      const issue = response.data;
+      if ("pull_request" in issue) {
+        return undefined;
+      }
+
+      return {
+        number: issue.number,
+        title: issue.title,
+        state: issue.state,
+        htmlUrl: issue.html_url
+      };
+    } catch (error) {
+      core.info(`Unable to read issue ${params.owner}/${params.repo}#${params.number}: ${String(error)}`);
+      return undefined;
+    }
   }
 
   public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {

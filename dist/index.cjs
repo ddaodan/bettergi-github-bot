@@ -17598,12 +17598,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info13 = this._prepareRequest(verb, parsedUrl, headers);
+          let info14 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info13, data);
+            response = yield this.requestRaw(info14, data);
             if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
               let authenticationHandler;
               for (const handler2 of this.handlers) {
@@ -17613,7 +17613,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info13, data);
+                return authenticationHandler.handleAuthentication(this, info14, data);
               } else {
                 return response;
               }
@@ -17636,8 +17636,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info13 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info13, data);
+              info14 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info14, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -17666,7 +17666,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info13, data) {
+      requestRaw(info14, data) {
         return __awaiter(this, void 0, void 0, function* () {
           return new Promise((resolve, reject) => {
             function callbackForResult(err, res) {
@@ -17678,7 +17678,7 @@ var require_lib = __commonJS({
                 resolve(res);
               }
             }
-            this.requestRawWithCallback(info13, data, callbackForResult);
+            this.requestRawWithCallback(info14, data, callbackForResult);
           });
         });
       }
@@ -17688,12 +17688,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info13, data, onResult) {
+      requestRawWithCallback(info14, data, onResult) {
         if (typeof data === "string") {
-          if (!info13.options.headers) {
-            info13.options.headers = {};
+          if (!info14.options.headers) {
+            info14.options.headers = {};
           }
-          info13.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info14.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult(err, res) {
@@ -17702,7 +17702,7 @@ var require_lib = __commonJS({
             onResult(err, res);
           }
         }
-        const req = info13.httpModule.request(info13.options, (msg) => {
+        const req = info14.httpModule.request(info14.options, (msg) => {
           const res = new HttpClientResponse(msg);
           handleResult(void 0, res);
         });
@@ -17714,7 +17714,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error(`Request timeout: ${info13.options.path}`));
+          handleResult(new Error(`Request timeout: ${info14.options.path}`));
         });
         req.on("error", function(err) {
           handleResult(err);
@@ -17750,27 +17750,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info13 = {};
-        info13.parsedUrl = requestUrl;
-        const usingSsl = info13.parsedUrl.protocol === "https:";
-        info13.httpModule = usingSsl ? https : http;
+        const info14 = {};
+        info14.parsedUrl = requestUrl;
+        const usingSsl = info14.parsedUrl.protocol === "https:";
+        info14.httpModule = usingSsl ? https : http;
         const defaultPort = usingSsl ? 443 : 80;
-        info13.options = {};
-        info13.options.host = info13.parsedUrl.hostname;
-        info13.options.port = info13.parsedUrl.port ? parseInt(info13.parsedUrl.port) : defaultPort;
-        info13.options.path = (info13.parsedUrl.pathname || "") + (info13.parsedUrl.search || "");
-        info13.options.method = method;
-        info13.options.headers = this._mergeHeaders(headers);
+        info14.options = {};
+        info14.options.host = info14.parsedUrl.hostname;
+        info14.options.port = info14.parsedUrl.port ? parseInt(info14.parsedUrl.port) : defaultPort;
+        info14.options.path = (info14.parsedUrl.pathname || "") + (info14.parsedUrl.search || "");
+        info14.options.method = method;
+        info14.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info13.options.headers["user-agent"] = this.userAgent;
+          info14.options.headers["user-agent"] = this.userAgent;
         }
-        info13.options.agent = this._getAgent(info13.parsedUrl);
+        info14.options.agent = this._getAgent(info14.parsedUrl);
         if (this.handlers) {
           for (const handler2 of this.handlers) {
-            handler2.prepareRequest(info13.options);
+            handler2.prepareRequest(info14.options);
           }
         }
-        return info13;
+        return info14;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -19760,10 +19760,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       (0, command_1.issueCommand)("notice", (0, utils_1.toCommandProperties)(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.notice = notice;
-    function info13(message) {
+    function info14(message) {
       process.stdout.write(message + os.EOL);
     }
-    exports2.info = info13;
+    exports2.info = info14;
     function startGroup(name) {
       (0, command_1.issue)("group", name);
     }
@@ -23936,7 +23936,7 @@ var require_github = __commonJS({
 });
 
 // src/index.ts
-var core15 = __toESM(require_core(), 1);
+var core16 = __toESM(require_core(), 1);
 
 // src/config/loadConfig.ts
 var import_promises = require("fs/promises");
@@ -40832,16 +40832,112 @@ var repoBotConfigSchema = external_exports.object({
       enabled: external_exports.boolean().default(false)
     }).default(() => ({
       enabled: false
+    })),
+    autoProcessing: external_exports.object({
+      skipCreatedBefore: external_exports.string().default("")
+    }).default(() => ({
+      skipCreatedBefore: ""
+    })),
+    pathLabels: external_exports.object({
+      enabled: external_exports.boolean().default(false),
+      managed: external_exports.boolean().default(true),
+      rules: external_exports.array(external_exports.object({
+        label: external_exports.string().min(1),
+        pathPrefixes: external_exports.array(external_exports.string().min(1)).min(1)
+      })).default([]),
+      documentationLabel: external_exports.string().default("documentation"),
+      unmatchedLabel: external_exports.string().default(""),
+      commentAnchor: external_exports.string().default("pull-bot:path-labels")
+    }).default(() => ({
+      enabled: false,
+      managed: true,
+      rules: [],
+      documentationLabel: "documentation",
+      unmatchedLabel: "",
+      commentAnchor: "pull-bot:path-labels"
+    })),
+    locationCheck: external_exports.object({
+      enabled: external_exports.boolean().default(false),
+      commentAnchor: external_exports.string().default("pull-bot:location"),
+      allowedPaths: external_exports.array(external_exports.string().min(1)).default([]),
+      scriptRoots: external_exports.array(external_exports.string().min(1)).default([]),
+      fileKindRules: external_exports.array(external_exports.object({
+        category: external_exports.string().min(1),
+        expectedLocation: external_exports.string().min(1),
+        extensions: external_exports.array(external_exports.string().min(1)).min(1)
+      })).default([]),
+      rules: external_exports.object({
+        pathingFileNamePattern: external_exports.string().default(""),
+        pathingRequireReadme: external_exports.boolean().default(false),
+        jsFolderNameNoSpace: external_exports.boolean().default(false),
+        jsFolderNamePattern: external_exports.string().default("")
+      }).default(() => ({
+        pathingFileNamePattern: "",
+        pathingRequireReadme: false,
+        jsFolderNameNoSpace: false,
+        jsFolderNamePattern: ""
+      }))
+    }).default(() => ({
+      enabled: false,
+      commentAnchor: "pull-bot:location",
+      allowedPaths: [],
+      scriptRoots: [],
+      fileKindRules: [],
+      rules: {
+        pathingFileNamePattern: "",
+        pathingRequireReadme: false,
+        jsFolderNameNoSpace: false,
+        jsFolderNamePattern: ""
+      }
+    })),
+    issueLink: external_exports.object({
+      enabled: external_exports.boolean().default(false),
+      commentAnchor: external_exports.string().default("pull-bot:issue-link"),
+      appendCloseKeyword: external_exports.boolean().default(true),
+      closeKeywordTemplate: external_exports.string().default("close #{number}"),
+      linkedLabel: external_exports.string().default(""),
+      requireSameRepository: external_exports.boolean().default(true)
+    }).default(() => ({
+      enabled: false,
+      commentAnchor: "pull-bot:issue-link",
+      appendCloseKeyword: true,
+      closeKeywordTemplate: "close #{number}",
+      linkedLabel: "",
+      requireSameRepository: true
     }))
   }).default(() => ({
-    review: {
-      enabled: false
+    review: { enabled: false },
+    labeling: { enabled: false },
+    summary: { enabled: false },
+    autoProcessing: { skipCreatedBefore: "" },
+    pathLabels: {
+      enabled: false,
+      managed: true,
+      rules: [],
+      documentationLabel: "documentation",
+      unmatchedLabel: "",
+      commentAnchor: "pull-bot:path-labels"
     },
-    labeling: {
-      enabled: false
+    locationCheck: {
+      enabled: false,
+      commentAnchor: "pull-bot:location",
+      allowedPaths: [],
+      scriptRoots: [],
+      fileKindRules: [],
+      rules: {
+        pathingFileNamePattern: "",
+        pathingRequireReadme: false,
+        jsFolderNameNoSpace: false,
+        jsFolderNamePattern: ""
+      }
     },
-    summary: {
-      enabled: false
+    issueLink: {
+      enabled: false,
+      commentAnchor: "pull-bot:issue-link",
+      appendCloseKeyword: true,
+      closeKeywordTemplate: "close #{number}",
+      linkedLabel: "",
+      requireSameRepository: true
     }
   }))
 });
@@ -40946,7 +41042,26 @@ var repoBotConfigEnvironmentVariables = [
   environmentOverride(["issues", "commands", "refresh", "enabled"], "boolean"),
   environmentOverride(["pullRequests", "review", "enabled"], "boolean"),
   environmentOverride(["pullRequests", "labeling", "enabled"], "boolean"),
-  environmentOverride(["pullRequests", "summary", "enabled"], "boolean")
+  environmentOverride(["pullRequests", "summary", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "autoProcessing", "skipCreatedBefore"], "string"),
+  environmentOverride(["pullRequests", "pathLabels", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "pathLabels", "managed"], "boolean"),
+  environmentOverride(["pullRequests", "pathLabels", "rules"], "json"),
+  environmentOverride(["pullRequests", "pathLabels", "documentationLabel"], "string"),
+  environmentOverride(["pullRequests", "pathLabels", "unmatchedLabel"], "string"),
+  environmentOverride(["pullRequests", "pathLabels", "commentAnchor"], "string"),
+  environmentOverride(["pullRequests", "locationCheck", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "locationCheck", "commentAnchor"], "string"),
+  environmentOverride(["pullRequests", "locationCheck", "allowedPaths"], "json"),
+  environmentOverride(["pullRequests", "locationCheck", "scriptRoots"], "json"),
+  environmentOverride(["pullRequests", "locationCheck", "fileKindRules"], "json"),
+  environmentOverride(["pullRequests", "locationCheck", "rules"], "json"),
+  environmentOverride(["pullRequests", "issueLink", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "issueLink", "commentAnchor"], "string"),
+  environmentOverride(["pullRequests", "issueLink", "appendCloseKeyword"], "boolean"),
+  environmentOverride(["pullRequests", "issueLink", "closeKeywordTemplate"], "string"),
+  environmentOverride(["pullRequests", "issueLink", "linkedLabel"], "string"),
+  environmentOverride(["pullRequests", "issueLink", "requireSameRepository"], "boolean")
 ];
 function parseEnvironmentValue(definition) {
   const rawValue = process.env[definition.name];
@@ -41553,6 +41668,32 @@ function toIssueContext() {
     parentIssueUrl
   };
 }
+function toPullRequestContext() {
+  const pullRequest = import_github.context.payload.pull_request;
+  if (!pullRequest) {
+    return void 0;
+  }
+  return {
+    kind: "pull_request",
+    owner: import_github.context.repo.owner,
+    repo: import_github.context.repo.repo,
+    number: pullRequest.number,
+    title: pullRequest.title ?? "",
+    body: pullRequest.body ?? "",
+    state: pullRequest.state,
+    labels: (pullRequest.labels ?? []).map((label) => typeof label === "string" ? label : label.name ?? "").filter(Boolean),
+    htmlUrl: pullRequest.html_url ?? "",
+    createdAt: pullRequest.created_at ?? "",
+    updatedAt: pullRequest.updated_at ?? "",
+    action: import_github.context.payload.action ?? "",
+    actorLogin: import_github.context.payload.sender?.login ?? "",
+    actorType: import_github.context.payload.sender?.type ?? "",
+    isDraft: Boolean(pullRequest.draft),
+    merged: Boolean(pullRequest.merged),
+    baseBranch: pullRequest.base?.ref ?? "",
+    headBranch: pullRequest.head?.ref ?? ""
+  };
+}
 function toIssueCommentContext() {
   const issue2 = toIssueContext();
   const comment = import_github.context.payload.comment;
@@ -41633,6 +41774,60 @@ var OctokitGitHubGateway = class {
   octokit;
   async getIssueContext() {
     return toIssueContext();
+  }
+  async getPullRequestContext() {
+    return toPullRequestContext();
+  }
+  async listPullRequestFiles(prNumber) {
+    const files = await this.octokit.paginate(
+      this.octokit.rest.pulls.listFiles,
+      {
+        owner: import_github.context.repo.owner,
+        repo: import_github.context.repo.repo,
+        pull_number: prNumber,
+        per_page: 100
+      }
+    );
+    return files.map((file2) => ({
+      filename: file2.filename,
+      status: file2.status,
+      additions: file2.additions,
+      deletions: file2.deletions
+    }));
+  }
+  async updatePullRequestBody(prNumber, body) {
+    if (this.dryRun) {
+      core2.info(`[dry-run] update body of pull request #${prNumber}`);
+      return;
+    }
+    await this.octokit.rest.pulls.update({
+      owner: import_github.context.repo.owner,
+      repo: import_github.context.repo.repo,
+      pull_number: prNumber,
+      body
+    });
+  }
+  async getIssueStateForRepository(params) {
+    try {
+      const response = await this.octokit.rest.issues.get({
+        owner: params.owner,
+        repo: params.repo,
+        issue_number: params.number
+      });
+      const issue2 = response.data;
+      if ("pull_request" in issue2) {
+        return void 0;
+      }
+      return {
+        number: issue2.number,
+        title: issue2.title,
+        state: issue2.state,
+        htmlUrl: issue2.html_url
+      };
+    } catch (error48) {
+      core2.info(`Unable to read issue ${params.owner}/${params.repo}#${params.number}: ${String(error48)}`);
+      return void 0;
+    }
   }
   async getIssueCommentContext() {
     return toIssueCommentContext();
@@ -43592,6 +43787,56 @@ ${params.messageZh}`,
 ${params.messageEn}`
   );
 }
+function renderPullRequestLocationComment(params) {
+  const zhLines = params.issues.map((item) => `- \`${item.file}\` \u2192 ${item.reason}\uFF0C\u5EFA\u8BAE\u79FB\u52A8\u5230 \`${item.expectedLocation}\``).join("\n");
+  const enLines = params.issues.map((item) => `- \`${item.file}\` \u2192 ${item.reason}; please move it to \`${item.expectedLocation}\``).join("\n");
+  return bilingual(
+    params.mode,
+    [
+      "## \u63D0\u4EA4\u4F4D\u7F6E\u68C0\u67E5",
+      "",
+      "\u4EE5\u4E0B\u6587\u4EF6\u770B\u8D77\u6765\u4E0D\u5728\u7EA6\u5B9A\u76EE\u5F55\u4E2D\uFF0C\u8BF7\u786E\u8BA4\u662F\u5426\u9700\u8981\u8C03\u6574\uFF08\u4E0D\u5F71\u54CD\u5408\u5E76\uFF0C\u4EC5\u4F9B\u53C2\u8003\uFF09\uFF1A",
+      "",
+      zhLines
+    ].join("\n"),
+    [
+      "## File Placement Check",
+      "",
+      "The following files appear to be outside of their expected directories. This is advisory only and does not block merging:",
+      "",
+      enLines
+    ].join("\n")
+  );
+}
+function renderPullRequestIssueLinkComment(params) {
+  const zhAppended = params.appendedKeywords.length > 0 ? `
+
+\u5DF2\u81EA\u52A8\u5728 PR \u63CF\u8FF0\u4E2D\u8865\u5145\u5173\u95ED\u8BED\u53E5\uFF1A
+${params.appendedKeywords.map((item) => `- \`${item}\``).join("\n")}` : "";
+  const enAppended = params.appendedKeywords.length > 0 ? `
+
+Closing statements were added to the pull request description:
+${params.appendedKeywords.map((item) => `- \`${item}\``).join("\n")}` : "";
+  const zhRefs = params.linkedNumbers.map((number4) => `#${number4}`).join("\u3001");
+  const enRefs = params.linkedNumbers.map((number4) => `#${number4}`).join(", ");
+  return bilingual(
+    params.mode,
+    [
+      "## \u5173\u8054 Issue \u68C0\u67E5",
+      "",
+      `\u672C PR \u5173\u8054\u4E86\u4EE5\u4E0B Issue\uFF1A${zhRefs}\u3002`,
+      "\u5408\u5E76\u540E GitHub \u4F1A\u6839\u636E PR \u63CF\u8FF0\u4E2D\u7684\u5173\u95ED\u8BED\u53E5\u81EA\u52A8\u5173\u95ED\u5BF9\u5E94 Issue\u3002",
+      zhAppended
+    ].join("\n"),
+    [
+      "## Related Issue Check",
+      "",
+      `This pull request references: ${enRefs}.`,
+      "GitHub will close the related issues automatically after this pull request is merged.",
+      enAppended
+    ].join("\n")
+  );
+}
 
 // src/i18n/language.ts
 function countMatches(text, pattern) {
@@ -45523,11 +45768,11 @@ function composeTitle(params) {
   const existingPrefix = findConfiguredPrefix(params.currentTitle, params.prefixes);
   const prefix = existingPrefix || params.prefixes[0]?.trim() || "";
   const availableLength = Math.max(1, params.maxLength - Array.from(prefix).length - (prefix ? 1 : 0));
-  const core16 = takeUnicode(normalizeGeneratedCore(params.generatedCore, params.prefixes), availableLength);
-  if (!normalizeComparable2(core16)) {
+  const core17 = takeUnicode(normalizeGeneratedCore(params.generatedCore, params.prefixes), availableLength);
+  if (!normalizeComparable2(core17)) {
     return "";
   }
-  return prefix ? `${prefix} ${core16}`.trim() : core16;
+  return prefix ? `${prefix} ${core17}`.trim() : core17;
 }
 function titleUnits(value) {
   const normalized = value.normalize("NFKC").toLowerCase();
@@ -46104,13 +46349,386 @@ async function runIssueCommentCommand(params) {
   }
 }
 
+// src/subjects/pullRequest/run.ts
+var core15 = __toESM(require_core(), 1);
+
+// src/subjects/pullRequest/issueLink.ts
+var CLOSE_KEYWORD_PATTERN = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|修复|解决|处理|关闭)/gi;
+var CONNECTOR_PATTERN = /^[\s:：,，、]+$/;
+function stripMarkdownLinks(value) {
+  return value.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
+}
+function hasCloseKeywordBefore(prefix) {
+  const normalized = stripMarkdownLinks(prefix);
+  CLOSE_KEYWORD_PATTERN.lastIndex = 0;
+  let closestEnd = -1;
+  let match;
+  while ((match = CLOSE_KEYWORD_PATTERN.exec(normalized)) !== null) {
+    closestEnd = match.index + match[0].length;
+  }
+  if (closestEnd < 0) {
+    return false;
+  }
+  const between = normalized.slice(closestEnd);
+  if (between.trim().length === 0) {
+    return true;
+  }
+  if (CONNECTOR_PATTERN.test(between)) {
+    return true;
+  }
+  if (between.includes("#")) {
+    return false;
+  }
+  return between.trim().length <= 20;
+}
+function extractIssueReferences(text, source) {
+  const references = [];
+  const pattern = /#(\d{1,7})\b/g;
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    const number4 = Number(match[1]);
+    if (!Number.isSafeInteger(number4) || number4 <= 0) {
+      continue;
+    }
+    const lineStart = text.lastIndexOf("\n", match.index) + 1;
+    const prefix = text.slice(Math.max(lineStart, match.index - 120), match.index);
+    references.push({
+      number: number4,
+      source,
+      hasCloseKeyword: hasCloseKeywordBefore(prefix)
+    });
+  }
+  return references;
+}
+function collectPullRequestIssueReferences(params) {
+  const collected = /* @__PURE__ */ new Map();
+  const addAll = (references) => {
+    for (const reference of references) {
+      const existing = collected.get(reference.number);
+      if (!existing) {
+        collected.set(reference.number, reference);
+        continue;
+      }
+      if (reference.hasCloseKeyword) {
+        existing.hasCloseKeyword = true;
+      }
+    }
+  };
+  addAll(extractIssueReferences(params.title, "title"));
+  addAll(extractIssueReferences(params.body, "body"));
+  for (const message of params.commitMessages) {
+    addAll(extractIssueReferences(message, "commit"));
+  }
+  return [...collected.values()];
+}
+function renderCloseKeyword(template, number4) {
+  return template.replace(/\{number\}/g, String(number4));
+}
+function appendCloseKeywords(params) {
+  const unique4 = [...new Set(params.numbers)].filter((number4) => Number.isSafeInteger(number4) && number4 > 0);
+  if (unique4.length === 0) {
+    return params.body;
+  }
+  const existingBody = params.body ?? "";
+  const alreadyClosed = /* @__PURE__ */ new Set();
+  for (const reference of extractIssueReferences(existingBody, "body")) {
+    if (reference.hasCloseKeyword) {
+      alreadyClosed.add(reference.number);
+    }
+  }
+  const appended = unique4.filter((number4) => !alreadyClosed.has(number4)).map((number4) => renderCloseKeyword(params.template, number4));
+  if (appended.length === 0) {
+    return existingBody;
+  }
+  const separator = existingBody.trim().length > 0 ? "\n\n" : "";
+  return `${existingBody.trimEnd()}${separator}${appended.join("\n")}`;
+}
+
+// src/subjects/pullRequest/pathClassification.ts
+var DOCUMENTATION_EXTENSIONS = [".md", ".mdx", ".txt.md"];
+function isDocumentationPath(path3) {
+  const lower = path3.toLowerCase();
+  return DOCUMENTATION_EXTENSIONS.some((extension) => lower.endsWith(extension));
+}
+function normalizePrefix(prefix) {
+  return prefix.replace(/^\/+/, "").replace(/\/+$/, "").toLowerCase();
+}
+function pathMatchesPrefixes(path3, prefixes) {
+  const lower = path3.toLowerCase();
+  return prefixes.some((prefix) => {
+    const normalized = normalizePrefix(prefix);
+    if (!normalized) {
+      return false;
+    }
+    return lower === normalized || lower.startsWith(`${normalized}/`);
+  });
+}
+function classifyPullRequestFiles(params) {
+  const labels = /* @__PURE__ */ new Set();
+  const unmatchedFiles = [];
+  let matchedAnyRule = false;
+  for (const file2 of params.files) {
+    const rule = params.rules.find((candidate) => pathMatchesPrefixes(file2, candidate.pathPrefixes));
+    if (rule) {
+      labels.add(rule.label);
+      matchedAnyRule = true;
+      continue;
+    }
+    unmatchedFiles.push(file2);
+  }
+  const documentationOnly = params.files.length > 0 && params.files.every((file2) => isDocumentationPath(file2));
+  const filesUnderScriptRoots = (params.scriptRoots ?? []).length > 0 ? params.files.filter((file2) => pathMatchesPrefixes(file2, params.scriptRoots ?? [])) : [];
+  return {
+    matchedLabels: [...labels],
+    matchedAnyRule,
+    unmatchedFiles,
+    documentationOnly,
+    filesUnderScriptRoots
+  };
+}
+function isInsideScriptDirectory(path3, scriptRoots) {
+  const lower = path3.toLowerCase();
+  for (const root of scriptRoots) {
+    const normalized = normalizePrefix(root);
+    if (!normalized) {
+      continue;
+    }
+    if (lower === normalized) {
+      continue;
+    }
+    if (!lower.startsWith(`${normalized}/`)) {
+      continue;
+    }
+    const rest = lower.slice(normalized.length + 1);
+    const segments = rest.split("/").filter(Boolean);
+    if (segments.length >= 2) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// src/subjects/pullRequest/locationCheck.ts
+var MAINTAINER_FILE_PATTERNS = [
+  /^\.github\//i,
+  /^build\//i,
+  /^bettergi\.d\.ts$/i,
+  /^readme([.-][a-z]+)?\.md$/i,
+  /^license([.-][a-z]+)?$/i,
+  /^\.gitignore$/i,
+  /^\.gitattributes$/i,
+  /^\.editorconfig$/i,
+  /^repo\.json$/i
+];
+function isMaintainerFile(path3) {
+  return MAINTAINER_FILE_PATTERNS.some((pattern) => pattern.test(path3));
+}
+function extensionOf(path3) {
+  const name = path3.split("/").pop() ?? path3;
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 ? name.slice(dot).toLowerCase() : "";
+}
+function fileNameOf(path3) {
+  return path3.split("/").pop() ?? path3;
+}
+function checkPullRequestFileLocations(params) {
+  const issues = [];
+  const { config: config2 } = params;
+  for (const file2 of params.files) {
+    if (!file2 || isMaintainerFile(file2)) {
+      continue;
+    }
+    if (config2.allowedPaths.some((allowed) => pathMatchesPrefixes(file2, [allowed]))) {
+      continue;
+    }
+    if (isInsideScriptDirectory(file2, config2.scriptRoots)) {
+      continue;
+    }
+    const extension = extensionOf(file2);
+    const name = fileNameOf(file2);
+    if (pathMatchesPrefixes(file2, ["repo/pathing"])) {
+      const pattern = config2.rules.pathingFileNamePattern;
+      if (pattern && extension === ".json") {
+        const baseName = name.replace(/\.json$/i, "");
+        if (!new RegExp(pattern, "i").test(baseName)) {
+          issues.push({
+            file: file2,
+            detectedCategory: "\u5730\u56FE\u8FFD\u8E2A",
+            expectedLocation: "repo/pathing",
+            reason: "\u8DEF\u7EBF\u6587\u4EF6\u540D\u4E0D\u7B26\u5408\u300C\u7F16\u53F7-\u6750\u6599\u540D\u79F0-[\u533A\u57DF]-[\u4E8C\u7EA7\u533A\u57DF]-\u4E8C\u7EA7\u5B50\u533A\u57DF-\u6570\u91CF\u300D\u683C\u5F0F"
+          });
+        }
+      }
+      continue;
+    }
+    if (pathMatchesPrefixes(file2, ["repo/js"])) {
+      continue;
+    }
+    if (extension === ".js" || name.toLowerCase() === "manifest.json") {
+      issues.push({
+        file: file2,
+        detectedCategory: "JS \u811A\u672C",
+        expectedLocation: "repo/js",
+        reason: "JS \u811A\u672C\u6587\u4EF6\u5E94\u653E\u5728 repo/js \u76EE\u5F55\u4E0B"
+      });
+      continue;
+    }
+    const inferredRule = config2.fileKindRules.find((rule) => rule.extensions.map((item) => item.toLowerCase()).includes(extension));
+    if (inferredRule && !pathMatchesPrefixes(file2, [inferredRule.expectedLocation])) {
+      issues.push({
+        file: file2,
+        detectedCategory: inferredRule.category,
+        expectedLocation: inferredRule.expectedLocation,
+        reason: `${inferredRule.category}\u76F8\u5173\u6587\u4EF6\u5E94\u653E\u5728 ${inferredRule.expectedLocation} \u76EE\u5F55\u4E0B`
+      });
+    }
+  }
+  return issues;
+}
+
+// src/subjects/pullRequest/run.ts
+function resolvePullRequestWorkflowTrigger(action) {
+  switch (action) {
+    case "opened":
+    case "reopened":
+      return "pull_request_opened";
+    case "synchronize":
+    case "ready_for_review":
+      return "pull_request_synchronize";
+    default:
+      return void 0;
+  }
+}
+async function runPullRequestWorkflow(params) {
+  const { config: config2, gateway, pullRequest } = params;
+  const prConfig = config2.pullRequests;
+  if (pullRequest.isDraft) {
+    core15.info(`Skip draft pull request #${pullRequest.number}.`);
+    return;
+  }
+  if (prConfig.pathLabels.enabled) {
+    await runPathLabels({ gateway, pullRequest, config: config2 });
+  }
+  if (prConfig.locationCheck.enabled) {
+    await runLocationCheck({ gateway, pullRequest, config: config2, commentMode: params.commentMode });
+  }
+  if (prConfig.issueLink.enabled) {
+    await runIssueLink({ gateway, pullRequest, config: config2, commentMode: params.commentMode });
+  }
+}
+async function runPathLabels(params) {
+  const { gateway, pullRequest, config: config2 } = params;
+  const labelConfig = config2.pullRequests.pathLabels;
+  const files = await gateway.listPullRequestFiles(pullRequest.number);
+  const classification = classifyPullRequestFiles({
+    files: files.map((file2) => file2.filename),
+    rules: labelConfig.rules,
+    scriptRoots: config2.pullRequests.locationCheck.scriptRoots
+  });
+  const desired = new Set(classification.matchedLabels);
+  if (classification.documentationOnly && labelConfig.documentationLabel) {
+    desired.add(labelConfig.documentationLabel);
+  }
+  const removable = new Set(labelConfig.rules.map((rule) => rule.label));
+  if (labelConfig.documentationLabel) {
+    removable.add(labelConfig.documentationLabel);
+  }
+  const toAdd = [...desired].filter((label) => !pullRequest.labels.includes(label));
+  if (toAdd.length > 0) {
+    await gateway.addLabels(pullRequest.number, toAdd);
+    core15.info(`Added labels to #${pullRequest.number}: ${toAdd.join(", ")}`);
+  }
+  if (!labelConfig.managed) {
+    return;
+  }
+  const stale = pullRequest.labels.filter((label) => removable.has(label) && !desired.has(label));
+  for (const label of stale) {
+    await gateway.removeLabel(pullRequest.number, label);
+    core15.info(`Removed stale label "${label}" from #${pullRequest.number}.`);
+  }
+}
+async function runLocationCheck(params) {
+  const { gateway, pullRequest, config: config2, commentMode } = params;
+  const checkConfig = config2.pullRequests.locationCheck;
+  const files = await gateway.listPullRequestFiles(pullRequest.number);
+  const changed = files.filter((file2) => file2.status === "added" || file2.status === "renamed" || file2.status === "modified").map((file2) => file2.filename);
+  const issues = checkPullRequestFileLocations({ files: changed, config: checkConfig });
+  await syncAnchoredComment({
+    gateway,
+    issueNumber: pullRequest.number,
+    anchor: checkConfig.commentAnchor,
+    body: issues.length > 0 ? renderPullRequestLocationComment({ mode: commentMode, issues }) : void 0
+  });
+  if (issues.length > 0) {
+    core15.info(`Reported ${issues.length} placement issue(s) on pull request #${pullRequest.number}.`);
+  }
+}
+async function runIssueLink(params) {
+  const { gateway, pullRequest, config: config2, commentMode } = params;
+  const linkConfig = config2.pullRequests.issueLink;
+  const references = collectPullRequestIssueReferences({
+    title: pullRequest.title,
+    body: pullRequest.body,
+    commitMessages: []
+  });
+  if (references.length === 0) {
+    return;
+  }
+  const closable = [];
+  for (const reference of references) {
+    if (linkConfig.requireSameRepository) {
+      const state = await gateway.getIssueStateForRepository({
+        owner: pullRequest.owner,
+        repo: pullRequest.repo,
+        number: reference.number
+      });
+      if (!state || state.state !== "open") {
+        core15.info(`Skip issue #${reference.number}: not an open issue in this repository.`);
+        continue;
+      }
+    }
+    if (!reference.hasCloseKeyword) {
+      closable.push(reference.number);
+    }
+  }
+  if (!linkConfig.appendCloseKeyword) {
+    return;
+  }
+  const addedKeywords = [];
+  if (closable.length > 0) {
+    const updatedBody = appendCloseKeywords({
+      body: pullRequest.body,
+      numbers: closable,
+      template: linkConfig.closeKeywordTemplate
+    });
+    if (updatedBody !== pullRequest.body) {
+      await gateway.updatePullRequestBody(pullRequest.number, updatedBody);
+      for (const number4 of closable) {
+        addedKeywords.push(linkConfig.closeKeywordTemplate.replace("{number}", String(number4)));
+      }
+      pullRequest.body = updatedBody;
+      core15.info(`Appended close keyword for issue(s) ${closable.map((n) => `#${n}`).join(", ")}.`);
+    }
+  }
+  await syncAnchoredComment({
+    gateway,
+    issueNumber: pullRequest.number,
+    anchor: linkConfig.commentAnchor,
+    body: renderPullRequestIssueLinkComment({
+      mode: commentMode,
+      linkedNumbers: references.map((reference) => reference.number),
+      appendedKeywords: addedKeywords
+    })
+  });
+}
+
 // src/index.ts
 async function run() {
   try {
     const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
-    const configPath = core15.getInput("config-path") || ".github/repo-bot.yml";
-    const overridesJson = core15.getInput("config-overrides-json");
-    const dryRun = core15.getBooleanInput("dry-run", { required: false });
+    const configPath = core16.getInput("config-path") || ".github/repo-bot.yml";
+    const overridesJson = core16.getInput("config-overrides-json");
+    const dryRun = core16.getBooleanInput("dry-run", { required: false });
     const config2 = await loadRepoBotConfig({
       workspace,
       configPath,
@@ -46122,14 +46740,14 @@ async function run() {
       throw new Error("Missing REPO_BOT_GITHUB_TOKEN or GITHUB_TOKEN.");
     }
     if (process.env.REPO_BOT_GITHUB_TOKEN?.trim()) {
-      core15.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
+      core16.info("Using REPO_BOT_GITHUB_TOKEN for GitHub API operations.");
     }
     const gateway = new OctokitGitHubGateway(token, config2.runtime.dryRun);
     const provider = tryCreateProvider(config2.providers.openAiCompatible);
     const issueComment = await gateway.getIssueCommentContext();
     if (issueComment) {
       if (issueComment.commentAuthorType.toLowerCase() === "bot") {
-        core15.info("Ignore an issue comment created or edited by a bot.");
+        core16.info("Ignore an issue comment created or edited by a bot.");
         return;
       }
       const command = parseIssueCommentCommand({
@@ -46137,21 +46755,21 @@ async function run() {
         mentions: config2.issues.commands.mentions
       });
       if (!command) {
-        core15.info("Current issue comment does not contain a supported bot command.");
+        core16.info("Current issue comment does not contain a supported bot command.");
         return;
       }
       if (!isIssueCommentCommandEnabled({
         command,
         config: config2.issues.commands
       })) {
-        core15.info(`Issue command /${command.command} is disabled or unsupported.`);
+        core16.info(`Issue command /${command.command} is disabled or unsupported.`);
         return;
       }
       if (!canExecuteIssueCommentCommand({
         command,
         config: config2.issues.commands
       })) {
-        core15.info(`Ignore issue command /${command.command} due to access restrictions.`);
+        core16.info(`Ignore issue command /${command.command} due to access restrictions.`);
         return;
       }
       await runIssueCommentCommand({
@@ -46161,21 +46779,50 @@ async function run() {
         gateway,
         provider
       });
-      core15.info(`Repo Bot completed command /${command.command} for issue #${command.issue.number}.`);
+      core16.info(`Repo Bot completed command /${command.command} for issue #${command.issue.number}.`);
       return;
     }
     const issue2 = await gateway.getIssueContext();
+    const pullRequest = issue2 ? void 0 : await gateway.getPullRequestContext();
+    if (pullRequest) {
+      if (pullRequest.actorType?.toLowerCase() === "bot") {
+        core16.info(`Ignore pull request action "${pullRequest.action}" created by a bot.`);
+        return;
+      }
+      const pullRequestTrigger = resolvePullRequestWorkflowTrigger(pullRequest.action);
+      if (!pullRequestTrigger) {
+        core16.info(`Current pull request action "${pullRequest.action}" is not handled.`);
+        return;
+      }
+      const enabled = config2.pullRequests.pathLabels.enabled || config2.pullRequests.locationCheck.enabled || config2.pullRequests.issueLink.enabled;
+      if (!enabled) {
+        core16.info("Pull request handling is disabled in configuration.");
+        return;
+      }
+      await runPullRequestWorkflow({
+        pullRequest,
+        trigger: pullRequestTrigger,
+        config: config2,
+        gateway,
+        commentMode: detectCommentMode(
+          [pullRequest.title, pullRequest.body].filter(Boolean).join("\n"),
+          config2.runtime
+        )
+      });
+      core16.info(`Repo Bot completed for pull request #${pullRequest.number}.`);
+      return;
+    }
     if (!issue2) {
-      core15.info("Current event is not a plain issue event. Nothing to do.");
+      core16.info("Current event is not a plain issue event. Nothing to do.");
       return;
     }
     if (issue2.actorType?.toLowerCase() === "bot") {
-      core15.info(`Ignore issue action "${issue2.action}" created by a bot.`);
+      core16.info(`Ignore issue action "${issue2.action}" created by a bot.`);
       return;
     }
     const trigger = resolveIssueWorkflowTrigger(issue2.action);
     if (!trigger) {
-      core15.info(`Current issue action "${issue2.action}" is not handled.`);
+      core16.info(`Current issue action "${issue2.action}" is not handled.`);
       return;
     }
     await runIssueWorkflow({
@@ -46186,9 +46833,9 @@ async function run() {
       gateway,
       provider
     });
-    core15.info(`Repo Bot completed for issue #${issue2.number}.`);
+    core16.info(`Repo Bot completed for issue #${issue2.number}.`);
   } catch (error48) {
-    core15.setFailed(error48 instanceof Error ? error48.message : String(error48));
+    core16.setFailed(error48 instanceof Error ? error48.message : String(error48));
   }
 }
 void run();

@@ -17,6 +17,14 @@
 - 内容自动打标：可选启用 AI 从当前仓库或指定仓库的标签目录中挑选合适标签。
 - Sub-issue：识别同仓库父 Issue，以及由同仓库评论创建的新 Issue；默认跳过严格模板、自动标题和重复关闭，同时保留标签与 AI 分析。
 
+### Pull Request 自动流程
+
+- 按改动文件打类型标签：根据改动文件所在目录自动打上 `JS 脚本` / `地图追踪` / `战斗策略` / `七圣召唤`（可配置映射）；文件变化后标签随之刷新，`repo/js/<脚本>/Assets/Pathing/` 这类脚本内的地图追踪资源只算 `JS 脚本`。
+- 提交位置检查：文件明显放错大类目录时，在 PR 上就地更新一条**参考性**评论（只提示，不阻塞合并、不 request changes）。
+- 关联 Issue 检查：识别 PR 标题/正文里引用的 Issue，若作者没写 `close #N` 则自动补到 PR 描述末尾，合并后由 GitHub 原生关闭对应 Issue，并留一条汇总评论。
+
+PR 事件使用 `pull_request_target`（fork 来的 PR 才有写权限），**绝不 checkout 或执行 PR 代码**。
+
 ### 协作者指令
 
 - `@bot /refresh`：重跑完整 Issue 主流程。
@@ -33,7 +41,7 @@
 - 中央仓库：保存 Action、可复用 Workflow、配置 schema、测试和发布标签。
 - 业务仓库：只保留接入 workflow、`.github/repo-bot.yml`、Variables 和 Secrets。
 - 当前工作仓库不由 Bot 自己猜测，而是由调用方 workflow 决定。哪个仓库触发 workflow，Bot 就在那个仓库上下文中工作。
-- 已预留 `pullRequests.review`、`pullRequests.labeling`、`pullRequests.summary` 配置位，当前版本仅实现 Issue 能力。
+- 已实现 `pullRequests.pathLabels`、`pullRequests.locationCheck`、`pullRequests.issueLink` 三项 PR 能力；`pullRequests.review`、`pullRequests.labeling`、`pullRequests.summary` 为保留配置位，当前版本未实现。
 
 ## 快速开始
 
@@ -258,6 +266,55 @@ Bot 通过 Issue 时间线中的 `transferred` 事件识别从其他仓库转移
 - 每次自动处理会额外调用一次 Issue 时间线 API 用于转移识别；查询失败时按普通 Issue 处理。
 
 GitHub Actions 无法在事件产生前按评论作者过滤 `issue_comment`。示例 workflow 会在 job 启动前跳过 bot 评论和不含受支持指令的评论，并通过 `run-name` 标出 Issue 编号、事件和触发者；这些被过滤的记录会显示为 skipped，但不会 checkout 或运行 Bot。
+
+### Pull Request 处理
+
+三项能力默认关闭，按仓库按需开启：
+
+```yml
+pullRequests:
+  # ① 按改动文件打类型标签（scripts-list）
+  pathLabels:
+    enabled: true
+    managed: true                # 文件变化后移除不再匹配的类型标签
+    documentationLabel: documentation
+    rules:
+      - label: JS 脚本
+        pathPrefixes: [repo/js]
+      - label: 地图追踪
+        pathPrefixes: [repo/pathing]
+      - label: 战斗策略
+        pathPrefixes: [repo/combat]
+      - label: 七圣召唤
+        pathPrefixes: [repo/tcg]
+
+  # ② 提交位置检查（仅评论，不阻塞合并）
+  locationCheck:
+    enabled: true
+    commentAnchor: pull-bot:location
+    allowedPaths: [build, .github]
+    scriptRoots: [repo/js]       # 脚本目录内的文件一律视为合法（含 Assets/Pathing）
+    fileKindRules:
+      - category: 战斗策略
+        expectedLocation: repo/combat
+        extensions: [.txt]
+    rules:
+      pathingFileNamePattern: ^\d{2,3}-   # 留空表示不校验文件名
+
+  # ③ 关联 Issue 并补 close 关键词（BGI）
+  issueLink:
+    enabled: true
+    commentAnchor: pull-bot:issue-link
+    appendCloseKeyword: true
+    closeKeywordTemplate: "close #{number}"
+    requireSameRepository: true
+```
+
+- **标签**：一条改动文件路径命中第一条匹配规则的目录前缀即归入该类；跨多类时打多个标签。`repo/js/**` 下的任何文件（含 `Assets/Pathing/*.json`、大小写变体、任意层级）都只算 `JS 脚本`。
+- **位置检查**：只检查新增/改名/修改的文件；`allowedPaths`、维护类文件（`.github/**`、`build/**`、`bettergi.d.ts`、`README.md`、`LICENSE` 等）以及 `scriptRoots` 内的文件不校验。只发评论，**不 request changes、不阻塞合并**；`rules.pathingRequireReadme` 等 README 子规则默认不启用。
+- **关联 Issue**：从标题、正文中解析 `#123`。同一行内最近的关键词是 `close/fix/resolve/修复/解决/处理/关闭` 时视为已带关闭语句；否则补上 `close #123` 到 PR 描述末尾（幂等，已覆盖的不会重复添加）。`requireSameRepository: true` 时只处理本仓库中仍处于 open 的 Issue。合并后由 GitHub 原生关闭，Bot 不直接关 Issue。
+- **draft PR** 全部跳过；`ready_for_review` 时补做。
+- **安全**：PR 事件必须用 `pull_request_target`，且只能通过 API 读取 PR 元数据。**禁止在 workflow 中 checkout 或执行 PR 的代码**（配置从基仓库读取，bot 自身按 `action-ref` 固定版本检出）。
 
 ### 自动忽略旧 Issue
 

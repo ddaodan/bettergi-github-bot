@@ -122,7 +122,26 @@ export const repoBotConfigEnvironmentVariables: EnvironmentOverrideDefinition[] 
   environmentOverride(["issues", "commands", "refresh", "enabled"], "boolean"),
   environmentOverride(["pullRequests", "review", "enabled"], "boolean"),
   environmentOverride(["pullRequests", "labeling", "enabled"], "boolean"),
-  environmentOverride(["pullRequests", "summary", "enabled"], "boolean")
+  environmentOverride(["pullRequests", "summary", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "autoProcessing", "skipCreatedBefore"], "string"),
+  environmentOverride(["pullRequests", "pathLabels", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "pathLabels", "managed"], "boolean"),
+  environmentOverride(["pullRequests", "pathLabels", "rules"], "json"),
+  environmentOverride(["pullRequests", "pathLabels", "documentationLabel"], "string"),
+  environmentOverride(["pullRequests", "pathLabels", "unmatchedLabel"], "string"),
+  environmentOverride(["pullRequests", "pathLabels", "commentAnchor"], "string"),
+  environmentOverride(["pullRequests", "locationCheck", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "locationCheck", "commentAnchor"], "string"),
+  environmentOverride(["pullRequests", "locationCheck", "allowedPaths"], "json"),
+  environmentOverride(["pullRequests", "locationCheck", "scriptRoots"], "json"),
+  environmentOverride(["pullRequests", "locationCheck", "fileKindRules"], "json"),
+  environmentOverride(["pullRequests", "locationCheck", "rules"], "json"),
+  environmentOverride(["pullRequests", "issueLink", "enabled"], "boolean"),
+  environmentOverride(["pullRequests", "issueLink", "commentAnchor"], "string"),
+  environmentOverride(["pullRequests", "issueLink", "appendCloseKeyword"], "boolean"),
+  environmentOverride(["pullRequests", "issueLink", "closeKeywordTemplate"], "string"),
+  environmentOverride(["pullRequests", "issueLink", "linkedLabel"], "string"),
+  environmentOverride(["pullRequests", "issueLink", "requireSameRepository"], "boolean")
 ];
 
 function parseEnvironmentValue(definition: EnvironmentOverrideDefinition): unknown {

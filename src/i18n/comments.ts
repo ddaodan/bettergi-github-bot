@@ -435,3 +435,68 @@ export function renderFixStatusComment(params: {
     `## ${params.titleEn}\n\n${params.messageEn}`
   );
 }
+
+export function renderPullRequestLocationComment(params: {
+  mode: CommentMode;
+  issues: Array<{ file: string; expectedLocation: string; reason: string }>;
+}): string {
+  const zhLines = params.issues
+    .map((item) => `- \`${item.file}\` → ${item.reason}，建议移动到 \`${item.expectedLocation}\``)
+    .join("\n");
+  const enLines = params.issues
+    .map((item) => `- \`${item.file}\` → ${item.reason}; please move it to \`${item.expectedLocation}\``)
+    .join("\n");
+
+  return bilingual(
+    params.mode,
+    [
+      "## 提交位置检查",
+      "",
+      "以下文件看起来不在约定目录中，请确认是否需要调整（不影响合并，仅供参考）：",
+      "",
+      zhLines
+    ].join("\n"),
+    [
+      "## File Placement Check",
+      "",
+      "The following files appear to be outside of their expected directories. This is advisory only and does not block merging:",
+      "",
+      enLines
+    ].join("\n")
+  );
+}
+
+export function renderPullRequestIssueLinkComment(params: {
+  mode: CommentMode;
+  linkedNumbers: number[];
+  appendedKeywords: string[];
+}): string {
+  const zhAppended = params.appendedKeywords.length > 0
+    ? `\n\n已自动在 PR 描述中补充关闭语句：\n${params.appendedKeywords.map((item) => `- \`${item}\``).join("\n")}`
+    : "";
+  const enAppended = params.appendedKeywords.length > 0
+    ? `\n\nClosing statements were added to the pull request description:\n${params.appendedKeywords.map((item) => `- \`${item}\``).join("\n")}`
+    : "";
+
+  const zhRefs = params.linkedNumbers.map((number) => `#${number}`).join("、");
+  const enRefs = params.linkedNumbers.map((number) => `#${number}`).join(", ");
+
+  return bilingual(
+    params.mode,
+    [
+      "## 关联 Issue 检查",
+      "",
+      `本 PR 关联了以下 Issue：${zhRefs}。`,
+      "合并后 GitHub 会根据 PR 描述中的关闭语句自动关闭对应 Issue。",
+      zhAppended
+    ].join("\n"),
+    [
+      "## Related Issue Check",
+      "",
+      `This pull request references: ${enRefs}.`,
+      "GitHub will close the related issues automatically after this pull request is merged.",
+      enAppended
+    ].join("\n")
+  );
+}
+
