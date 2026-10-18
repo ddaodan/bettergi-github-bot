@@ -9,7 +9,7 @@ import type {
 } from "../../core/types.js";
 import type { GitHubGateway } from "../../github/gateway.js";
 import type { OpenAiCompatibleProvider } from "../../providers/openaiCompatible/client.js";
-import { getSectionContent } from "./parser.js";
+import { extractKnownSections, getSectionContent } from "./parser.js";
 
 const PREFERRED_SECTION_PATTERN = /(description|summary|problem|question|request|suggestion|content|描述|问题|建议|需求|内容|现象)/i;
 const LOW_SIGNAL_SECTION_PATTERN = /(checklist|environment|version|steps|expected|logs?|attachments?|提交确认|系统环境|版本|复现|期望|日志|附件)/i;
@@ -76,6 +76,8 @@ function cleanEvidence(value: string): string[] {
 function collectTitleEvidence(validation: ValidationOutcome): string {
   const template = validation.template;
   if (template) {
+    const knownHeadings = template.requiredSections.flatMap((rule) => rule.aliases);
+    const knownSections = extractKnownSections(validation.parsed.raw ?? "", knownHeadings);
     const preferredRules = [...template.requiredSections]
       .sort((left, right) => {
         const leftPreferred = PREFERRED_SECTION_PATTERN.test(`${left.id} ${left.aliases.join(" ")}`) ? 1 : 0;
@@ -87,7 +89,7 @@ function collectTitleEvidence(validation: ValidationOutcome): string {
       if (!PREFERRED_SECTION_PATTERN.test(`${rule.id} ${rule.aliases.join(" ")}`)) {
         continue;
       }
-      const content = getSectionContent(validation.parsed, rule);
+      const content = getSectionContent(validation.parsed, rule, knownSections);
       if (cleanEvidence(content).length > 0) {
         return content;
       }

@@ -44057,11 +44057,45 @@ function matchTemplate(parsed, templates, fallbackTemplateKey, title) {
   }
   return templates[0];
 }
-function getSectionContent(parsed, rule) {
+function extractKnownSections(body, knownHeadings) {
+  const known = new Set(knownHeadings.map(normalizeHeading).filter(Boolean));
+  const sections = {};
+  if (known.size === 0) {
+    return sections;
+  }
+  const lines = body.split(/\r?\n/);
+  const boundaries = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index]?.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*$/);
+    if (!match?.[2]) {
+      continue;
+    }
+    const key = normalizeHeading(match[2]);
+    if (known.has(key)) {
+      boundaries.push({ key, line: index });
+    }
+  }
+  for (let index = 0; index < boundaries.length; index += 1) {
+    const boundary = boundaries[index];
+    if (!boundary) {
+      continue;
+    }
+    const start = boundary.line + 1;
+    const next = boundaries[index + 1];
+    const end = next ? next.line : lines.length;
+    const content = lines.slice(start, end).join("\n").trim();
+    const existing = sections[boundary.key];
+    sections[boundary.key] = existing ? `${existing}
+${content}` : content;
+  }
+  return sections;
+}
+function getSectionContent(parsed, rule, knownSections) {
   const aliases = rule.aliases.map(normalizeHeading);
+  const source = knownSections ?? parsed.sections;
   for (const alias of aliases) {
-    if (alias in parsed.sections) {
-      return parsed.sections[alias] ?? "";
+    if (alias in source) {
+      return source[alias] ?? "";
     }
   }
   return "";
@@ -44944,6 +44978,9 @@ var DEFAULT_PLACEHOLDER_HINTS = [
 ];
 
 // src/subjects/issue/validation.ts
+function stripHeadingLines(content) {
+  return content.split(/\r?\n/).filter((line) => !/^\s{0,3}#{1,6}\s+/.test(line)).join("\n").trim();
+}
 function isPlaceholder(content, hints) {
   const normalized = normalizeText(content);
   if (!normalized) {
@@ -44998,8 +45035,11 @@ function validateIssue(params) {
     };
   }
   const effectiveSections = params.transferred ? detected.requiredSections.filter((rule) => !rule.transferExempt) : detected.requiredSections;
+  const knownHeadings = detected.requiredSections.flatMap((rule) => rule.aliases);
+  const knownSections = extractKnownSections(params.body, knownHeadings);
   const missingSections = effectiveSections.filter((rule) => {
-    const content = getSectionContent(parsed, rule);
+    const rawContent = getSectionContent(parsed, rule, knownSections);
+    const content = stripHeadingLines(rawContent);
     const hints = [...DEFAULT_PLACEHOLDER_HINTS, ...rule.placeholderHints ?? []];
     return isPlaceholder(content, hints);
   }).map((rule) => ({
@@ -45732,6 +45772,8 @@ function cleanEvidence(value) {
 function collectTitleEvidence(validation) {
   const template = validation.template;
   if (template) {
+    const knownHeadings = template.requiredSections.flatMap((rule) => rule.aliases);
+    const knownSections = extractKnownSections(validation.parsed.raw ?? "", knownHeadings);
     const preferredRules = [...template.requiredSections].sort((left, right) => {
       const leftPreferred = PREFERRED_SECTION_PATTERN.test(`${left.id} ${left.aliases.join(" ")}`) ? 1 : 0;
       const rightPreferred = PREFERRED_SECTION_PATTERN.test(`${right.id} ${right.aliases.join(" ")}`) ? 1 : 0;
@@ -45741,7 +45783,7 @@ function collectTitleEvidence(validation) {
       if (!PREFERRED_SECTION_PATTERN.test(`${rule.id} ${rule.aliases.join(" ")}`)) {
         continue;
       }
-      const content = getSectionContent(validation.parsed, rule);
+      const content = getSectionContent(validation.parsed, rule, knownSections);
       if (cleanEvidence(content).length > 0) {
         return content;
       }

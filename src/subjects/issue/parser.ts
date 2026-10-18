@@ -271,11 +271,68 @@ export function matchTemplate(
   return templates[0];
 }
 
-export function getSectionContent(parsed: ParsedIssue, rule: SectionRule): string {
+/**
+ * Splits an issue body into sections using only the headings declared by the template
+ * (the section aliases) as boundaries.
+ *
+ * Unlike `parseIssueBody`, any other heading — including sub-headings the reporter wrote
+ * inside a form field (`## 问题现象`, `#### 日志`) — is kept as part of the owning section
+ * instead of cutting it short. As a result, a reporter's own formatting can never make a
+ * filled-in field look empty.
+ *
+ * A section that appears more than once is merged in document order.
+ */
+export function extractKnownSections(body: string, knownHeadings: string[]): Record<string, string> {
+  const known = new Set(knownHeadings.map(normalizeHeading).filter(Boolean));
+  const sections: Record<string, string> = {};
+  if (known.size === 0) {
+    return sections;
+  }
+
+  const lines = body.split(/\r?\n/);
+  const boundaries: Array<{ key: string; line: number }> = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index]?.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*$/);
+    if (!match?.[2]) {
+      continue;
+    }
+    const key = normalizeHeading(match[2]);
+    if (known.has(key)) {
+      boundaries.push({ key, line: index });
+    }
+  }
+
+  for (let index = 0; index < boundaries.length; index += 1) {
+    const boundary = boundaries[index];
+    if (!boundary) {
+      continue;
+    }
+    const start = boundary.line + 1;
+    const next = boundaries[index + 1];
+    const end = next ? next.line : lines.length;
+    const content = lines.slice(start, end).join("\n").trim();
+    const existing = sections[boundary.key];
+    sections[boundary.key] = existing ? `${existing}\n${content}` : content;
+  }
+
+  return sections;
+}
+
+/**
+ * Reads a section from either the template-aware `knownSections` map or, when it is not
+ * provided, from the plain heading-based sections produced by `parseIssueBody`.
+ */
+export function getSectionContent(
+  parsed: ParsedIssue,
+  rule: SectionRule,
+  knownSections?: Record<string, string>
+): string {
   const aliases = rule.aliases.map(normalizeHeading);
+  const source = knownSections ?? parsed.sections;
   for (const alias of aliases) {
-    if (alias in parsed.sections) {
-      return parsed.sections[alias] ?? "";
+    if (alias in source) {
+      return source[alias] ?? "";
     }
   }
   return "";

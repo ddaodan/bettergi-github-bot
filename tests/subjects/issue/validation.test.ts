@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { validateIssue } from "../../../src/subjects/issue/validation.js";
 import { createConfig } from "../../helpers/fixtures.js";
@@ -315,5 +315,123 @@ describe("validateIssue", () => {
 
     expect(result.templateMatched).toBe(true);
     expect(result.valid).toBe(true);
+  });
+
+  describe("sub-headings written inside a form field", () => {
+    it("keeps field content when the reporter adds deeper headings", () => {
+      const config = createConfig();
+
+      // #3831 的真实结构：字段标题下面用户又写了子标题
+      const result = validateIssue({
+        title: "[bug] 自动剧情 Silero VAD 初始化失败",
+        body: [
+          "<!-- issue-template: bug -->",
+          "",
+          "## Environment",
+          "",
+          "### 系统环境",
+          "Windows 10 Pro 22H2 / RTX 4060",
+          "",
+          "### 备注",
+          "驱动版本 32.0.15.9649",
+          "",
+          "## Steps to Reproduce",
+          "",
+          "### A/B 对照验证",
+          "启用虚拟声卡时失败，禁用后正常",
+          "",
+          "## Expected Behavior",
+          "",
+          "### 期望行为",
+          "应能正常初始化"
+        ].join("\n"),
+        config: config.issues.validation,
+        commentMode: "zh"
+      });
+
+      expect(result.valid).toBe(true);
+      expect(result.missingSections).toEqual([]);
+    });
+
+    it("keeps field content when the reporter uses a higher-level heading", () => {
+      const config = createConfig();
+
+      // 表单字段是 ##，用户却用 # 单级标题分点
+      const result = validateIssue({
+        title: "[bug] 启动失败",
+        body: [
+          "<!-- issue-template: bug -->",
+          "",
+          "## Environment",
+          "",
+          "# Windows 11",
+          "详细版本 23H2",
+          "",
+          "## Steps to Reproduce",
+          "",
+          "# 第一步",
+          "打开启动器",
+          "",
+          "## Expected Behavior",
+          "",
+          "# 期望",
+          "正常启动"
+        ].join("\n"),
+        config: config.issues.validation,
+        commentMode: "zh"
+      });
+
+      expect(result.valid).toBe(true);
+    });
+
+    it("still reports a field that only contains sub-headings", () => {
+      const config = createConfig();
+
+      const result = validateIssue({
+        title: "[bug] 空字段",
+        body: [
+          "<!-- issue-template: bug -->",
+          "",
+          "## Environment",
+          "Windows 11",
+          "",
+          "## Steps to Reproduce",
+          "",
+          "### 复现步骤",
+          "",
+          "## Expected Behavior",
+          "正常启动"
+        ].join("\n"),
+        config: config.issues.validation,
+        commentMode: "zh"
+      });
+
+      expect(result.valid).toBe(false);
+      expect(result.missingSections.map((item) => item.id)).toEqual(["steps"]);
+    });
+
+    it("does not merge content into a sibling field that uses the same heading text", () => {
+      const config = createConfig();
+
+      const result = validateIssue({
+        title: "[bug] 子标题与字段同名",
+        body: [
+          "<!-- issue-template: bug -->",
+          "",
+          "## Environment",
+          "Windows 11",
+          "",
+          "## Steps to Reproduce",
+          "1. 打开 BetterGI",
+          "",
+          "## Expected Behavior",
+          "正常启动"
+        ].join("\n"),
+        config: config.issues.validation,
+        commentMode: "zh"
+      });
+
+      expect(result.valid).toBe(true);
+    });
   });
 });

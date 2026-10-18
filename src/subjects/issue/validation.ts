@@ -3,7 +3,19 @@ import * as core from "@actions/core";
 import { DEFAULT_PLACEHOLDER_HINTS } from "../../core/constants.js";
 import type { CommentMode, ValidationConfig, ValidationOutcome } from "../../core/types.js";
 import { renderValidationComment } from "../../i18n/comments.js";
-import { detectTemplate, getSectionContent, matchTemplate, normalizeText, parseIssueBody } from "./parser.js";
+import { detectTemplate, extractKnownSections, getSectionContent, matchTemplate, normalizeText, parseIssueBody } from "./parser.js";
+
+/**
+ * Removes heading lines from a section body so that a field containing only
+ * sub-headings (no actual prose) still counts as missing.
+ */
+function stripHeadingLines(content: string): string {
+  return content
+    .split(/\r?\n/)
+    .filter((line) => !/^\s{0,3}#{1,6}\s+/.test(line))
+    .join("\n")
+    .trim();
+}
 
 function isPlaceholder(content: string, hints: string[]): boolean {
   const normalized = normalizeText(content);
@@ -77,9 +89,16 @@ export function validateIssue(params: {
   const effectiveSections = params.transferred
     ? detected.requiredSections.filter((rule) => !rule.transferExempt)
     : detected.requiredSections;
+
+  // Section boundaries come from the template's declared headings, never from whatever
+  // Markdown levels the reporter happens to use inside a field.
+  const knownHeadings = detected.requiredSections.flatMap((rule) => rule.aliases);
+  const knownSections = extractKnownSections(params.body, knownHeadings);
+
   const missingSections = effectiveSections
     .filter((rule) => {
-      const content = getSectionContent(parsed, rule);
+      const rawContent = getSectionContent(parsed, rule, knownSections);
+      const content = stripHeadingLines(rawContent);
       const hints = [...DEFAULT_PLACEHOLDER_HINTS, ...(rule.placeholderHints ?? [])];
       return isPlaceholder(content, hints);
     })
