@@ -7,6 +7,36 @@ const sectionRuleSchema = z.object({
   transferExempt: z.boolean().default(false)
 });
 
+/**
+ * Accepts both the current `expectedLocations: string[]` form and the older
+ * single-value `expectedLocation: string` form, so upgrading the action before
+ * updating a consumer's config never breaks loading.
+ */
+const fileKindRuleSchema = z.object({
+  category: z.string().min(1),
+  expectedLocations: z.array(z.string().min(1)).optional(),
+  expectedLocation: z.string().min(1).optional(),
+  extensions: z.array(z.string().min(1)).min(1)
+}).transform((rule, ctx) => {
+  const locations = rule.expectedLocations && rule.expectedLocations.length > 0
+    ? rule.expectedLocations
+    : rule.expectedLocation
+      ? [rule.expectedLocation]
+      : [];
+  if (locations.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "fileKindRules entry requires expectedLocations or expectedLocation"
+    });
+    return z.NEVER;
+  }
+  return {
+    category: rule.category,
+    expectedLocations: locations,
+    extensions: rule.extensions
+  };
+});
+
 const templateSchema = z.object({
   key: z.string().min(1),
   issueType: z.string().min(1).optional(),
@@ -525,7 +555,8 @@ export const repoBotConfigSchema = z.object({
       managed: z.boolean().default(true),
       rules: z.array(z.object({
         label: z.string().min(1),
-        pathPrefixes: z.array(z.string().min(1)).min(1)
+        pathPrefixes: z.array(z.string().min(1)).min(1),
+        requireSubdirectory: z.boolean().optional()
       })).default([]),
       documentationLabel: z.string().default("documentation"),
       unmatchedLabel: z.string().default(""),
@@ -543,11 +574,7 @@ export const repoBotConfigSchema = z.object({
       commentAnchor: z.string().default("pull-bot:location"),
       allowedPaths: z.array(z.string().min(1)).default([]),
       scriptRoots: z.array(z.string().min(1)).default([]),
-      fileKindRules: z.array(z.object({
-        category: z.string().min(1),
-        expectedLocation: z.string().min(1),
-        extensions: z.array(z.string().min(1)).min(1)
-      })).default([]),
+      fileKindRules: z.array(fileKindRuleSchema).default([]),
       rules: z.object({
         pathingFileNamePattern: z.string().default(""),
         pathingRequireReadme: z.boolean().default(false),

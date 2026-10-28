@@ -39,7 +39,7 @@ function enableScriptsListConfig(config = createConfig()) {
     enabled: true,
     managed: true,
     rules: [
-      { label: "JS 脚本", pathPrefixes: ["repo/js"] },
+      { label: "JS 脚本", pathPrefixes: ["repo/js"], requireSubdirectory: true },
       { label: "地图追踪", pathPrefixes: ["repo/pathing"] },
       { label: "战斗策略", pathPrefixes: ["repo/combat"] },
       { label: "七圣召唤", pathPrefixes: ["repo/tcg"] }
@@ -53,7 +53,7 @@ function enableScriptsListConfig(config = createConfig()) {
     commentAnchor: "pull-bot:location",
     allowedPaths: ["build", ".github"],
     scriptRoots: ["repo/js"],
-    fileKindRules: [{ category: "战斗策略", expectedLocation: "repo/combat", extensions: [".txt"] }],
+    fileKindRules: [{ category: "策略文件", expectedLocations: ["repo/combat", "repo/tcg"], extensions: [".txt"] }],
     rules: {
       pathingFileNamePattern: "^\\d{2,3}-",
       pathingRequireReadme: false,
@@ -165,6 +165,28 @@ describe("runPullRequestWorkflow - location check", () => {
     const comment = gateway.comments.find((item) => item.body.includes("pull-bot:location"));
     expect(comment?.body).toContain("scripts/main.js");
     expect(comment?.body).toContain("repo/js");
+  });
+
+  it("reports and does not label a stray file in the script root (#3774)", async () => {
+    const pullRequest = createPullRequest({ title: "测试一下" });
+    const gateway = createGateway(pullRequest);
+    gateway.pullRequestFiles = [
+      { filename: "repo/js/起风了.json", status: "added", additions: 13, deletions: 0 }
+    ];
+    const config = enableScriptsListConfig();
+
+    await runPullRequestWorkflow({
+      pullRequest,
+      trigger: "pull_request_opened",
+      config,
+      gateway,
+      commentMode: "zh"
+    });
+
+    const comment = gateway.comments.find((item) => item.body.includes("pull-bot:location"));
+    expect(comment?.body).toContain("repo/js/起风了.json");
+    expect(comment?.body).toContain("repo/js/<脚本名>/");
+    expect(gateway.addedLabels).not.toContain("JS 脚本");
   });
 
   it("removes the comment once files are correctly placed", async () => {

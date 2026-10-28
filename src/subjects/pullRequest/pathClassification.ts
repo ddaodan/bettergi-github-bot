@@ -35,6 +35,40 @@ export function pathMatchesPrefixes(path: string, prefixes: string[]): boolean {
   });
 }
 
+/**
+ * Matches one file against one label rule.
+ *
+ * A rule marked `requireSubdirectory` (typically the script root `repo/js`) only matches
+ * files living inside a sub-directory of one of its prefixes. A stray file directly under
+ * the prefix (such as `repo/js/起风了.json`) is NOT script content and is left for the
+ * location check to report instead of being mislabelled as a script.
+ */
+function ruleMatchesFile(params: {
+  file: string;
+  rule: PullRequestPathLabelRule;
+  scriptRoots: string[];
+}): boolean {
+  const { file, rule, scriptRoots } = params;
+
+  if (rule.requireSubdirectory) {
+    return isInsideScriptDirectory(file, rule.pathPrefixes);
+  }
+
+  // Backwards compatible: treat prefixes shared with a configured script root as
+  // requiring a sub-directory as well.
+  const isScriptRule = scriptRoots.some((root) => {
+    const normalizedRoot = normalizePrefix(root);
+    return normalizedRoot.length > 0
+      && rule.pathPrefixes.some((prefix) => normalizePrefix(prefix) === normalizedRoot);
+  });
+
+  if (isScriptRule) {
+    return isInsideScriptDirectory(file, scriptRoots);
+  }
+
+  return pathMatchesPrefixes(file, rule.pathPrefixes);
+}
+
 export function classifyPullRequestFiles(params: {
   files: string[];
   rules: PullRequestPathLabelRule[];
@@ -44,9 +78,10 @@ export function classifyPullRequestFiles(params: {
   const labels = new Set<string>();
   const unmatchedFiles: string[] = [];
   let matchedAnyRule = false;
+  const scriptRoots = params.scriptRoots ?? [];
 
   for (const file of params.files) {
-    const rule = params.rules.find((candidate) => pathMatchesPrefixes(file, candidate.pathPrefixes));
+    const rule = params.rules.find((candidate) => ruleMatchesFile({ file, rule: candidate, scriptRoots }));
     if (rule) {
       labels.add(rule.label);
       matchedAnyRule = true;
@@ -58,8 +93,8 @@ export function classifyPullRequestFiles(params: {
   const documentationOnly = params.files.length > 0
     && params.files.every((file) => isDocumentationPath(file));
 
-  const filesUnderScriptRoots = (params.scriptRoots ?? []).length > 0
-    ? params.files.filter((file) => pathMatchesPrefixes(file, params.scriptRoots ?? []))
+  const filesUnderScriptRoots = scriptRoots.length > 0
+    ? params.files.filter((file) => pathMatchesPrefixes(file, scriptRoots))
     : [];
 
   return {

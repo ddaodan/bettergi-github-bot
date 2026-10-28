@@ -211,3 +211,49 @@ pullRequests:
     enabled: false
   summary:
     enabled: false
+  # 按改动文件所在目录自动打类型标签（脚本仓库常用）
+  pathLabels:
+    enabled: false
+    managed: true
+    documentationLabel: documentation
+    commentAnchor: pull-bot:path-labels
+    rules:
+      - label: JS 脚本
+        pathPrefixes:
+          - repo/js
+        # 必须是 repo/js/<脚本名>/ 内的文件；根目录散落文件不算脚本
+        requireSubdirectory: true
+      - label: 地图追踪
+        pathPrefixes:
+          - repo/pathing
+      - label: 战斗策略
+        pathPrefixes:
+          - repo/combat
+      - label: 七圣召唤
+        pathPrefixes:
+          - repo/tcg
+  # 提交位置检查：放错大类目录时只发参考性评论，不阻塞合并
+  locationCheck:
+    enabled: false
+    commentAnchor: pull-bot:location
+    allowedPaths:
+      - build
+      - .github
+    scriptRoots:
+      - repo/js
+    fileKindRules:
+      - category: 策略文件
+        expectedLocations:
+          - repo/combat
+          - repo/tcg
+        extensions:
+          - .txt
+    rules:
+      pathingFileNamePattern: ^\d{2,3}-
+  # PR 合并后关闭它实际解决的 Issue（未写 close 关键词时自动补上）
+  issueLink:
+    enabled: false
+    commentAnchor: pull-bot:issue-link
+    appendCloseKeyword: true
+    closeKeywordTemplate: "close #{number}"
+    requireSameRepository: true

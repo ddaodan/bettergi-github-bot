@@ -238,6 +238,12 @@ export interface PullRequestPathLabelConfig {
 export interface PullRequestPathLabelRule {
   label: string;
   pathPrefixes: string[];
+  /**
+   * When true, a changed file only matches this rule if it lives inside a sub-directory
+   * of one of the prefixes (e.g. `repo/js/<script>/...`). A stray file directly under the
+   * prefix (`repo/js/xxx.json`) is not counted, so it is not mislabelled as a script.
+   */
+  requireSubdirectory?: boolean;
 }
 
 export interface PullRequestLocationCheckConfig {
@@ -256,8 +262,8 @@ export interface PullRequestLocationCheckConfig {
 export interface PullRequestFileKindRule {
   /** Human readable category shown in comments (e.g. 战斗策略). */
   category: string;
-  /** Directory where files of this kind are expected to live (e.g. repo/combat). */
-  expectedLocation: string;
+  /** Directories where files of this kind may live; any one of them is acceptable. */
+  expectedLocations: string[];
   extensions: string[];
 }
 

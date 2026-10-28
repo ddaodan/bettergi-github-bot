@@ -281,6 +281,7 @@ pullRequests:
     rules:
       - label: JS 脚本
         pathPrefixes: [repo/js]
+        requireSubdirectory: true   # 必须是 repo/js/<脚本名>/ 内的文件，根目录散落文件不算
       - label: 地图追踪
         pathPrefixes: [repo/pathing]
       - label: 战斗策略
@@ -295,8 +296,8 @@ pullRequests:
     allowedPaths: [build, .github]
     scriptRoots: [repo/js]       # 脚本目录内的文件一律视为合法（含 Assets/Pathing）
     fileKindRules:
-      - category: 战斗策略
-        expectedLocation: repo/combat
+      - category: 策略文件
+        expectedLocations: [repo/combat, repo/tcg]
         extensions: [.txt]
     rules:
       pathingFileNamePattern: ^\d{2,3}-   # 留空表示不校验文件名
@@ -310,8 +311,8 @@ pullRequests:
     requireSameRepository: true
 ```
 
-- **标签**：一条改动文件路径命中第一条匹配规则的目录前缀即归入该类；跨多类时打多个标签。`repo/js/**` 下的任何文件（含 `Assets/Pathing/*.json`、大小写变体、任意层级）都只算 `JS 脚本`。
-- **位置检查**：只检查新增/改名/修改的文件；`allowedPaths`、维护类文件（`.github/**`、`build/**`、`bettergi.d.ts`、`README.md`、`LICENSE` 等）以及 `scriptRoots` 内的文件不校验。只发评论，**不 request changes、不阻塞合并**；`rules.pathingRequireReadme` 等 README 子规则默认不启用。
+- **标签**：一条改动文件路径命中第一条匹配规则的目录前缀即归入该类；跨多类时打多个标签。`repo/js/<脚本名>/` 目录内的任何文件（含 `Assets/Pathing/*.json`、大小写变体、任意层级）都只算 `JS 脚本`；直接放在 `repo/js` 根目录下的散落文件不算脚本。
+- **位置检查**：只检查新增/改名/修改的文件；`allowedPaths`、维护类文件（`.github/**`、`build/**`、`bettergi.d.ts`、`README.md`、`LICENSE` 等）以及 `scriptRoots` 内的文件不校验。直接丢在脚本根目录下的散落文件（如 `repo/js/xxx.json`）会提示应放入具体脚本目录；`.txt` 策略文件在 `repo/combat` 或 `repo/tcg` 中均合法。只发评论，**不 request changes、不阻塞合并**；`rules.pathingRequireReadme` 等 README 子规则默认不启用。
 - **关联 Issue**：从标题、正文中解析 `#123`。同一行内最近的关键词是 `close/fix/resolve/修复/解决/处理/关闭` 时视为已带关闭语句；否则补上 `close #123` 到 PR 描述末尾（幂等，已覆盖的不会重复添加）。`requireSameRepository: true` 时只处理本仓库中仍处于 open 的 Issue。合并后由 GitHub 原生关闭，Bot 不直接关 Issue。
 - **draft PR** 全部跳过；`ready_for_review` 时补做。
 - **安全**：PR 事件必须用 `pull_request_target`，且只能通过 API 读取 PR 元数据。**禁止在 workflow 中 checkout 或执行 PR 的代码**（配置从基仓库读取，bot 自身按 `action-ref` 固定版本检出）。

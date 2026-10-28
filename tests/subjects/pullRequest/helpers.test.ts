@@ -21,7 +21,7 @@ const locationConfig: PullRequestLocationCheckConfig = {
   allowedPaths: ["build", ".github"],
   scriptRoots: ["repo/js"],
   fileKindRules: [
-    { category: "战斗策略", expectedLocation: "repo/combat", extensions: [".txt"] }
+    { category: "策略文件", expectedLocations: ["repo/combat", "repo/tcg"], extensions: [".txt"] }
   ],
   rules: {
     pathingFileNamePattern: "^\\d{2,3}-",
@@ -32,7 +32,7 @@ const locationConfig: PullRequestLocationCheckConfig = {
 };
 
 const rules = [
-  { label: "JS 脚本", pathPrefixes: ["repo/js"] },
+  { label: "JS 脚本", pathPrefixes: ["repo/js"], requireSubdirectory: true },
   { label: "地图追踪", pathPrefixes: ["repo/pathing"] },
   { label: "战斗策略", pathPrefixes: ["repo/combat"] },
   { label: "七圣召唤", pathPrefixes: ["repo/tcg"] }
@@ -56,6 +56,16 @@ describe("classifyPullRequestFiles", () => {
     });
 
     expect(result.matchedLabels).toEqual(["JS 脚本"]);
+  });
+
+  it("does not label a stray file dropped directly into the script root (#3774)", () => {
+    const result = classifyPullRequestFiles({
+      files: ["repo/js/起风了.json"],
+      rules
+    });
+
+    expect(result.matchedLabels).toEqual([]);
+    expect(result.unmatchedFiles).toEqual(["repo/js/起风了.json"]);
   });
 
   it("supports multiple labels for a mixed pull request", () => {
@@ -114,16 +124,44 @@ describe("checkPullRequestFileLocations", () => {
       config: locationConfig
     });
 
-    expect(issues.map((issue) => issue.expectedLocation)).toEqual(["repo/js"]);
+    expect(issues.map((issue) => issue.expectedLocation)).toEqual(["repo/js/<脚本名>/"]);
   });
 
-  it("flags combat tactics outside repo/combat", () => {
+  it("flags a file dropped directly into the script root (#3774)", () => {
     const issues = checkPullRequestFileLocations({
-      files: ["repo/tcg/队伍.txt"],
+      files: ["repo/js/起风了.json"],
       config: locationConfig
     });
 
-    expect(issues.map((issue) => issue.expectedLocation)).toContain("repo/combat");
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.expectedLocation).toBe("repo/js/<脚本名>/");
+  });
+
+  it("still accepts a loose asset inside a real script folder", () => {
+    const issues = checkPullRequestFileLocations({
+      files: ["repo/js/某脚本/起风了.json", "repo/js/某脚本/main.js"],
+      config: locationConfig
+    });
+
+    expect(issues).toEqual([]);
+  });
+
+  it("accepts strategy files in either repo/combat or repo/tcg", () => {
+    const issues = checkPullRequestFileLocations({
+      files: ["repo/combat/队伍.txt", "repo/tcg/牌组.txt"],
+      config: locationConfig
+    });
+
+    expect(issues).toEqual([]);
+  });
+
+  it("flags strategy files outside both strategy directories", () => {
+    const issues = checkPullRequestFileLocations({
+      files: ["docs/队伍.txt"],
+      config: locationConfig
+    });
+
+    expect(issues.map((issue) => issue.expectedLocation)).toContain("repo/combat 或 repo/tcg");
   });
 
   it("flags pathing files whose name does not follow the numbering rule", () => {

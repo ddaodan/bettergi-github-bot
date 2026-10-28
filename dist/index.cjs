@@ -40341,6 +40341,26 @@ var sectionRuleSchema = external_exports.object({
   placeholderHints: external_exports.array(external_exports.string().min(1)).default([]),
   transferExempt: external_exports.boolean().default(false)
 });
+var fileKindRuleSchema = external_exports.object({
+  category: external_exports.string().min(1),
+  expectedLocations: external_exports.array(external_exports.string().min(1)).optional(),
+  expectedLocation: external_exports.string().min(1).optional(),
+  extensions: external_exports.array(external_exports.string().min(1)).min(1)
+}).transform((rule, ctx) => {
+  const locations = rule.expectedLocations && rule.expectedLocations.length > 0 ? rule.expectedLocations : rule.expectedLocation ? [rule.expectedLocation] : [];
+  if (locations.length === 0) {
+    ctx.addIssue({
+      code: external_exports.ZodIssueCode.custom,
+      message: "fileKindRules entry requires expectedLocations or expectedLocation"
+    });
+    return external_exports.NEVER;
+  }
+  return {
+    category: rule.category,
+    expectedLocations: locations,
+    extensions: rule.extensions
+  };
+});
 var templateSchema = external_exports.object({
   key: external_exports.string().min(1),
   issueType: external_exports.string().min(1).optional(),
@@ -40843,7 +40863,8 @@ var repoBotConfigSchema = external_exports.object({
       managed: external_exports.boolean().default(true),
       rules: external_exports.array(external_exports.object({
         label: external_exports.string().min(1),
-        pathPrefixes: external_exports.array(external_exports.string().min(1)).min(1)
+        pathPrefixes: external_exports.array(external_exports.string().min(1)).min(1),
+        requireSubdirectory: external_exports.boolean().optional()
       })).default([]),
       documentationLabel: external_exports.string().default("documentation"),
       unmatchedLabel: external_exports.string().default(""),
@@ -40861,11 +40882,7 @@ var repoBotConfigSchema = external_exports.object({
       commentAnchor: external_exports.string().default("pull-bot:location"),
       allowedPaths: external_exports.array(external_exports.string().min(1)).default([]),
       scriptRoots: external_exports.array(external_exports.string().min(1)).default([]),
-      fileKindRules: external_exports.array(external_exports.object({
-        category: external_exports.string().min(1),
-        expectedLocation: external_exports.string().min(1),
-        extensions: external_exports.array(external_exports.string().min(1)).min(1)
-      })).default([]),
+      fileKindRules: external_exports.array(fileKindRuleSchema).default([]),
       rules: external_exports.object({
         pathingFileNamePattern: external_exports.string().default(""),
         pathingRequireReadme: external_exports.boolean().default(false),
@@ -46555,12 +46572,27 @@ function pathMatchesPrefixes(path3, prefixes) {
     return lower === normalized || lower.startsWith(`${normalized}/`);
   });
 }
+function ruleMatchesFile(params) {
+  const { file: file2, rule, scriptRoots } = params;
+  if (rule.requireSubdirectory) {
+    return isInsideScriptDirectory(file2, rule.pathPrefixes);
+  }
+  const isScriptRule = scriptRoots.some((root) => {
+    const normalizedRoot = normalizePrefix(root);
+    return normalizedRoot.length > 0 && rule.pathPrefixes.some((prefix) => normalizePrefix(prefix) === normalizedRoot);
+  });
+  if (isScriptRule) {
+    return isInsideScriptDirectory(file2, scriptRoots);
+  }
+  return pathMatchesPrefixes(file2, rule.pathPrefixes);
+}
 function classifyPullRequestFiles(params) {
   const labels = /* @__PURE__ */ new Set();
   const unmatchedFiles = [];
   let matchedAnyRule = false;
+  const scriptRoots = params.scriptRoots ?? [];
   for (const file2 of params.files) {
-    const rule = params.rules.find((candidate) => pathMatchesPrefixes(file2, candidate.pathPrefixes));
+    const rule = params.rules.find((candidate) => ruleMatchesFile({ file: file2, rule: candidate, scriptRoots }));
     if (rule) {
       labels.add(rule.label);
       matchedAnyRule = true;
@@ -46569,7 +46601,7 @@ function classifyPullRequestFiles(params) {
     unmatchedFiles.push(file2);
   }
   const documentationOnly = params.files.length > 0 && params.files.every((file2) => isDocumentationPath(file2));
-  const filesUnderScriptRoots = (params.scriptRoots ?? []).length > 0 ? params.files.filter((file2) => pathMatchesPrefixes(file2, params.scriptRoots ?? [])) : [];
+  const filesUnderScriptRoots = scriptRoots.length > 0 ? params.files.filter((file2) => pathMatchesPrefixes(file2, scriptRoots)) : [];
   return {
     matchedLabels: [...labels],
     matchedAnyRule,
@@ -46623,6 +46655,18 @@ function extensionOf(path3) {
 function fileNameOf(path3) {
   return path3.split("/").pop() ?? path3;
 }
+function isDirectlyInRoot(path3, root) {
+  const normalizedRoot = root.replace(/^\/+/, "").replace(/\/+$/, "").toLowerCase();
+  if (!normalizedRoot) {
+    return false;
+  }
+  const lower = path3.toLowerCase();
+  if (!lower.startsWith(`${normalizedRoot}/`)) {
+    return false;
+  }
+  const rest = lower.slice(normalizedRoot.length + 1);
+  return rest.length > 0 && !rest.includes("/");
+}
 function checkPullRequestFileLocations(params) {
   const issues = [];
   const { config: config2 } = params;
@@ -46634,6 +46678,15 @@ function checkPullRequestFileLocations(params) {
       continue;
     }
     if (isInsideScriptDirectory(file2, config2.scriptRoots)) {
+      continue;
+    }
+    const strayScriptRoot = config2.scriptRoots.find((root) => isDirectlyInRoot(file2, root));
+    if (strayScriptRoot) {
+      issues.push({
+        file: file2,
+        expectedLocation: `${strayScriptRoot}/<\u811A\u672C\u540D>/`,
+        reason: `\u6587\u4EF6\u76F4\u63A5\u653E\u5728 ${strayScriptRoot} \u6839\u76EE\u5F55\u4E0B\uFF0C\u5E94\u653E\u5165\u5177\u4F53\u7684\u811A\u672C\u76EE\u5F55\uFF08${strayScriptRoot}/<\u811A\u672C\u540D>/\uFF09`
+      });
       continue;
     }
     const extension = extensionOf(file2);
@@ -46653,26 +46706,27 @@ function checkPullRequestFileLocations(params) {
       }
       continue;
     }
-    if (pathMatchesPrefixes(file2, ["repo/js"])) {
-      continue;
-    }
     if (extension === ".js" || name.toLowerCase() === "manifest.json") {
       issues.push({
         file: file2,
         detectedCategory: "JS \u811A\u672C",
-        expectedLocation: "repo/js",
-        reason: "JS \u811A\u672C\u6587\u4EF6\u5E94\u653E\u5728 repo/js \u76EE\u5F55\u4E0B"
+        expectedLocation: "repo/js/<\u811A\u672C\u540D>/",
+        reason: "JS \u811A\u672C\u6587\u4EF6\u5E94\u653E\u5728 repo/js/<\u811A\u672C\u540D>/ \u76EE\u5F55\u4E0B"
       });
       continue;
     }
     const inferredRule = config2.fileKindRules.find((rule) => rule.extensions.map((item) => item.toLowerCase()).includes(extension));
-    if (inferredRule && !pathMatchesPrefixes(file2, [inferredRule.expectedLocation])) {
-      issues.push({
-        file: file2,
-        detectedCategory: inferredRule.category,
-        expectedLocation: inferredRule.expectedLocation,
-        reason: `${inferredRule.category}\u76F8\u5173\u6587\u4EF6\u5E94\u653E\u5728 ${inferredRule.expectedLocation} \u76EE\u5F55\u4E0B`
-      });
+    if (inferredRule) {
+      const accepted = inferredRule.expectedLocations.some((location) => pathMatchesPrefixes(file2, [location]));
+      if (!accepted) {
+        const expected = inferredRule.expectedLocations.join(" \u6216 ");
+        issues.push({
+          file: file2,
+          detectedCategory: inferredRule.category,
+          expectedLocation: expected,
+          reason: `${inferredRule.category}\u76F8\u5173\u6587\u4EF6\u5E94\u653E\u5728 ${expected} \u76EE\u5F55\u4E0B`
+        });
+      }
     }
   }
   return issues;
