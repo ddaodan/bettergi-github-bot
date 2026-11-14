@@ -598,21 +598,6 @@ export const repoBotConfigSchema = z.object({
         jsFolderNameNoSpace: false,
         jsFolderNamePattern: ""
       }
-    })),
-    issueLink: z.object({
-      enabled: z.boolean().default(false),
-      commentAnchor: z.string().default("pull-bot:issue-link"),
-      appendCloseKeyword: z.boolean().default(true),
-      closeKeywordTemplate: z.string().default("close #{number}"),
-      linkedLabel: z.string().default(""),
-      requireSameRepository: z.boolean().default(true)
-    }).default(() => ({
-      enabled: false,
-      commentAnchor: "pull-bot:issue-link",
-      appendCloseKeyword: true,
-      closeKeywordTemplate: "close #{number}",
-      linkedLabel: "",
-      requireSameRepository: true
     }))
   }).default(() => ({
     review: { enabled: false },
@@ -639,14 +624,6 @@ export const repoBotConfigSchema = z.object({
         jsFolderNameNoSpace: false,
         jsFolderNamePattern: ""
       }
-    },
-    issueLink: {
-      enabled: false,
-      commentAnchor: "pull-bot:issue-link",
-      appendCloseKeyword: true,
-      closeKeywordTemplate: "close #{number}",
-      linkedLabel: "",
-      requireSameRepository: true
     }
   }))
 });

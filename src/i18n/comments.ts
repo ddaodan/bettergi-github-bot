@@ -465,38 +465,3 @@ export function renderPullRequestLocationComment(params: {
     ].join("\n")
   );
 }
-
-export function renderPullRequestIssueLinkComment(params: {
-  mode: CommentMode;
-  linkedNumbers: number[];
-  appendedKeywords: string[];
-}): string {
-  const zhAppended = params.appendedKeywords.length > 0
-    ? `\n\n已自动在 PR 描述中补充关闭语句：\n${params.appendedKeywords.map((item) => `- \`${item}\``).join("\n")}`
-    : "";
-  const enAppended = params.appendedKeywords.length > 0
-    ? `\n\nClosing statements were added to the pull request description:\n${params.appendedKeywords.map((item) => `- \`${item}\``).join("\n")}`
-    : "";
-
-  const zhRefs = params.linkedNumbers.map((number) => `#${number}`).join("、");
-  const enRefs = params.linkedNumbers.map((number) => `#${number}`).join(", ");
-
-  return bilingual(
-    params.mode,
-    [
-      "## 关联 Issue 检查",
-      "",
-      `本 PR 关联了以下 Issue：${zhRefs}。`,
-      "合并后 GitHub 会根据 PR 描述中的关闭语句自动关闭对应 Issue。",
-      zhAppended
-    ].join("\n"),
-    [
-      "## Related Issue Check",
-      "",
-      `This pull request references: ${enRefs}.`,
-      "GitHub will close the related issues automatically after this pull request is merged.",
-      enAppended
-    ].join("\n")
-  );
-}
-

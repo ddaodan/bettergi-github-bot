@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { PullRequestContext } from "../../../src/core/types.js";
 import { resolvePullRequestWorkflowTrigger, runPullRequestWorkflow } from "../../../src/subjects/pullRequest/run.js";
@@ -210,82 +210,41 @@ describe("runPullRequestWorkflow - location check", () => {
   });
 });
 
-describe("runPullRequestWorkflow - issue link", () => {
-  function enableIssueLink(config = createConfig()) {
-    config.pullRequests.issueLink = {
-      enabled: true,
-      commentAnchor: "pull-bot:issue-link",
-      appendCloseKeyword: true,
-      closeKeywordTemplate: "close #{number}",
-      linkedLabel: "",
-      requireSameRepository: true
-    };
-    return config;
-  }
+describe("runPullRequestWorkflow - issue references are passive", () => {
+  it.each(["pull_request_opened", "pull_request_synchronize"] as const)(
+    "does not modify issue references or post a summary on %s",
+    async (trigger) => {
+      const body = [
+        "<!-- 例：close #1234 / Fixes #1234 -->",
+        "Related to #42",
+        "Fixes #581",
+        "Fixes #2137"
+      ].join("\n");
+      const pullRequest = createPullRequest({ title: "Improve launcher #42", body });
+      const gateway = createGateway(pullRequest);
+      // Tripwires also guard against accidentally restoring the removed API calls.
+      const updatePullRequestBody = vi.fn();
+      const getIssueStateForRepository = vi.fn();
+      Object.assign(gateway, { updatePullRequestBody, getIssueStateForRepository });
+      const config = enableScriptsListConfig();
+      gateway.pullRequestFiles = [
+        { filename: "repo/js/Demo/main.js", status: "added", additions: 3, deletions: 0 }
+      ];
 
-  it("appends a close keyword for an open issue referenced without one", async () => {
-    const pullRequest = createPullRequest({
-      title: "Improve launcher",
-      body: "This should address the crash in #42"
-    });
-    const gateway = createGateway(pullRequest);
-    gateway.repositoryIssues.set("octo/repo#42", {
-      number: 42,
-      title: "Launcher crash",
-      state: "open",
-      htmlUrl: "https://github.com/octo/repo/issues/42"
-    });
-    const config = enableIssueLink();
+      await runPullRequestWorkflow({
+        pullRequest,
+        trigger,
+        config,
+        gateway,
+        commentMode: "zh"
+      });
 
-    await runPullRequestWorkflow({
-      pullRequest,
-      trigger: "pull_request_opened",
-      config,
-      gateway,
-      commentMode: "zh"
-    });
-
-    expect(gateway.pullRequestBodyUpdates).toHaveLength(1);
-    expect(gateway.pullRequestBodyUpdates[0]?.body).toContain("close #42");
-    expect(gateway.comments.some((item) => item.body.includes("pull-bot:issue-link"))).toBe(true);
-  });
-
-  it("does not append keywords for closed or missing issues", async () => {
-    const pullRequest = createPullRequest({ body: "related to #7 and #8" });
-    const gateway = createGateway(pullRequest);
-    gateway.repositoryIssues.set("octo/repo#7", {
-      number: 7,
-      title: "Closed one",
-      state: "closed",
-      htmlUrl: "https://github.com/octo/repo/issues/7"
-    });
-    const config = enableIssueLink();
-
-    await runPullRequestWorkflow({
-      pullRequest,
-      trigger: "pull_request_opened",
-      config,
-      gateway,
-      commentMode: "zh"
-    });
-
-    expect(gateway.pullRequestBodyUpdates).toEqual([]);
-  });
-
-  it("does nothing when the issue link feature is disabled", async () => {
-    const pullRequest = createPullRequest({ body: "fixes #42" });
-    const gateway = createGateway(pullRequest);
-    const config = createConfig();
-
-    await runPullRequestWorkflow({
-      pullRequest,
-      trigger: "pull_request_opened",
-      config,
-      gateway,
-      commentMode: "zh"
-    });
-
-    expect(gateway.pullRequestBodyUpdates).toEqual([]);
-    expect(gateway.comments).toEqual([]);
-  });
+      expect(pullRequest.body).toBe(body);
+      expect(updatePullRequestBody).not.toHaveBeenCalled();
+      expect(getIssueStateForRepository).not.toHaveBeenCalled();
+      expect(gateway.comments).toEqual([]);
+      expect(gateway.closedIssues).toEqual([]);
+      expect(gateway.addedLabels).toContain("JS 脚本");
+    }
+  );
 });

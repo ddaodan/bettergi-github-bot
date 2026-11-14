@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  appendCloseKeywords,
-  collectPullRequestIssueReferences,
-  extractIssueReferences,
-  findUnclosedIssueReferences
-} from "../../../src/subjects/pullRequest/issueLink.js";
-import {
   checkPullRequestFileLocations
 } from "../../../src/subjects/pullRequest/locationCheck.js";
 import {
@@ -181,79 +175,5 @@ describe("checkPullRequestFileLocations", () => {
     });
 
     expect(issues).toEqual([]);
-  });
-});
-
-describe("issue references", () => {
-  it("detects close keywords in English and Chinese", () => {
-    const refs = extractIssueReferences("Fixes #12 and 修复 #34 but see #56", "body");
-    const byNumber = new Map(refs.map((ref) => [ref.number, ref.hasCloseKeyword]));
-
-    expect(byNumber.get(12)).toBe(true);
-    expect(byNumber.get(34)).toBe(true);
-    expect(byNumber.get(56)).toBe(false);
-  });
-
-  it("merges duplicates across title, body and commits", () => {
-    const refs = collectPullRequestIssueReferences({
-      title: "Fix crash #7",
-      body: "see #7 again",
-      commitMessages: ["resolves #7"]
-    });
-
-    expect(refs).toHaveLength(1);
-    expect(refs[0]?.hasCloseKeyword).toBe(true);
-  });
-
-  it("returns references without close keywords", () => {
-    const refs = collectPullRequestIssueReferences({
-      title: "Improve UI #9",
-      body: "should fix the crash reported in #9",
-      commitMessages: []
-    });
-
-    expect(findUnclosedIssueReferences(refs).map((ref) => ref.number)).toEqual([9]);
-  });
-
-  it("does not treat descriptive Chinese verbs as closing statements", () => {
-    // 真实场景：作者说「应该能解决 #32 的闪退问题」，这不是关闭语句，需要补 close
-    const refs = collectPullRequestIssueReferences({
-      title: "fix: 修复启动器初始化异常",
-      body: "这个改动应该能解决 #32 的闪退问题。",
-      commitMessages: []
-    });
-
-    const ref = refs.find((item) => item.number === 32);
-    expect(ref?.hasCloseKeyword).toBe(false);
-  });
-
-  it("does not treat descriptive English phrases as closing statements", () => {
-    const refs = collectPullRequestIssueReferences({
-      title: "Improve UI",
-      body: "should fix the crash reported in #9",
-      commitMessages: []
-    });
-
-    expect(findUnclosedIssueReferences(refs).map((ref) => ref.number)).toEqual([9]);
-  });
-
-  it("accepts explicit closing statements", () => {
-    for (const body of ["close #5", "fixes #5", "resolved #5", "修复 #5", "关闭 #5"]) {
-      const refs = collectPullRequestIssueReferences({ title: "", body, commitMessages: [] });
-      expect(refs.find((item) => item.number === 5)?.hasCloseKeyword, body).toBe(true);
-    }
-  });
-
-  it("appends close keywords idempotently", () => {
-    const once = appendCloseKeywords({ body: "描述", numbers: [5], template: "close #{number}" });
-    expect(once).toBe("描述\n\nclose #5");
-
-    const twice = appendCloseKeywords({ body: once, numbers: [5], template: "close #{number}" });
-    expect(twice).toBe(once);
-  });
-
-  it("does not duplicate keywords for issues already closed by the description", () => {
-    const body = "close #5";
-    expect(appendCloseKeywords({ body, numbers: [5, 6], template: "close #{number}" })).toBe("close #5\n\nclose #6");
   });
 });

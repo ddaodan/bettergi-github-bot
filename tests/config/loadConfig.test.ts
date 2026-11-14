@@ -10,6 +10,31 @@ import {
 } from "../../src/config/loadConfig.js";
 
 describe("loadRepoBotConfig", () => {
+  it("ignores removed PR issue-link settings in existing configurations", async () => {
+    const workspace = path.join(os.tmpdir(), `repo-bot-${Date.now()}-removed-pr-issue-link`);
+    await mkdir(workspace, { recursive: true });
+    const configPath = "repo-bot.yml";
+    await writeFile(path.join(workspace, configPath), [
+      "pullRequests:",
+      "  issueLink:",
+      "    enabled: true",
+      "    appendCloseKeyword: true",
+      "  pathLabels:",
+      "    enabled: true"
+    ].join("\n"));
+
+    const config = await loadRepoBotConfig({
+      workspace,
+      configPath,
+      overridesJson: JSON.stringify({ pullRequests: { issueLink: { enabled: true } } }),
+      dryRunInput: false
+    });
+
+    expect(config.pullRequests).not.toHaveProperty("issueLink");
+    expect(config.pullRequests.pathLabels.enabled).toBe(true);
+    expect(repoBotConfigEnvironmentVariables.some(({ name }) => name.includes("ISSUE_LINK"))).toBe(false);
+  });
+
   it("applies environment variables for validation auto-close", async () => {
     const workspace = path.join(os.tmpdir(), `repo-bot-${Date.now()}-auto-close`);
     await mkdir(workspace, { recursive: true });

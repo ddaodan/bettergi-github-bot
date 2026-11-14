@@ -207,14 +207,6 @@ export function createConfig(): RepoBotConfig {
           jsFolderNameNoSpace: false,
           jsFolderNamePattern: ""
         }
-      },
-      issueLink: {
-        enabled: false,
-        commentAnchor: "pull-bot:issue-link",
-        appendCloseKeyword: true,
-        closeKeywordTemplate: "close #{number}",
-        linkedLabel: "",
-        requireSameRepository: true
       }
     }
   };
@@ -312,13 +304,6 @@ export class FakeGateway implements GitHubGateway {
 
   public readonly pullRequestFileRequests: number[] = [];
 
-  public readonly pullRequestBodyUpdates: Array<{ prNumber: number; body: string }> = [];
-
-  public readonly repositoryIssues = new Map<
-    string,
-    { number: number; title: string; state: string; htmlUrl: string }
-  >();
-
   public pullRequest?: PullRequestContext;
 
   public pullRequestFiles: PullRequestFileRecord[] = [];
@@ -352,26 +337,6 @@ export class FakeGateway implements GitHubGateway {
   public async listPullRequestFiles(prNumber: number): Promise<PullRequestFileRecord[]> {
     this.pullRequestFileRequests.push(prNumber);
     return this.pullRequestFiles;
-  }
-
-  public async updatePullRequestBody(prNumber: number, body: string): Promise<void> {
-    this.pullRequestBodyUpdates.push({ prNumber, body });
-    if (!this.pullRequest) {
-      return;
-    }
-    this.pullRequest.body = body;
-    if (prNumber === this.pullRequest.number) {
-      // keep the stored context in sync for assertions
-    }
-  }
-
-  public async getIssueStateForRepository(params: {
-    owner: string;
-    repo: string;
-    number: number;
-  }): Promise<{ number: number; title: string; state: string; htmlUrl: string } | undefined> {
-    const key = `${params.owner}/${params.repo}#${params.number}`;
-    return this.repositoryIssues.get(key);
   }
 
   public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {

@@ -210,7 +210,6 @@ export interface RepoBotConfig {
     autoProcessing: PullRequestAutoProcessingConfig;
     pathLabels: PullRequestPathLabelConfig;
     locationCheck: PullRequestLocationCheckConfig;
-    issueLink: PullRequestIssueLinkConfig;
   };
 }
 
@@ -273,20 +272,6 @@ export interface PullRequestLocationRuleConfig {
   pathingRequireReadme: boolean;
   jsFolderNameNoSpace: boolean;
   jsFolderNamePattern: string;
-}
-
-export interface PullRequestIssueLinkConfig {
-  enabled: boolean;
-  /** Comment anchor used for the issue-link summary comment. */
-  commentAnchor: string;
-  /** When true, a missing close keyword is repaired by appending the keyword to the pull request body. */
-  appendCloseKeyword: boolean;
-  /** Keyword template; `{number}` is replaced with the issue number. */
-  closeKeywordTemplate: string;
-  /** The bot adds this label when it links issues on its own initiative. */
-  linkedLabel: string;
-  /** Issue references must resolve to issues in the same repository. */
-  requireSameRepository: boolean;
 }
 
 export interface RepositorySubjectContext {

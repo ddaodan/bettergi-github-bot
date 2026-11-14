@@ -92,12 +92,6 @@ export interface GitHubGateway {
   getIssueContext(): Promise<IssueContext | undefined>;
   getPullRequestContext(): Promise<PullRequestContext | undefined>;
   listPullRequestFiles(prNumber: number): Promise<PullRequestFileRecord[]>;
-  updatePullRequestBody(prNumber: number, body: string): Promise<void>;
-  getIssueStateForRepository(params: {
-    owner: string;
-    repo: string;
-    number: number;
-  }): Promise<{ number: number; title: string; state: string; htmlUrl: string } | undefined>;
   getIssueCommentContext(): Promise<IssueCommentContext | undefined>;
   resolveIssueParent(issue: IssueContext, options: IssueParentLookupOptions): Promise<IssueContext>;
   getRepositoryVariable(name: string): Promise<string | undefined>;
@@ -321,49 +315,6 @@ export class OctokitGitHubGateway implements GitHubGateway {
       additions: file.additions,
       deletions: file.deletions
     }));
-  }
-
-  public async updatePullRequestBody(prNumber: number, body: string): Promise<void> {
-    if (this.dryRun) {
-      core.info(`[dry-run] update body of pull request #${prNumber}`);
-      return;
-    }
-
-    await this.octokit.rest.pulls.update({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      pull_number: prNumber,
-      body
-    });
-  }
-
-  public async getIssueStateForRepository(params: {
-    owner: string;
-    repo: string;
-    number: number;
-  }): Promise<{ number: number; title: string; state: string; htmlUrl: string } | undefined> {
-    try {
-      const response = await this.octokit.rest.issues.get({
-        owner: params.owner,
-        repo: params.repo,
-        issue_number: params.number
-      });
-
-      const issue = response.data;
-      if ("pull_request" in issue) {
-        return undefined;
-      }
-
-      return {
-        number: issue.number,
-        title: issue.title,
-        state: issue.state,
-        htmlUrl: issue.html_url
-      };
-    } catch (error) {
-      core.info(`Unable to read issue ${params.owner}/${params.repo}#${params.number}: ${String(error)}`);
-      return undefined;
-    }
   }
 
   public async getIssueCommentContext(): Promise<IssueCommentContext | undefined> {

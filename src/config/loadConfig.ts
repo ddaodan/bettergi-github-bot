@@ -135,13 +135,7 @@ export const repoBotConfigEnvironmentVariables: EnvironmentOverrideDefinition[] 
   environmentOverride(["pullRequests", "locationCheck", "allowedPaths"], "json"),
   environmentOverride(["pullRequests", "locationCheck", "scriptRoots"], "json"),
   environmentOverride(["pullRequests", "locationCheck", "fileKindRules"], "json"),
-  environmentOverride(["pullRequests", "locationCheck", "rules"], "json"),
-  environmentOverride(["pullRequests", "issueLink", "enabled"], "boolean"),
-  environmentOverride(["pullRequests", "issueLink", "commentAnchor"], "string"),
-  environmentOverride(["pullRequests", "issueLink", "appendCloseKeyword"], "boolean"),
-  environmentOverride(["pullRequests", "issueLink", "closeKeywordTemplate"], "string"),
-  environmentOverride(["pullRequests", "issueLink", "linkedLabel"], "string"),
-  environmentOverride(["pullRequests", "issueLink", "requireSameRepository"], "boolean")
+  environmentOverride(["pullRequests", "locationCheck", "rules"], "json")
 ];
 
 function parseEnvironmentValue(definition: EnvironmentOverrideDefinition): unknown {

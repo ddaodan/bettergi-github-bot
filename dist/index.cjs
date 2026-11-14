@@ -40906,21 +40906,6 @@ var repoBotConfigSchema = external_exports.object({
         jsFolderNameNoSpace: false,
         jsFolderNamePattern: ""
       }
-    })),
-    issueLink: external_exports.object({
-      enabled: external_exports.boolean().default(false),
-      commentAnchor: external_exports.string().default("pull-bot:issue-link"),
-      appendCloseKeyword: external_exports.boolean().default(true),
-      closeKeywordTemplate: external_exports.string().default("close #{number}"),
-      linkedLabel: external_exports.string().default(""),
-      requireSameRepository: external_exports.boolean().default(true)
-    }).default(() => ({
-      enabled: false,
-      commentAnchor: "pull-bot:issue-link",
-      appendCloseKeyword: true,
-      closeKeywordTemplate: "close #{number}",
-      linkedLabel: "",
-      requireSameRepository: true
     }))
   }).default(() => ({
     review: { enabled: false },
@@ -40947,14 +40932,6 @@ var repoBotConfigSchema = external_exports.object({
         jsFolderNameNoSpace: false,
         jsFolderNamePattern: ""
       }
-    },
-    issueLink: {
-      enabled: false,
-      commentAnchor: "pull-bot:issue-link",
-      appendCloseKeyword: true,
-      closeKeywordTemplate: "close #{number}",
-      linkedLabel: "",
-      requireSameRepository: true
     }
   }))
 });
@@ -41072,13 +41049,7 @@ var repoBotConfigEnvironmentVariables = [
   environmentOverride(["pullRequests", "locationCheck", "allowedPaths"], "json"),
   environmentOverride(["pullRequests", "locationCheck", "scriptRoots"], "json"),
   environmentOverride(["pullRequests", "locationCheck", "fileKindRules"], "json"),
-  environmentOverride(["pullRequests", "locationCheck", "rules"], "json"),
-  environmentOverride(["pullRequests", "issueLink", "enabled"], "boolean"),
-  environmentOverride(["pullRequests", "issueLink", "commentAnchor"], "string"),
-  environmentOverride(["pullRequests", "issueLink", "appendCloseKeyword"], "boolean"),
-  environmentOverride(["pullRequests", "issueLink", "closeKeywordTemplate"], "string"),
-  environmentOverride(["pullRequests", "issueLink", "linkedLabel"], "string"),
-  environmentOverride(["pullRequests", "issueLink", "requireSameRepository"], "boolean")
+  environmentOverride(["pullRequests", "locationCheck", "rules"], "json")
 ];
 function parseEnvironmentValue(definition) {
   const rawValue = process.env[definition.name];
@@ -41811,40 +41782,6 @@ var OctokitGitHubGateway = class {
       additions: file2.additions,
       deletions: file2.deletions
     }));
-  }
-  async updatePullRequestBody(prNumber, body) {
-    if (this.dryRun) {
-      core2.info(`[dry-run] update body of pull request #${prNumber}`);
-      return;
-    }
-    await this.octokit.rest.pulls.update({
-      owner: import_github.context.repo.owner,
-      repo: import_github.context.repo.repo,
-      pull_number: prNumber,
-      body
-    });
-  }
-  async getIssueStateForRepository(params) {
-    try {
-      const response = await this.octokit.rest.issues.get({
-        owner: params.owner,
-        repo: params.repo,
-        issue_number: params.number
-      });
-      const issue2 = response.data;
-      if ("pull_request" in issue2) {
-        return void 0;
-      }
-      return {
-        number: issue2.number,
-        title: issue2.title,
-        state: issue2.state,
-        htmlUrl: issue2.html_url
-      };
-    } catch (error48) {
-      core2.info(`Unable to read issue ${params.owner}/${params.repo}#${params.number}: ${String(error48)}`);
-      return void 0;
-    }
   }
   async getIssueCommentContext() {
     return toIssueCommentContext();
@@ -43822,35 +43759,6 @@ function renderPullRequestLocationComment(params) {
       "The following files appear to be outside of their expected directories. This is advisory only and does not block merging:",
       "",
       enLines
-    ].join("\n")
-  );
-}
-function renderPullRequestIssueLinkComment(params) {
-  const zhAppended = params.appendedKeywords.length > 0 ? `
-
-\u5DF2\u81EA\u52A8\u5728 PR \u63CF\u8FF0\u4E2D\u8865\u5145\u5173\u95ED\u8BED\u53E5\uFF1A
-${params.appendedKeywords.map((item) => `- \`${item}\``).join("\n")}` : "";
-  const enAppended = params.appendedKeywords.length > 0 ? `
-
-Closing statements were added to the pull request description:
-${params.appendedKeywords.map((item) => `- \`${item}\``).join("\n")}` : "";
-  const zhRefs = params.linkedNumbers.map((number4) => `#${number4}`).join("\u3001");
-  const enRefs = params.linkedNumbers.map((number4) => `#${number4}`).join(", ");
-  return bilingual(
-    params.mode,
-    [
-      "## \u5173\u8054 Issue \u68C0\u67E5",
-      "",
-      `\u672C PR \u5173\u8054\u4E86\u4EE5\u4E0B Issue\uFF1A${zhRefs}\u3002`,
-      "\u5408\u5E76\u540E GitHub \u4F1A\u6839\u636E PR \u63CF\u8FF0\u4E2D\u7684\u5173\u95ED\u8BED\u53E5\u81EA\u52A8\u5173\u95ED\u5BF9\u5E94 Issue\u3002",
-      zhAppended
-    ].join("\n"),
-    [
-      "## Related Issue Check",
-      "",
-      `This pull request references: ${enRefs}.`,
-      "GitHub will close the related issues automatically after this pull request is merged.",
-      enAppended
     ].join("\n")
   );
 }
@@ -46411,148 +46319,6 @@ async function runIssueCommentCommand(params) {
 // src/subjects/pullRequest/run.ts
 var core15 = __toESM(require_core(), 1);
 
-// src/subjects/pullRequest/issueLink.ts
-var CONNECTOR_PATTERN = /^[\s:：,，、]+$/;
-function stripMarkdownLinks(value) {
-  return value.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
-}
-var GITHUB_CLOSING_KEYWORDS = [
-  "close",
-  "closes",
-  "closed",
-  "fix",
-  "fixes",
-  "fixed",
-  "resolve",
-  "resolves",
-  "resolved"
-];
-var CHINESE_CLOSING_KEYWORDS = ["\u5173\u95ED", "\u4FEE\u590D", "\u89E3\u51B3"];
-var CHINESE_CONNECTOR_PATTERN = /^[\s:：,，、]*$/;
-function findLastKeywordEnd(text, keywords) {
-  const lower = text.toLowerCase();
-  let closestEnd = -1;
-  for (const keyword of keywords) {
-    const needle = keyword.toLowerCase();
-    let index = lower.indexOf(needle);
-    while (index >= 0) {
-      const candidateEnd = index + needle.length;
-      const before = index === 0 ? " " : lower[index - 1] ?? " ";
-      const isLatin = /[a-z]/.test(needle);
-      const boundaryOk = !isLatin || !/[a-z]/.test(before);
-      if (boundaryOk && candidateEnd > closestEnd) {
-        closestEnd = candidateEnd;
-      }
-      index = lower.indexOf(needle, index + 1);
-    }
-  }
-  return closestEnd;
-}
-var CHINESE_DESCRIPTIVE_AFTER_PATTERN = /^\s*(?:的|了|中所?|后|时|问题|异常|情况|功能|内容|报错|闪退|崩溃)/;
-function hasCloseKeywordBefore(prefix, suffix = "") {
-  const normalized = stripMarkdownLinks(prefix);
-  const withoutLinks = normalized.replace(/\s+/g, " ");
-  const latinEnd = findLastKeywordEnd(withoutLinks, GITHUB_CLOSING_KEYWORDS);
-  let chineseEnd = -1;
-  for (const keyword of CHINESE_CLOSING_KEYWORDS) {
-    const index = withoutLinks.lastIndexOf(keyword);
-    if (index < 0) {
-      continue;
-    }
-    const after = withoutLinks.slice(index + keyword.length);
-    if (!CHINESE_CONNECTOR_PATTERN.test(after)) {
-      continue;
-    }
-    if (suffix && CHINESE_DESCRIPTIVE_AFTER_PATTERN.test(suffix)) {
-      continue;
-    }
-    const end = index + keyword.length;
-    if (end > chineseEnd) {
-      chineseEnd = end;
-    }
-  }
-  const closestEnd = Math.max(latinEnd, chineseEnd);
-  if (closestEnd < 0) {
-    return false;
-  }
-  const between = withoutLinks.slice(closestEnd);
-  if (between.trim().length === 0) {
-    return true;
-  }
-  if (CONNECTOR_PATTERN.test(between)) {
-    return true;
-  }
-  if (between.includes("#")) {
-    return false;
-  }
-  return between.trim().length <= 20;
-}
-function extractIssueReferences(text, source) {
-  const references = [];
-  const pattern = /#(\d{1,7})\b/g;
-  let match;
-  while ((match = pattern.exec(text)) !== null) {
-    const number4 = Number(match[1]);
-    if (!Number.isSafeInteger(number4) || number4 <= 0) {
-      continue;
-    }
-    const lineStart = text.lastIndexOf("\n", match.index) + 1;
-    const lineEnd = text.indexOf("\n", match.index);
-    const prefix = text.slice(Math.max(lineStart, match.index - 120), match.index);
-    const suffix = text.slice(match.index, lineEnd < 0 ? Math.min(text.length, match.index + 120) : lineEnd);
-    const suffixAfterReference = suffix.replace(/^#\d+\b/, "");
-    references.push({
-      number: number4,
-      source,
-      hasCloseKeyword: hasCloseKeywordBefore(prefix, suffixAfterReference)
-    });
-  }
-  return references;
-}
-function collectPullRequestIssueReferences(params) {
-  const collected = /* @__PURE__ */ new Map();
-  const addAll = (references) => {
-    for (const reference of references) {
-      const existing = collected.get(reference.number);
-      if (!existing) {
-        collected.set(reference.number, reference);
-        continue;
-      }
-      if (reference.hasCloseKeyword) {
-        existing.hasCloseKeyword = true;
-      }
-    }
-  };
-  addAll(extractIssueReferences(params.title, "title"));
-  addAll(extractIssueReferences(params.body, "body"));
-  for (const message of params.commitMessages) {
-    addAll(extractIssueReferences(message, "commit"));
-  }
-  return [...collected.values()];
-}
-function renderCloseKeyword(template, number4) {
-  return template.replace(/\{number\}/g, String(number4));
-}
-function appendCloseKeywords(params) {
-  const unique4 = [...new Set(params.numbers)].filter((number4) => Number.isSafeInteger(number4) && number4 > 0);
-  if (unique4.length === 0) {
-    return params.body;
-  }
-  const existingBody = params.body ?? "";
-  const alreadyClosed = /* @__PURE__ */ new Set();
-  for (const reference of extractIssueReferences(existingBody, "body")) {
-    if (reference.hasCloseKeyword) {
-      alreadyClosed.add(reference.number);
-    }
-  }
-  const appended = unique4.filter((number4) => !alreadyClosed.has(number4)).map((number4) => renderCloseKeyword(params.template, number4));
-  if (appended.length === 0) {
-    return existingBody;
-  }
-  const separator = existingBody.trim().length > 0 ? "\n\n" : "";
-  return `${existingBody.trimEnd()}${separator}${appended.join("\n")}`;
-}
-
 // src/subjects/pullRequest/pathClassification.ts
 var DOCUMENTATION_EXTENSIONS = [".md", ".mdx", ".txt.md"];
 function isDocumentationPath(path3) {
@@ -46759,9 +46525,6 @@ async function runPullRequestWorkflow(params) {
   if (prConfig.locationCheck.enabled) {
     await runLocationCheck({ gateway, pullRequest, config: config2, commentMode: params.commentMode });
   }
-  if (prConfig.issueLink.enabled) {
-    await runIssueLink({ gateway, pullRequest, config: config2, commentMode: params.commentMode });
-  }
 }
 async function runPathLabels(params) {
   const { gateway, pullRequest, config: config2 } = params;
@@ -46809,64 +46572,6 @@ async function runLocationCheck(params) {
   if (issues.length > 0) {
     core15.info(`Reported ${issues.length} placement issue(s) on pull request #${pullRequest.number}.`);
   }
-}
-async function runIssueLink(params) {
-  const { gateway, pullRequest, config: config2, commentMode } = params;
-  const linkConfig = config2.pullRequests.issueLink;
-  const references = collectPullRequestIssueReferences({
-    title: pullRequest.title,
-    body: pullRequest.body,
-    commitMessages: []
-  });
-  if (references.length === 0) {
-    return;
-  }
-  const closable = [];
-  for (const reference of references) {
-    if (linkConfig.requireSameRepository) {
-      const state = await gateway.getIssueStateForRepository({
-        owner: pullRequest.owner,
-        repo: pullRequest.repo,
-        number: reference.number
-      });
-      if (!state || state.state !== "open") {
-        core15.info(`Skip issue #${reference.number}: not an open issue in this repository.`);
-        continue;
-      }
-    }
-    if (!reference.hasCloseKeyword) {
-      closable.push(reference.number);
-    }
-  }
-  if (!linkConfig.appendCloseKeyword) {
-    return;
-  }
-  const addedKeywords = [];
-  if (closable.length > 0) {
-    const updatedBody = appendCloseKeywords({
-      body: pullRequest.body,
-      numbers: closable,
-      template: linkConfig.closeKeywordTemplate
-    });
-    if (updatedBody !== pullRequest.body) {
-      await gateway.updatePullRequestBody(pullRequest.number, updatedBody);
-      for (const number4 of closable) {
-        addedKeywords.push(linkConfig.closeKeywordTemplate.replace("{number}", String(number4)));
-      }
-      pullRequest.body = updatedBody;
-      core15.info(`Appended close keyword for issue(s) ${closable.map((n) => `#${n}`).join(", ")}.`);
-    }
-  }
-  await syncAnchoredComment({
-    gateway,
-    issueNumber: pullRequest.number,
-    anchor: linkConfig.commentAnchor,
-    body: renderPullRequestIssueLinkComment({
-      mode: commentMode,
-      linkedNumbers: references.map((reference) => reference.number),
-      appendedKeywords: addedKeywords
-    })
-  });
 }
 
 // src/index.ts
@@ -46941,7 +46646,7 @@ async function run() {
         core16.info(`Current pull request action "${pullRequest.action}" is not handled.`);
         return;
       }
-      const enabled = config2.pullRequests.pathLabels.enabled || config2.pullRequests.locationCheck.enabled || config2.pullRequests.issueLink.enabled;
+      const enabled = config2.pullRequests.pathLabels.enabled || config2.pullRequests.locationCheck.enabled;
       if (!enabled) {
         core16.info("Pull request handling is disabled in configuration.");
         return;

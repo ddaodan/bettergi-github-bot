@@ -3,8 +3,7 @@ import * as core from "@actions/core";
 import type { CommentMode, PullRequestContext, RepoBotConfig } from "../../core/types.js";
 import { syncAnchoredComment } from "../../github/comments.js";
 import type { GitHubGateway } from "../../github/gateway.js";
-import { renderPullRequestIssueLinkComment, renderPullRequestLocationComment } from "../../i18n/comments.js";
-import { appendCloseKeywords, collectPullRequestIssueReferences } from "./issueLink.js";
+import { renderPullRequestLocationComment } from "../../i18n/comments.js";
 import { checkPullRequestFileLocations } from "./locationCheck.js";
 import { classifyPullRequestFiles } from "./pathClassification.js";
 
@@ -49,10 +48,6 @@ export async function runPullRequestWorkflow(params: {
 
   if (prConfig.locationCheck.enabled) {
     await runLocationCheck({ gateway, pullRequest, config, commentMode: params.commentMode });
-  }
-
-  if (prConfig.issueLink.enabled) {
-    await runIssueLink({ gateway, pullRequest, config, commentMode: params.commentMode });
   }
 }
 
@@ -126,74 +121,4 @@ async function runLocationCheck(params: {
   if (issues.length > 0) {
     core.info(`Reported ${issues.length} placement issue(s) on pull request #${pullRequest.number}.`);
   }
-}
-
-async function runIssueLink(params: {
-  gateway: GitHubGateway;
-  pullRequest: PullRequestContext;
-  config: RepoBotConfig;
-  commentMode: CommentMode;
-}): Promise<void> {
-  const { gateway, pullRequest, config, commentMode } = params;
-  const linkConfig = config.pullRequests.issueLink;
-
-  const references = collectPullRequestIssueReferences({
-    title: pullRequest.title,
-    body: pullRequest.body,
-    commitMessages: []
-  });
-
-  if (references.length === 0) {
-    return;
-  }
-
-  const closable: number[] = [];
-  for (const reference of references) {
-    if (linkConfig.requireSameRepository) {
-      const state = await gateway.getIssueStateForRepository({
-        owner: pullRequest.owner,
-        repo: pullRequest.repo,
-        number: reference.number
-      });
-      if (!state || state.state !== "open") {
-        core.info(`Skip issue #${reference.number}: not an open issue in this repository.`);
-        continue;
-      }
-    }
-    if (!reference.hasCloseKeyword) {
-      closable.push(reference.number);
-    }
-  }
-
-  if (!linkConfig.appendCloseKeyword) {
-    return;
-  }
-
-  const addedKeywords: string[] = [];
-  if (closable.length > 0) {
-    const updatedBody = appendCloseKeywords({
-      body: pullRequest.body,
-      numbers: closable,
-      template: linkConfig.closeKeywordTemplate
-    });
-    if (updatedBody !== pullRequest.body) {
-      await gateway.updatePullRequestBody(pullRequest.number, updatedBody);
-      for (const number of closable) {
-        addedKeywords.push(linkConfig.closeKeywordTemplate.replace("{number}", String(number)));
-      }
-      pullRequest.body = updatedBody;
-      core.info(`Appended close keyword for issue(s) ${closable.map((n) => `#${n}`).join(", ")}.`);
-    }
-  }
-
-  await syncAnchoredComment({
-    gateway,
-    issueNumber: pullRequest.number,
-    anchor: linkConfig.commentAnchor,
-    body: renderPullRequestIssueLinkComment({
-      mode: commentMode,
-      linkedNumbers: references.map((reference) => reference.number),
-      appendedKeywords: addedKeywords
-    })
-  });
 }

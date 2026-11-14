@@ -100,8 +100,7 @@ async function run(): Promise<void> {
       }
 
       const enabled = config.pullRequests.pathLabels.enabled
-        || config.pullRequests.locationCheck.enabled
-        || config.pullRequests.issueLink.enabled;
+        || config.pullRequests.locationCheck.enabled;
       if (!enabled) {
         core.info("Pull request handling is disabled in configuration.");
         return;
